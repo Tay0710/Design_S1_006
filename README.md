@@ -1,5 +1,3 @@
-## Design_S1_006
-
 # ELEC5550 Group Project
 
 **Students Involved:**
