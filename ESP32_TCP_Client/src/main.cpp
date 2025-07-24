@@ -12,6 +12,7 @@
 
 AsyncClient* client = new AsyncClient;
 
+int counter = 0;
 
 
 static void replyToServer(void* arg) {
@@ -58,20 +59,18 @@ void setup() {
 	client->onData(&handleData, client); // when data received
 	client->onConnect(&onConnect, client); // on successful connect
 
-	// TODO: either make this a blocking call or ensure PC is connected first
-	// TOOD: check if I dont connect 
+	// TODO: add a handler for when disconnected
+
 	client->connect(SERVER_HOST_NAME, TCP_PORT);
 
 	Serial.println("Connecting to TCP server");
 
-	while (!client->connecting())
+	// Wait until ESP32 is connect to the TCP Server on PC
+	while (!client->connected())
 	{
 		Serial.print(".");
 		delay(500);
 	}
-
-	// TODO: wait for PC connection to AP if possible
-
 }
 
 void loop() {
@@ -79,6 +78,7 @@ void loop() {
 	float duration, distance;
 
 	// read ultrasonic sensor data
+	// TODO: ideally this would be in a separate thread, running asynchronously
 	digitalWrite(TRIG_PIN, LOW);
 	delayMicroseconds(2);
 	digitalWrite(TRIG_PIN, HIGH);
@@ -90,15 +90,22 @@ void loop() {
 	Serial.print("Distance: ");
 	Serial.println(distance);
 
+
+	// TODO: instead of reading ultrasonic send dummy data
+	// MESSAGE FORMAT: "(TIME, x, y, z, yaw, front_distance)"
+
+
+
 	// Send data
 	if (client->space() > 32 && client->canSend()) {
 		char buffer[32];
-		sprintf(buffer, "%.2f", distance); 
+		sprintf(buffer, "%.2f", distance); // TODO: format message properly
 		client->add(buffer, strlen(buffer));
 		client->send();
 	}
 
 	// TODO: What happens if the space is not large enough?
+	// TODO: 
 
 
 	delay(100);
