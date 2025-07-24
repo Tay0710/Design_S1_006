@@ -1,0 +1,10 @@
+(timestamp, p1, p2, p3, p4, p5, p6, yaw)
+
+Timestamp: hh:mm:ss:msms
+p1: Front (ultrasonic)
+p2: Back
+p3: Left
+p4: Right
+p5: Top
+p6: Bottom
+yaw: Turn in the horizontal plane
