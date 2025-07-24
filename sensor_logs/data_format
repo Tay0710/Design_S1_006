@@ -1,6 +1,7 @@
-(timestamp, p1, p2, p3, p4, p5, p6, yaw)
+(timestamp, x, y, z, yaw, p1, p2, p3, p4, p5, p6)
 
-Timestamp: hh:mm:ss:msms
+Timestamp: hh:mm:ss:ms
+x, y, z: Coordinates of drone
 p1: Front (ultrasonic)
 p2: Back
 p3: Left
