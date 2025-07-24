@@ -1,5 +1,3 @@
-import matplotlib.pyplot as plt
-
 # Clean the test data line by line
 def read_line(line):
     #Remove unnecessary brackets and white spaces
