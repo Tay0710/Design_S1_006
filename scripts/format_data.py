@@ -12,24 +12,23 @@ def read_line(line):
     yaw = float(values[4])
     distances = list(map(int, values[5:11]))
     
-    print("Timestamp:", timestamp)
-    print("Position (x, y, z): ", x, y, z)
-    print("Yaw:", yaw)
-    print("Distances:", distances)
+    # print("Timestamp:", timestamp)
+    # print("Position (x, y, z): ", x, y, z)
+    # print("Yaw:", yaw)
+    # print("Distances:", distances)
     
     return timestamp, (x, y, z), yaw, distances   
     
     
 # Read in the test data file
-def read_file():
+def read_file(filepath):
     # Create arrays for sets of data
     timestamps = []
     positions = []
     yaws = []
     distance_sets = []
     
-    
-    with open('../sensor_logs/test_data_10_lines.txt', 'r') as file:
+    with open(filepath, 'r') as file:
         for line in file:
             timestamp, position, yaw, distances = read_line(line)
             
