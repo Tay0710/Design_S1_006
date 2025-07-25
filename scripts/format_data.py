@@ -17,7 +17,7 @@ def read_line(line):
     print("Yaw:", yaw)
     print("Distances:", distances)
     
-    return timestamp, (x, y, z), distances, yaw   
+    return timestamp, (x, y, z), yaw, distances   
     
     
 # Read in the test data file
