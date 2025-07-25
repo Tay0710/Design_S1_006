@@ -1,2 +1,5 @@
 .\venv\Scripts\activate
 cd scripts
+
+python format_data.py
+python plot_2d.py
