@@ -5,18 +5,25 @@ def distance_to_wall(x, y, z, yaw_deg, direction, room_size):
     room_x, room_y, room_z = room_size
     yaw_rad = math.radians(yaw_deg)
 
+    # Clamp range to 5 meters (5000mm)
+    max_range = 5.0
+
     if direction == 'front':
-        return min(5000, (room_x - x) / math.cos(yaw_rad)) if math.cos(yaw_rad) != 0 else 5000
+        dx = (room_x - x)
+        return max(0, min(max_range, dx / math.cos(yaw_rad))) if math.cos(yaw_rad) > 0 else max_range
     if direction == 'back':
-        return min(5000, x / math.cos(yaw_rad)) if math.cos(yaw_rad) != 0 else 5000
+        dx = x
+        return max(0, min(max_range, dx / -math.cos(yaw_rad))) if math.cos(yaw_rad) < 0 else max_range
     if direction == 'left':
-        return min(5000, y / math.cos(yaw_rad + math.pi/2)) if math.cos(yaw_rad + math.pi/2) != 0 else 5000
+        dy = y
+        return max(0, min(max_range, dy / -math.sin(yaw_rad))) if math.sin(yaw_rad) < 0 else max_range
     if direction == 'right':
-        return min(5000, (room_y - y) / math.cos(yaw_rad - math.pi/2)) if math.cos(yaw_rad - math.pi/2) != 0 else 5000
+        dy = (room_y - y)
+        return max(0, min(max_range, dy / math.sin(yaw_rad))) if math.sin(yaw_rad) > 0 else max_range
     if direction == 'top':
-        return room_z - z
+        return max(0, min(max_range, room_z - z))
     if direction == 'bottom':
-        return z
+        return max(0, min(max_range, z))
 
 def generate_room_data(filename="test_data_1000_lines.txt", room_size=(5.0, 5.0, 3.0), spacing=0.3):
     points = []
