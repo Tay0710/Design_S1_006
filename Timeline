@@ -1,0 +1,7 @@
+24/07 - Set up environment
+        Fake test data
+25/07 - Change data format
+        Create 2D plot for positions and distances
+        Create point cloud from 10 data points and map them
+        Attempt to create parallel lines (like left and right walls) - currently unsuccessful
+        
