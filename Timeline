@@ -4,4 +4,5 @@
         Create 2D plot for positions and distances
         Create point cloud from 10 data points and map them
         Attempt to create parallel lines (like left and right walls) - currently unsuccessful
-        
+26/07 - Generated, created a point club and created a mesh for parallel lines
+        Generated, created a point club and created a mesh for two 'walls'
