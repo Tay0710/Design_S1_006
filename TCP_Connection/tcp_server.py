@@ -4,7 +4,7 @@ import socket
 # Note: need to make sure both PC and ESP32 are on the same network (better to set up ESP32 as AP - need to test range)
 # TODO: implement multithreading into this to process the data...
 
-HOST = "192.168.4.2"  # TODO: IP of Client or IP of server?
+HOST = "192.168.4.2"  # IP address of PC
 PORT = 7050  # Port to listen on (non-privileged ports are > 1023)
 
 
@@ -20,7 +20,7 @@ def main():
                 print(data)
                 if not data:
                     break
-                conn.sendall(data)
+                #conn.sendall(b'Acknowledged')
 
 
 if __name__ == "__main__":
