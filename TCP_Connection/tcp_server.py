@@ -3,6 +3,8 @@ import socket
 import matplotlib.pyplot as plt
 import numpy as np
 import threading
+import re
+import time
 
 
 # Note: need to make sure both PC and ESP32 are on the same network (better to set up ESP32 as AP - need to test range)
@@ -13,6 +15,7 @@ PORT = 7050  # Port to listen on (non-privileged ports are > 1023)
 
 
 # Initialise lists to store plot
+index = []
 x = []
 y = []
 distance = []
@@ -26,18 +29,16 @@ def TCP_server():
             print(f"Connected by {addr}")
             while True:
                 data = conn.recv(1024)
-                print(data)
                 s = data.decode('utf-8')  # decode bytes to string using UTF-8 encoding
-                print(s)              # Output: hello world
-                print(type(s))        # <class 'str'>
-                # TODO: process data and add to lists
-                # "(%d, %d, %.2f, %.2f, %.2f, %.2f)"
-                # s = "(1, 2, 3.1415, 2.718, 9.81, 0.99)"
-                # s = s.strip("()")               # remove parentheses
-                # parts = s.split(", ")           # split by comma+space
-                # data = [float(x) for x in parts]
+                groups = re.findall(r'\((.*?)\)', s)
 
-                # print(data)                    # [1.0, 2.0, 3.1415, 2.718, 9.81, 0.99]
+                for g in groups:
+                    parts = g.split(", ")           # split by comma+space
+                    data = [float(x) for x in parts]
+                    index.append(data[0])
+                    x.append(data[1])
+                    y.append(data[2])
+                    distance.append(data[-1])
 
                 if not data:
                     break
@@ -45,9 +46,17 @@ def TCP_server():
 
 def display_map():
     print("TODO: write code")
-    print(x)
-    print(y)
-    print(distance)
+
+    while(True):
+        print(x)
+        print(y)
+        print(distance)
+
+        fig = plt.figure()
+        ax = fig.add_subplot(111, projection='3d')
+        ax.scatter(x, y, distance, color='blue', marker='o')
+        plt.show()
+        time.sleep(1)
 
 def main():
 
@@ -58,7 +67,6 @@ def main():
     # start plotting thread
     t_plot = threading.Thread(target=display_map)
     t_plot.start()
-    
 
 
 if __name__ == "__main__":
