@@ -62,7 +62,7 @@ void onDisconnect(void* arg, AsyncClient* client) {
 	Serial.printf("\n client has been disconnected from %s on port %d \n", SERVER_HOST_NAME, TCP_PORT);
 	sendTimer.detach(); // Pause timer
 
-	// TODO: land drone
+	// TODO: land drone safely 
 }
 
 void setup() {
