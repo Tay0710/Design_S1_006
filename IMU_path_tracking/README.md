@@ -15,3 +15,6 @@ Repositories used for testing:
     - Original application used the MPU-6050 and BNO055 IMUs
     - Performance was better
     - MATLAB script was altered (and has been included)
+3. https://github.com/Edubgr/MPU6050-MotionTracking/tree/master
+    - Requires quaternions from the DMP.
+    - May test after rewriting track_path code with a DMP compbatible library
