@@ -21,6 +21,7 @@ fonttools==4.59.0
 holoviews==1.21.0
 idna==3.10
 importlib_metadata==8.7.0
+imufusion @ git+https://github.com/xioTechnologies/Fusion.git@30666a57bf712c9a04c8e58ed1ec03ede35dd0ef
 ipython==9.4.0
 ipython_pygments_lexers==1.1.1
 ipywidgets==8.1.7
