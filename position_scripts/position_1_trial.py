@@ -62,6 +62,30 @@ def remove_gravity(acceleration_data, quaternions):
         lin_accel = a - rotated_gravity
         linear_accelerations.append(lin_accel)
     return linear_accelerations
+
+def integrate_accel_to_vel(linear_accelerations, time_step):
+    # Standardised gravity value
+    g = 9.80665
+    acc = np.array(linear_accelerations) * g
+    
+    velocity = np.zeros(3)
+    velocities = []
+    
+    for a in acc:
+        velocity += a * time_step
+        velocities.append(velocity.copy())
+        
+    return velocities
+
+def integrate_vel_to_pos(velocities, time_step):
+    position = np.zeros(3)
+    positions = []
+    
+    for v in velocities:
+        position += v * time_step
+        positions.append(position.copy())
+        
+    return positions
     
 def main():
     full_data = load_sensor_data("../sensor_logs/sensor_data.csv")
@@ -82,6 +106,17 @@ def main():
     print("\nFirst 5 linear accelerations (gravity removed):")
     for i in range(5):
         print(f"{lin_accels[i]}")
+        
+    velocities = integrate_accel_to_vel(lin_accels, time_step)
+    positions = integrate_vel_to_pos(velocities, time_step)
+    
+    print("\nFirst 5 estimated velocities (m/s):")
+    for i in range(5):
+        print(velocities[i])
+
+    print("\nFirst 5 estimated positions (m):")
+    for i in range(5):
+        print(positions[i])    
     
 if __name__ == "__main__":
     main()
