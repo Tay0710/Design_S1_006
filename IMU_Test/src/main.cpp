@@ -31,7 +31,7 @@ void sendData() {
 
 	char buffer[100]; // arbitrarily large size
   //sprintf(buffer, "(%d, %d, %.2f, %.2f, %.2f, %.2f)", counter, counter, y, z, yaw, distance); // automatically trims buffer[]
-  sprintf(buffer, "(%.4f, %.4f, %.4f, %.4f, %.4f, %.4f)", timeStamp, g.gyro.x - rollOffset, g.gyro.y - pitchOffset, 
+  sprintf(buffer, "(%.4f, %.4f, %.4f, %.4f, %.4f, %.4f, %.4f)", timeStamp, g.gyro.x - rollOffset, g.gyro.y - pitchOffset, 
     g.gyro.z - yawOffset, a.acceleration.x - accelXOffset, a.acceleration.y - accelYOffset, a.acceleration.z - accelZOffset);
   
 	// Send data
@@ -78,10 +78,7 @@ void setup(void) {
   Serial.begin(115200);
   delay(500);
 
-  Serial.println("hi");
-
   Wire.begin(SDA_PIN, SCL_PIN);  // changing the SDA and SCL pins due to T-Display
-  Serial.println("hi2");
 
   while (!Serial)
     delay(10); // pausing until the serial console is open
@@ -184,7 +181,7 @@ void setup(void) {
 
   Serial.println("");
 
-  Serial.println("Time (s),Gyroscope X (deg/s),Gyroscope Y (deg/s),Gyroscope Z (deg/s),Accelerometer X (g),Accelerometer Y (g),Accelerometer Z (g)");
+  // Serial.println("Time (s),Gyroscope X (deg/s),Gyroscope Y (deg/s),Gyroscope Z (deg/s),Accelerometer X (g),Accelerometer Y (g),Accelerometer Z (g)");
   delay(100);
 
   // Setup ESP32 as access point
