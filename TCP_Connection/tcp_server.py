@@ -80,7 +80,7 @@ def main():
     # Write new file
     with open(file_path, mode="w", newline="") as file:
         writer = csv.writer(file)
-        data = ['index', 'x', 'y', 'z', 'yaw', 'distance']
+        data = ['time', 'gyro x', 'gyro y', 'gyro z', 'accel x', 'accel y', ' accel z']
         writer.writerow(data)
 
     # Start TCP server thread
