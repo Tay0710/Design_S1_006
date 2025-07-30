@@ -38,14 +38,18 @@ void setup() {
   }
   Serial.println(F("Ranging started"));
 
+  vl53.VL53L1X_SetDistanceMode(1);
+
+
   // Valid timing budgets: 15, 20, 33, 50, 100, 200 and 500ms!
   // Note: at 50 it measures up to 2 m ish on long range
   // on 50 ms, max of 2 m consistently
   // on 200 ms, max of 3.2 m consistently
   // on 500 ms, max of 3.5 m consistently
-  vl53.setTimingBudget(200); // may need to tune this for consistency
+  vl53.setTimingBudget(500); // may need to tune this for consistency
   Serial.print(F("Timing budget (ms): "));
   Serial.println(vl53.getTimingBudget());
+
 
   /*
   vl.VL53L1X_SetDistanceThreshold(100, 300, 3, 1);

@@ -34,7 +34,8 @@ def TCP_server():
         with conn:
             print(f"Connected by {addr}")
             while True:
-                data = conn.recv(1024)            
+                data = conn.recv(1024)  
+                print("hi")          
                 s = data.decode('utf-8')  # decode bytes to string using UTF-8 encoding
                 groups = re.findall(r'\((.*?)\)', s)
 

@@ -92,11 +92,11 @@ void setup() {
 	Serial.println("Connecting to TCP server");
 
 	// Wait until ESP32 is connected to the TCP Server on PC
-	while (!client->connected())
-	{
-		Serial.print(".");
-		delay(1000);
-	}
+	// while (!client->connected())
+	// {
+	// 	Serial.print(".");
+	// 	delay(1000);
+	// }
 
 	client->onDisconnect(&onDisconnect, client); // when disconnected
 }
