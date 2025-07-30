@@ -1,6 +1,4 @@
-// Code for extracting raw data from the MPU-6050
-
-// TODO: add in async stuff into here
+// Code for extracting raw data from the MPU-6050 and sending data via TCP
 
 #include <Adafruit_MPU6050.h>
 #include <Adafruit_Sensor.h>
@@ -22,20 +20,27 @@ int counter = 0;
 #define SDA_PIN   21
 #define SCL_PIN   44
 
-float accelXOffset, accelYOffset, accelZOffset, rollOffset, pitchOffset, yawOffset; // Calibration floats
+float timeStamp, accelXOffset, accelYOffset, accelZOffset, rollOffset, pitchOffset, yawOffset; // Calibration floats
 
 Adafruit_MPU6050 mpu;
 
 void sendData() {
+  sensors_event_t a, g, temp;
+  mpu.getEvent(&a, &g, &temp);
+  timeStamp = millis()/1000.0;
+
 	char buffer[100]; // arbitrarily large size
-    sprintf(buffer, "(%d, %d, %.2f, %.2f, %.2f, %.2f)", counter, counter, y, z, yaw, distance); // automatically trims buffer[]
+  //sprintf(buffer, "(%d, %d, %.2f, %.2f, %.2f, %.2f)", counter, counter, y, z, yaw, distance); // automatically trims buffer[]
+  sprintf(buffer, "(%.4f, %.4f, %.4f, %.4f, %.4f, %.4f)", timeStamp, g.gyro.x - rollOffset, g.gyro.y - pitchOffset, 
+    g.gyro.z - yawOffset, a.acceleration.x - accelXOffset, a.acceleration.y - accelYOffset, a.acceleration.z - accelZOffset);
+  
 	// Send data
 	if (client->canSend()) {
 		Serial.println(buffer);
 		client->add(buffer, strlen(buffer));
 		client->send();
 	}
-	counter++; // increment counter
+	// counter++; // increment counter
 }
 
 static void replyToServer(void* arg) {
@@ -71,8 +76,12 @@ void onDisconnect(void* arg, AsyncClient* client) {
 
 void setup(void) {
   Serial.begin(115200);
+  delay(500);
+
+  Serial.println("hi");
 
   Wire.begin(SDA_PIN, SCL_PIN);  // changing the SDA and SCL pins due to T-Display
+  Serial.println("hi2");
 
   while (!Serial)
     delay(10); // pausing until the serial console is open
@@ -177,29 +186,55 @@ void setup(void) {
 
   Serial.println("Time (s),Gyroscope X (deg/s),Gyroscope Y (deg/s),Gyroscope Z (deg/s),Accelerometer X (g),Accelerometer Y (g),Accelerometer Z (g)");
   delay(100);
+
+  // Setup ESP32 as access point
+  Serial.println("Setting Access Point...");
+	WiFi.softAP(SSID, PASSWORD);
+
+  // Print ESP Local IP Address
+	IPAddress IP = WiFi.softAPIP();
+	Serial.print("AP IP Address: ");
+	Serial.println(IP);
+
+  // Setup ESP32 as AsyncTCP Client 
+	client->onConnect(&onConnect, client); // on successful connect
+	
+	client->connect(SERVER_HOST_NAME, TCP_PORT); // attempt to connect
+	client->onData(&handleData, client); // when data is received
+
+	Serial.println("Connecting to TCP server");
+
+	// Wait until ESP32 is connected to the TCP Server on PC
+	while (!client->connected())
+	{
+		Serial.print(".");
+		delay(1000);
+	}
+
+	client->onDisconnect(&onDisconnect, client); // when disconnected
 }
 
 void loop() {
 
   /* Get new sensor events with the readings */
-  sensors_event_t a, g, temp;
-  mpu.getEvent(&a, &g, &temp);
-  float timeStamp = millis()/1000.0;
+  // sensors_event_t a, g, temp;
+  // mpu.getEvent(&a, &g, &temp);
+  // timeStamp = millis()/1000.0;
   
   /* Print out the values */
-  Serial.print(timeStamp, 4);
-  Serial.print(",");
-  Serial.print(g.gyro.x - rollOffset, 4);
-  Serial.print(",");
-  Serial.print(g.gyro.y - pitchOffset, 4);
-  Serial.print(",");
-  Serial.print(g.gyro.z - yawOffset, 4);
-  Serial.print(",");
-  Serial.print(a.acceleration.x - accelXOffset, 4);
-  Serial.print(",");
-  Serial.print(a.acceleration.y - accelYOffset, 4);
-  Serial.print(",");
-  Serial.println(a.acceleration.z - accelZOffset, 4);
-  delay(5);
+  // Serial.print(timeStamp, 4);
+  // Serial.print(",");
+  // Serial.print(g.gyro.x - rollOffset, 4);
+  // Serial.print(",");
+  // Serial.print(g.gyro.y - pitchOffset, 4);
+  // Serial.print(",");
+  // Serial.print(g.gyro.z - yawOffset, 4);
+  // Serial.print(",");
+  // Serial.print(a.acceleration.x - accelXOffset, 4);
+  // Serial.print(",");
+  // Serial.print(a.acceleration.y - accelYOffset, 4);
+  // Serial.print(",");
+  // Serial.println(a.acceleration.z - accelZOffset, 4);
+  // delay(5);
   
 }
