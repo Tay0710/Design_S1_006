@@ -7,6 +7,7 @@ import re
 import time
 import csv
 from datetime import datetime
+import os
 
 # Note: need to make sure both PC and ESP32 are on the same network (better to set up ESP32 as AP - need to test range)
 
@@ -14,8 +15,12 @@ HOST = "192.168.4.2"  # IP address of PC
 PORT = 7050  # Port to listen on (non-privileged ports are > 1023)
 current_datetime = datetime.now().replace(microsecond=0)
 
+
+foldername = "MPU6050_DATA" # REPLACE WITH FOLDER NAME
 filename = str(current_datetime) + ".csv"
 filename = filename.replace(":", "-")
+
+file_path = os.path.join(foldername, filename)
 
 
 # Initialise lists to store plot
@@ -35,7 +40,7 @@ def TCP_server():
             print(f"Connected by {addr}")
             while True:
                 data = conn.recv(1024)  
-                print("hi")          
+                print(data)          
                 s = data.decode('utf-8')  # decode bytes to string using UTF-8 encoding
                 groups = re.findall(r'\((.*?)\)', s)
 
@@ -50,7 +55,7 @@ def TCP_server():
                     yaw.append(data[4])
                     distance.append(data[5])
 
-                    with open(filename, mode="a", newline="") as file:
+                    with open(file_path, mode="a", newline="") as file:
                         writer = csv.writer(file)                        
                         writer.writerow(row)
 
@@ -73,7 +78,7 @@ def display_map():
 
 def main():
     # Write new file
-    with open(filename, mode="w", newline="") as file:
+    with open(file_path, mode="w", newline="") as file:
         writer = csv.writer(file)
         data = ['index', 'x', 'y', 'z', 'yaw', 'distance']
         writer.writerow(data)
