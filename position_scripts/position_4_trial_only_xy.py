@@ -19,18 +19,20 @@ def calculate_sample_rate(time):
 def calculate_orientation(full_data, time_step):
     deg_to_rad = np.pi / 180.0
     
-    gyro_deg = full_data[['Gyroscope X (deg/s)', 'Gyroscope Y (deg/s)', 'Gyroscope Z (deg/s)']].values
+    gyro_deg = full_data[['gyro x', 'gyro y', 'gyro z']].values
     gyro = gyro_deg * deg_to_rad
-    accel = full_data[['Accelerometer X (g)', 'Accelerometer Y (g)', 'Accelerometer Z (g)']].values
-    mag = full_data[['Magnetometer X (uT)', 'Magnetometer Y (uT)', 'Magnetometer Z (uT)']].values
+    accel = full_data[['accel x', 'accel y', ' accel z']].values
+    
+    # Dummy magnetometer
+    zero_mag = np.array([0.0, 0.0, 0.0])
     
     ahrs = fus.Ahrs()
     
     euler_angles = []
     quaternions = []
     
-    for g, a, m in zip(gyro, accel, mag):
-        ahrs.update(g, a, m, time_step)
+    for g, a in zip(gyro, accel):
+        ahrs.update(g, a, zero_mag, time_step)
         
         quaternion = fus.Quaternion(
             np.array([ahrs.quaternion.w,
@@ -120,7 +122,7 @@ def plot_2d_trajectory(positions):
 def main():
     full_data = load_sensor_data("../sensor_logs/2025-07-30 22-36-45.csv")
     
-    time = full_data["Time (s)"].values
+    time = full_data["time"].values
     sample_rate, time_step = calculate_sample_rate(time)
     
     print(f"Sample rate: {sample_rate:.2f} Hz")
@@ -130,7 +132,7 @@ def main():
     print("\nFirst 5 Euler angles (roll, pitch, yaw in radians):")
     print(eulers[:5])
     
-    acceleration = full_data[['Accelerometer X (g)', 'Accelerometer Y (g)', 'Accelerometer Z (g)']].values
+    acceleration = full_data[['accel x', 'accel y', ' accel z']].values
     lin_accels = remove_gravity(acceleration, quaternions)
     
     print("\nFirst 5 linear accelerations (gravity removed):")
