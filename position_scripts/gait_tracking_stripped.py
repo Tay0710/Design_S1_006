@@ -6,25 +6,28 @@ import matplotlib.pyplot as pyplot
 import numpy
 
 # Import sensor data
-data = numpy.genfromtxt("../sensor_logs/short_walk.csv", delimiter=",", skip_header=1)
+data = numpy.genfromtxt("../sensor_logs/2025-07-30 22-36-45.csv", delimiter=",", skip_header=1)
 
-######## SET SAMPLE RATE
-sample_rate = 400  # 400 Hz
+# sample_rate = 400
 
 timestamp = data[:, 0]
 gyroscope = data[:, 1:4]
 accelerometer = data[:, 4:7]
 
+######## SET SAMPLE RATE
+sample_rate = 1.0 / numpy.mean(numpy.diff(timestamp))
+print("Sample Rate: ", sample_rate)
+
 # Instantiate AHRS algorithms
-offset = imufusion.Offset(sample_rate)
+offset = imufusion.Offset(int(sample_rate))
 ahrs = imufusion.Ahrs()
 
 ahrs.settings = imufusion.Settings(imufusion.CONVENTION_NWU,
-                                   0.5,  # gain
-                                   2000,  # gyroscope range
-                                   10,  # acceleration rejection
+                                   0.3,  # gain
+                                   500,  # gyroscope range
+                                   5,  # acceleration rejection
                                    0,  # magnetic rejection
-                                   5 * sample_rate)  # rejection timeout = 5 seconds
+                                   3 * int(sample_rate))  # rejection timeout = 5 seconds
 
 # Process sensor data
 delta_time = numpy.diff(timestamp, prepend=timestamp[0])
