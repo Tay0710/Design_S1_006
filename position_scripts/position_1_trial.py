@@ -2,6 +2,11 @@ import pandas as pd
 import numpy as np
 import imufusion as fus
 
+import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
+from matplotlib.collections import LineCollection
+from matplotlib import cm
+
 def load_sensor_data(filepath):
     full_data = pd.read_csv(filepath)
     return full_data
@@ -86,6 +91,51 @@ def integrate_vel_to_pos(velocities, time_step):
         positions.append(position.copy())
         
     return positions
+
+def plot_2d_trajectory(positions):
+    pos = np.array(positions)
+    x, y = pos[:, 0], pos[:, 1]
+
+    # Build line segments between consecutive points
+    points = np.array([x, y]).T.reshape(-1, 1, 2)
+    segments = np.concatenate([points[:-1], points[1:]], axis=1)
+
+    # Color by time
+    lc = LineCollection(segments, cmap='viridis', linewidth=2)
+    lc.set_array(np.linspace(0, 1, len(segments)))
+
+    fig, ax = plt.subplots(figsize=(8, 6))
+    ax.add_collection(lc)
+    ax.autoscale()
+    ax.set_xlabel("X Position (m)")
+    ax.set_ylabel("Y Position (m)")
+    ax.set_title("2D Estimated Trajectory with Time Gradient")
+    ax.grid(True)
+    ax.set_aspect('equal')
+    plt.colorbar(lc, ax=ax, label="Normalized Time")
+    plt.tight_layout()
+    plt.show()
+        
+def plot_3d_trajectory(positions):
+    pos = np.array(positions)
+    x, y, z = pos[:, 0], pos[:, 1], pos[:, 2]
+
+    # Normalize color based on time
+    c = np.linspace(0, 1, len(x))
+    colors = cm.viridis(c)
+
+    fig = plt.figure(figsize=(10, 6))
+    ax = fig.add_subplot(111, projection='3d')
+
+    for i in range(len(x)-1):
+        ax.plot(x[i:i+2], y[i:i+2], z[i:i+2], color=colors[i], linewidth=2)
+
+    ax.set_xlabel("X (m)")
+    ax.set_ylabel("Y (m)")
+    ax.set_zlabel("Z (m)")
+    ax.set_title("3D Estimated Trajectory with Time Gradient")
+    plt.tight_layout()
+    plt.show()
     
 def main():
     full_data = load_sensor_data("../sensor_logs/sensor_data.csv")
@@ -117,6 +167,9 @@ def main():
     print("\nFirst 5 estimated positions (m):")
     for i in range(5):
         print(positions[i])    
+    
+    plot_2d_trajectory(positions)
+    plot_3d_trajectory(positions)
     
 if __name__ == "__main__":
     main()
