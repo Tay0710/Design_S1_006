@@ -61,14 +61,30 @@ def rotate_vector_by_quaternion(v, q):
     return rotated_gravity
 
 def remove_gravity(acceleration_data, quaternions):
-    linear_accelerations = []
     gravity_global = np.array([0, 0, 1])
-    
+    linear_accelerations = []
+
+    # Store initial gravity-compensated vector
+    first_rotated_gravity = rotate_vector_by_quaternion(gravity_global, quaternions[0])
+    first_accel = acceleration_data[0]
+    accel_bias = first_accel - first_rotated_gravity
+
     for a, q in zip(acceleration_data, quaternions):
         rotated_gravity = rotate_vector_by_quaternion(gravity_global, q)
-        lin_accel = a - rotated_gravity
+        lin_accel = a - rotated_gravity - accel_bias  # <-- Remove initial offset
         linear_accelerations.append(lin_accel)
+    
     return linear_accelerations
+
+def remove_linear_position_drift(positions):
+    positions = np.array(positions)
+    drift = positions[-1] - positions[0]
+    num = len(positions)
+    
+    corrected_positions = [
+        pos - (i / (num - 1)) * drift for i, pos in enumerate(positions)
+    ]
+    return corrected_positions
 
 def integrate_accel_to_vel(linear_accelerations, time_step):
     # Standardised gravity value
@@ -141,7 +157,8 @@ def main():
         
     velocities = integrate_accel_to_vel(lin_accels, time_step)
     positions = integrate_vel_to_pos(velocities, time_step)
-    
+    positions = remove_linear_position_drift(positions)
+
     print("\nFirst 5 estimated velocities (m/s):")
     for i in range(5):
         print(velocities[i])
@@ -151,7 +168,6 @@ def main():
         print(positions[i])    
     
     plot_2d_trajectory(positions)
-    plot_3d_trajectory(positions)
     
 if __name__ == "__main__":
     main()
