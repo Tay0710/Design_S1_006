@@ -12,3 +12,10 @@
         Pull the sample_rate and time_step from the data.
         Include the quaternion-based sensor fusion
         Generate the euler angles (roll, pitch, yaw)
+30/07 - Pulled in open source software to test data (gait-tracking.py)
+        Aquired data from Dorothy and Sam for short walks
+        Attempted to change parameters from the copied library to better suit the data
+        Added 2D and 3D plotting capacity to position_1_trial.py
+        Attempted to plot the short_walk data in the self-done position_1_trial.py
+        Create a new position_2_trial.py to run without magnometer data to match our current sensor capacity
+        Create a new position_3_trial.py to try and fuse the self-done and previously written library (unsuccessful)
