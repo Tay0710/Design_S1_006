@@ -1,0 +1,138 @@
+from dataclasses import dataclass
+from matplotlib import animation
+from scipy.interpolate import interp1d
+import imufusion
+import matplotlib.pyplot as pyplot
+import numpy
+
+# Import sensor data
+data = numpy.genfromtxt("../sensor_logs/short_walk.csv", delimiter=",", skip_header=1)
+
+######## SET SAMPLE RATE
+sample_rate = 400  # 400 Hz
+
+timestamp = data[:, 0]
+gyroscope = data[:, 1:4]
+accelerometer = data[:, 4:7]
+
+# Instantiate AHRS algorithms
+offset = imufusion.Offset(sample_rate)
+ahrs = imufusion.Ahrs()
+
+ahrs.settings = imufusion.Settings(imufusion.CONVENTION_NWU,
+                                   0.5,  # gain
+                                   2000,  # gyroscope range
+                                   10,  # acceleration rejection
+                                   0,  # magnetic rejection
+                                   5 * sample_rate)  # rejection timeout = 5 seconds
+
+# Process sensor data
+delta_time = numpy.diff(timestamp, prepend=timestamp[0])
+
+euler = numpy.empty((len(timestamp), 3))
+internal_states = numpy.empty((len(timestamp), 3))
+acceleration = numpy.empty((len(timestamp), 3))
+
+for index in range(len(timestamp)):
+    gyroscope[index] = offset.update(gyroscope[index])
+    ahrs.update_no_magnetometer(gyroscope[index], accelerometer[index], delta_time[index])
+    euler[index] = ahrs.quaternion.to_euler()
+    internal = ahrs.internal_states
+    internal_states[index] = numpy.array([
+        internal.acceleration_error,
+        internal.accelerometer_ignored,
+        internal.acceleration_recovery_trigger
+    ])
+    acceleration[index] = 9.81 * ahrs.earth_acceleration
+
+# Identify moving periods
+is_moving = numpy.empty(len(timestamp))
+for index in range(len(timestamp)):
+    is_moving[index] = numpy.sqrt(acceleration[index].dot(acceleration[index])) > 3
+
+margin = int(0.1 * sample_rate)
+for index in range(len(timestamp) - margin):
+    is_moving[index] = any(is_moving[index:(index + margin)])
+for index in range(len(timestamp) - 1, margin, -1):
+    is_moving[index] = any(is_moving[(index - margin):index])
+
+# Calculate velocity
+velocity = numpy.zeros((len(timestamp), 3))
+for index in range(len(timestamp)):
+    if is_moving[index]:
+        velocity[index] = velocity[index - 1] + delta_time[index] * acceleration[index]
+
+# Find moving periods
+is_moving_diff = numpy.diff(is_moving, append=is_moving[-1])
+
+@dataclass
+class IsMovingPeriod:
+    start_index: int = -1
+    stop_index: int = -1
+
+is_moving_periods = []
+period = IsMovingPeriod()
+
+for index in range(len(timestamp)):
+    if period.start_index == -1 and is_moving_diff[index] == 1:
+        period.start_index = index
+    elif period.start_index != -1 and is_moving_diff[index] == -1:
+        period.stop_index = index
+        is_moving_periods.append(period)
+        period = IsMovingPeriod()
+
+# Remove integral drift
+velocity_drift = numpy.zeros((len(timestamp), 3))
+for p in is_moving_periods:
+    start, stop = p.start_index, p.stop_index
+    t = [timestamp[start], timestamp[stop]]
+    for i in range(3):
+        velocity_drift[start:stop + 1, i] = interp1d(t, [velocity[start, i], velocity[stop, i]])(timestamp[start:stop + 1])
+velocity -= velocity_drift
+
+# Calculate position
+position = numpy.zeros((len(timestamp), 3))
+for index in range(len(timestamp)):
+    position[index] = position[index - 1] + delta_time[index] * velocity[index]
+
+# Print final error
+print("Error: {:.3f} m".format(numpy.linalg.norm(position[-1])))
+
+# 3D animation
+if True:
+    figure = pyplot.figure(figsize=(10, 10))
+    axes = pyplot.axes(projection="3d")
+    axes.set_xlabel("m")
+    axes.set_ylabel("m")
+    axes.set_zlabel("m")
+
+    x, y, z = [], [], []
+    scatter = axes.scatter(x, y, z)
+
+    fps = 30
+    samples_per_frame = int(sample_rate / fps)
+
+    def update(frame):
+        index = frame * samples_per_frame
+        axes.set_title(f"{timestamp[index]:.3f} s")
+
+        x.append(position[index, 0])
+        y.append(position[index, 1])
+        z.append(position[index, 2])
+        scatter._offsets3d = (x, y, z)
+
+        if (min(x) != max(x)) and (min(y) != max(y)) and (min(z) != max(z)):
+            axes.set_xlim3d(min(x), max(x))
+            axes.set_ylim3d(min(y), max(y))
+            axes.set_zlim3d(min(z), max(z))
+            axes.set_box_aspect((numpy.ptp(x), numpy.ptp(y), numpy.ptp(z)))
+
+        return scatter
+
+    anim = animation.FuncAnimation(figure, update,
+                                   frames=int(len(timestamp) / samples_per_frame),
+                                   interval=1000 / fps,
+                                   repeat=False)
+    anim.save("animation.gif", writer=animation.PillowWriter(fps))
+
+pyplot.show()
