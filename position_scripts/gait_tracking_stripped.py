@@ -49,7 +49,7 @@ for index in range(len(timestamp)):
     acceleration[index] = 9.81 * ahrs.earth_acceleration
 
 # Identify moving periods and compare across thresholds
-thresholds = [1.0, 2.0, 2.5, 3.0, 4.0]
+thresholds = [1.0, 2.0, 2.5, 3.0, 4.0, 4.5, 5.0, 5.5, 6.0]
 positions = {}
 errors = {}
 
