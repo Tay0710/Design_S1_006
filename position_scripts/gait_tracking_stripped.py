@@ -98,41 +98,13 @@ for index in range(len(timestamp)):
 # Print final error
 print("Error: {:.3f} m".format(numpy.linalg.norm(position[-1])))
 
-# 3D animation
-if True:
-    figure = pyplot.figure(figsize=(10, 10))
-    axes = pyplot.axes(projection="3d")
-    axes.set_xlabel("m")
-    axes.set_ylabel("m")
-    axes.set_zlabel("m")
-
-    x, y, z = [], [], []
-    scatter = axes.scatter(x, y, z)
-
-    fps = 30
-    samples_per_frame = int(sample_rate / fps)
-
-    def update(frame):
-        index = frame * samples_per_frame
-        axes.set_title(f"{timestamp[index]:.3f} s")
-
-        x.append(position[index, 0])
-        y.append(position[index, 1])
-        z.append(position[index, 2])
-        scatter._offsets3d = (x, y, z)
-
-        if (min(x) != max(x)) and (min(y) != max(y)) and (min(z) != max(z)):
-            axes.set_xlim3d(min(x), max(x))
-            axes.set_ylim3d(min(y), max(y))
-            axes.set_zlim3d(min(z), max(z))
-            axes.set_box_aspect((numpy.ptp(x), numpy.ptp(y), numpy.ptp(z)))
-
-        return scatter
-
-    anim = animation.FuncAnimation(figure, update,
-                                   frames=int(len(timestamp) / samples_per_frame),
-                                   interval=1000 / fps,
-                                   repeat=False)
-    anim.save("animation.gif", writer=animation.PillowWriter(fps))
-
+# === 2D PLOT: X vs Y ===
+pyplot.figure(figsize=(8, 6))
+pyplot.plot(position[:, 0], position[:, 1], marker='o', markersize=1, linewidth=1)
+pyplot.xlabel("X Position (m)")
+pyplot.ylabel("Y Position (m)")
+pyplot.title("2D Trajectory (X-Y Plane)")
+pyplot.axis('equal')
+pyplot.grid(True)
+pyplot.tight_layout()
 pyplot.show()
