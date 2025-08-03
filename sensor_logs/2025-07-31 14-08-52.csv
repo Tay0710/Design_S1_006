@@ -1,4 +1,4 @@
-time,gyro x,gyro y,gyro z,accel x,accel y, accel z
+Time (s),Gyroscope X (deg/s),Gyroscope Y (deg/s),Gyroscope Z (deg/s),Accelerometer X (g),Accelerometer Y (g),Accelerometer Z (g)
 23.5220,0.0024,-0.0015,-0.0003,-0.1432,-0.0279,1.0211
 23.6220,-0.0030,0.0004,-0.0016,-0.1312,-0.0494,0.9996
 23.7220,0.0040,-0.0020,0.0000,-0.1169,-0.0686,0.9900
