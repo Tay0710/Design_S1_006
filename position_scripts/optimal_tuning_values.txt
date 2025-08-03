@@ -1,0 +1,16 @@
+short_walk.csv:
+    motion_threshold: 3
+    gain: 1
+    gyroscope range: 500
+    acceleration rejection: 10
+    magnetic rejection: 0
+    rejection timeout: 5 * int(sample_rate)
+
+rectangle.csv:
+    motion_threshold: 4 (min)
+    gain: 0.3
+    gyroscope range: 500
+    acceleration rejection: 5
+    magnetic rejection: 0
+    rejection timeout: 3 * int(sample_rate)
+
