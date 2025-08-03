@@ -6,7 +6,7 @@ import matplotlib.pyplot as pyplot
 import numpy
 
 # Import sensor data
-data = numpy.genfromtxt("../sensor_logs/rectangle.csv", delimiter=",", skip_header=1)
+data = numpy.genfromtxt("../sensor_logs/2025-07-31 14-08-52.csv", delimiter=",", skip_header=1)
 
 timestamp = data[:, 0]
 gyroscope = data[:, 1:4]
@@ -45,25 +45,41 @@ for index in range(len(timestamp)):
         internal.acceleration_recovery_trigger
     ])
     acceleration[index] = 9.81 * ahrs.earth_acceleration
+    if index % 500 == 0:  # Only print every 500 samples to avoid flooding
+        print(f"[{index}] accel = {acceleration[index]}, norm = {numpy.linalg.norm(acceleration[index]):.2f}")
 
-motion_threshold = 4
+
+motion_threshold = 0.2
 
 # Identify moving periods
-is_moving = numpy.empty(len(timestamp))
+is_moving = numpy.zeros(len(timestamp), dtype=bool)
 for index in range(len(timestamp)):
-    is_moving[index] = numpy.sqrt(acceleration[index].dot(acceleration[index])) > motion_threshold
+    acc_norm = numpy.linalg.norm(acceleration[index])
+    if index % 500 == 0:
+        print(f"[{index}] Acc norm for motion check = {acc_norm:.2f}")
+    is_moving[index] = acc_norm > motion_threshold
+
 
 margin = int(0.1 * sample_rate)
 for index in range(len(timestamp) - margin):
-    is_moving[index] = any(is_moving[index:(index + margin)])
+    is_moving[index] = numpy.any(is_moving[index:(index + margin)])
+
 for index in range(len(timestamp) - 1, margin, -1):
-    is_moving[index] = any(is_moving[(index - margin):index])
+    is_moving[index] = numpy.any(is_moving[(index - margin):index])
+
 
 # Calculate velocity
 velocity = numpy.zeros((len(timestamp), 3))
 for index in range(len(timestamp)):
     if is_moving[index]:
         velocity[index] = velocity[index - 1] + delta_time[index] * acceleration[index]
+    else:
+        velocity[index] = velocity[index - 1]  # carry forward
+
+    if index % 500 == 0:
+        print(f"[{index}] velocity = {velocity[index]}, norm = {numpy.linalg.norm(velocity[index]):.3f}, is_moving = {bool(is_moving[index])}")
+
+print("Motion detected in", numpy.count_nonzero(is_moving), "out of", len(is_moving), "samples")
 
 # Find moving periods
 is_moving_diff = numpy.diff(is_moving, append=is_moving[-1])
