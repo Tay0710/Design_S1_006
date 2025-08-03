@@ -6,7 +6,7 @@ import matplotlib.pyplot as pyplot
 import numpy
 
 # Import sensor data
-data = numpy.genfromtxt("../sensor_logs/short_walk.csv", delimiter=",", skip_header=1)
+data = numpy.genfromtxt("../sensor_logs/rectangle.csv", delimiter=",", skip_header=1)
 
 timestamp = data[:, 0]
 gyroscope = data[:, 1:4]
@@ -21,11 +21,11 @@ offset = imufusion.Offset(int(sample_rate))
 ahrs = imufusion.Ahrs()
 
 ahrs.settings = imufusion.Settings(imufusion.CONVENTION_NWU,
-                                   0.5,  # gain
-                                   2000,  # gyroscope range
-                                   10,  # acceleration rejection
+                                   0.3,  # gain
+                                   500,  # gyroscope range
+                                   5,  # acceleration rejection
                                    0,  # magnetic rejection
-                                   5 * int(sample_rate))  # rejection timeout = 5 seconds
+                                   3 * int(sample_rate))  # rejection timeout = 5 seconds
 
 # Process sensor data
 delta_time = numpy.diff(timestamp, prepend=timestamp[0])
@@ -46,10 +46,12 @@ for index in range(len(timestamp)):
     ])
     acceleration[index] = 9.81 * ahrs.earth_acceleration
 
+motion_threshold = 4
+
 # Identify moving periods
 is_moving = numpy.empty(len(timestamp))
 for index in range(len(timestamp)):
-    is_moving[index] = numpy.sqrt(acceleration[index].dot(acceleration[index])) > 3
+    is_moving[index] = numpy.sqrt(acceleration[index].dot(acceleration[index])) > motion_threshold
 
 margin = int(0.1 * sample_rate)
 for index in range(len(timestamp) - margin):
@@ -106,6 +108,32 @@ pyplot.xlabel("X Position (m)")
 pyplot.ylabel("Y Position (m)")
 pyplot.title("2D Trajectory (X-Y Plane)")
 pyplot.axis('equal')
+pyplot.grid(True)
+pyplot.tight_layout()
+pyplot.show()
+
+# === Plot velocities over time ===
+pyplot.figure(figsize=(10, 6))
+pyplot.plot(timestamp, velocity[:, 0], label="Velocity X", linewidth=1)
+pyplot.plot(timestamp, velocity[:, 1], label="Velocity Y", linewidth=1)
+pyplot.plot(timestamp, velocity[:, 2], label="Velocity Z", linewidth=1)
+pyplot.xlabel("Time (s)")
+pyplot.ylabel("Velocity (m/s)")
+pyplot.title("Velocity Components Over Time")
+pyplot.legend()
+pyplot.grid(True)
+pyplot.tight_layout()
+pyplot.show()
+
+# === Plot accelerations over time ===
+pyplot.figure(figsize=(10, 6))
+pyplot.plot(timestamp, acceleration[:, 0], label="Acceleration X", linewidth=1)
+pyplot.plot(timestamp, acceleration[:, 1], label="Acceleration Y", linewidth=1)
+pyplot.plot(timestamp, acceleration[:, 2], label="Acceleration Z", linewidth=1)
+pyplot.xlabel("Time (s)")
+pyplot.ylabel("Acceleration (m/s²)")
+pyplot.title("Acceleration Components Over Time")
+pyplot.legend()
 pyplot.grid(True)
 pyplot.tight_layout()
 pyplot.show()
