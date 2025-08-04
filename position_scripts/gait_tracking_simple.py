@@ -16,161 +16,117 @@ accelerometer = data[:, 4:7]
 sample_rate = 1.0 / numpy.mean(numpy.diff(timestamp))
 print("Sample Rate: ", sample_rate)
 
-# Instantiate AHRS algorithms
-offset = imufusion.Offset(int(sample_rate))
-ahrs = imufusion.Ahrs()
+# === Loop settings ===
+threshold_range = numpy.arange(0.4, 3.1, 0.1)  # from 0.1 to 3.0 inclusive
+position_results = []
 
-# Tuning Variables
-gain = 0.5
-gyro_range = 500
-accel_rej = 10
-mag_rej = 0
-rej_timeout = 3 * int(sample_rate)
-motion_threshold = 0.4
-smoothing_margin = int(0.2 * sample_rate)
+for motion_threshold in threshold_range:
+    print(f"🔍 Threshold = {motion_threshold:.1f}")
+    
+    # === Reset everything fresh for each threshold ===
+    offset = imufusion.Offset(int(sample_rate))
+    ahrs = imufusion.Ahrs()
 
-ahrs.settings = imufusion.Settings(imufusion.CONVENTION_NWU,
-                                   gain,
-                                   gyro_range,
-                                   accel_rej,
-                                   mag_rej,
-                                   rej_timeout)
+    gain = 0.5
+    gyro_range = 500
+    accel_rej = 10
+    mag_rej = 0
+    rej_timeout = 3 * int(sample_rate)
+    smoothing_margin = int(0.2 * sample_rate)
 
-# Process sensor data
-delta_time = numpy.diff(timestamp, prepend=timestamp[0])
+    ahrs.settings = imufusion.Settings(imufusion.CONVENTION_NWU,
+                                       gain,
+                                       gyro_range,
+                                       accel_rej,
+                                       mag_rej,
+                                       rej_timeout)
 
-euler = numpy.empty((len(timestamp), 3))
-internal_states = numpy.empty((len(timestamp), 3))
-acceleration = numpy.empty((len(timestamp), 3))
+    delta_time = numpy.diff(timestamp, prepend=timestamp[0])
+    euler = numpy.empty((len(timestamp), 3))
+    acceleration = numpy.empty((len(timestamp), 3))
 
-for index in range(len(timestamp)):
-    gyroscope[index] = offset.update(gyroscope[index])
-    ahrs.update_no_magnetometer(gyroscope[index], accelerometer[index], delta_time[index])
-    euler[index] = ahrs.quaternion.to_euler()
-    internal = ahrs.internal_states
-    internal_states[index] = numpy.array([
-        internal.acceleration_error,
-        internal.accelerometer_ignored,
-        internal.acceleration_recovery_trigger
-    ])
-    acceleration[index] = ahrs.earth_acceleration
-    if index % 500 == 0:  # Only print every 500 samples to avoid flooding
-        print(f"[{index}] accel = {acceleration[index]}, norm = {numpy.linalg.norm(acceleration[index]):.2f}")
-    print(f"[{index}] scaled = {acceleration[index]}")
+    for index in range(len(timestamp)):
+        gyroscope[index] = offset.update(gyroscope[index])
+        ahrs.update_no_magnetometer(gyroscope[index], accelerometer[index], delta_time[index])
+        euler[index] = ahrs.quaternion.to_euler()
+        acceleration[index] = ahrs.earth_acceleration
 
+    # === Motion Detection ===
+    is_moving = numpy.linalg.norm(acceleration, axis=1) > motion_threshold
+    for i in range(len(is_moving) - smoothing_margin):
+        is_moving[i] = numpy.any(is_moving[i:i + smoothing_margin])
+    for i in range(len(is_moving) - 1, smoothing_margin, -1):
+        is_moving[i] = numpy.any(is_moving[i - smoothing_margin:i])
 
-acc_norms = numpy.linalg.norm(acceleration, axis=1)
-print(f"\n📊 Acceleration stats:")
-print(f"  Mean norm: {numpy.mean(acc_norms):.2f} m/s²")
-print(f"  Min norm:  {numpy.min(acc_norms):.2f} m/s²")
-print(f"  Max norm:  {numpy.max(acc_norms):.2f} m/s²")
-print(f"  Std dev:   {numpy.std(acc_norms):.2f} m/s²")
+    # === Velocity Integration ===
+    velocity = numpy.zeros((len(timestamp), 3))
+    for i in range(1, len(timestamp)):
+        if is_moving[i]:
+            velocity[i] = velocity[i - 1] + delta_time[i] * acceleration[i]
+        else:
+            velocity[i] = numpy.zeros(3)
 
+    # === Drift Removal ===
+    from dataclasses import dataclass
+    @dataclass
+    class IsMovingPeriod:
+        start_index: int = -1
+        stop_index: int = -1
 
-# Identify moving periods
-is_moving = numpy.zeros(len(timestamp), dtype=bool)
-for index in range(len(timestamp)):
-    acc_norm = numpy.linalg.norm(acceleration[index])
-    # if index % 500 == 0:
-    #     print(f"[{index}] Acc norm for motion check = {acc_norm:.2f}")
-    is_moving[index] = acc_norm > motion_threshold
+    is_moving_diff = numpy.diff(is_moving, append=is_moving[-1])
+    is_moving_periods = []
+    period = IsMovingPeriod()
 
+    for i in range(len(timestamp)):
+        if period.start_index == -1 and is_moving_diff[i] == 1:
+            period.start_index = i
+        elif period.start_index != -1 and is_moving_diff[i] == -1:
+            period.stop_index = i
+            is_moving_periods.append(period)
+            period = IsMovingPeriod()
 
-for index in range(len(timestamp) - smoothing_margin):
-    is_moving[index] = numpy.any(is_moving[index:(index + smoothing_margin)])
+    velocity_drift = numpy.zeros_like(velocity)
+    for p in is_moving_periods:
+        start, stop = p.start_index, p.stop_index
+        t = [timestamp[start], timestamp[stop]]
+        for j in range(3):
+            velocity_drift[start:stop + 1, j] = interp1d(t, [velocity[start, j], velocity[stop, j]])(timestamp[start:stop + 1])
+    velocity -= velocity_drift
 
-for index in range(len(timestamp) - 1, smoothing_margin, -1):
-    is_moving[index] = numpy.any(is_moving[(index - smoothing_margin):index])
+    # === Position Integration ===
+    position = numpy.zeros((len(timestamp), 3))
+    for i in range(1, len(timestamp)):
+        position[i] = position[i - 1] + delta_time[i] * velocity[i]
 
-print(f"\n✅ Motion detection summary:")
-print(f"Total samples: {len(is_moving)}")
-print(f"Moving samples: {numpy.count_nonzero(is_moving)}")
-print(f"Still samples: {len(is_moving) - numpy.count_nonzero(is_moving)}\n")
+    # Save result
+    position_results.append((motion_threshold, position.copy()))
 
-# Calculate velocity
-velocity = numpy.zeros((len(timestamp), 3))
+import matplotlib.cm as cm
+import matplotlib.colors as colors
 
-for index in range(len(timestamp)):
-    if is_moving[index]:
-        velocity[index] = velocity[index - 1] + delta_time[index] * acceleration[index]
-    else:
-        velocity[index] = numpy.zeros(3)  # clamp to zero during still  # carry forward
+# === Set up color map ===
+from matplotlib import pyplot
 
-    # if index % 500 == 0:
-    #     print(f"[{index}] velocity = {velocity[index]}, norm = {numpy.linalg.norm(velocity[index]):.3f}, is_moving = {bool(is_moving[index])}")
+cmap = pyplot.get_cmap("viridis")
 
-print("Motion detected in", numpy.count_nonzero(is_moving), "out of", len(is_moving), "samples")
+norm = colors.Normalize(vmin=threshold_range[0], vmax=threshold_range[-1])
 
-# Find moving periods
-is_moving_diff = numpy.diff(is_moving, append=is_moving[-1])
+fig, ax = pyplot.subplots(figsize=(10, 8))
 
-@dataclass
-class IsMovingPeriod:
-    start_index: int = -1
-    stop_index: int = -1
+# === Plot all XY trajectories with gradient color ===
+for threshold, pos in position_results:
+    color = cmap(norm(threshold))
+    ax.plot(pos[:, 0], pos[:, 1], color=color, linewidth=1)
 
-is_moving_periods = []
-period = IsMovingPeriod()
+# Add colorbar associated with this axis
+sm = cm.ScalarMappable(cmap=cmap, norm=norm)
+sm.set_array([])  # Needed to create the colorbar
+cbar = fig.colorbar(sm, ax=ax, label="Motion Threshold")
 
-for index in range(len(timestamp)):
-    if period.start_index == -1 and is_moving_diff[index] == 1:
-        period.start_index = index
-    elif period.start_index != -1 and is_moving_diff[index] == -1:
-        period.stop_index = index
-        is_moving_periods.append(period)
-        period = IsMovingPeriod()
-
-# Remove integral drift
-velocity_drift = numpy.zeros((len(timestamp), 3))
-for p in is_moving_periods:
-    start, stop = p.start_index, p.stop_index
-    t = [timestamp[start], timestamp[stop]]
-    for i in range(3):
-        velocity_drift[start:stop + 1, i] = interp1d(t, [velocity[start, i], velocity[stop, i]])(timestamp[start:stop + 1])
-velocity -= velocity_drift
-
-# Calculate position
-position = numpy.zeros((len(timestamp), 3))
-for index in range(len(timestamp)):
-    position[index] = position[index - 1] + delta_time[index] * velocity[index]
-
-# Print final error
-print("Error: {:.3f} m".format(numpy.linalg.norm(position[-1])))
-
-fig, axes = pyplot.subplots(nrows=3, figsize=(10, 12))
-
-# === Subplot 1: 2D Trajectory (X vs Y) ===
-axes[0].plot(position[:, 0], position[:, 1], marker='o', markersize=1, linewidth=1)
-axes[0].set_xlabel("X Position (m)")
-axes[0].set_ylabel("Y Position (m)")
-axes[0].set_title("2D Trajectory (X-Y Plane)")
-axes[0].axis('equal')
-axes[0].grid(True)
-
-# === Subplot 2: Velocities over Time ===
-axes[1].plot(timestamp, velocity[:, 0], label="Velocity X", linewidth=1)
-axes[1].plot(timestamp, velocity[:, 1], label="Velocity Y", linewidth=1)
-axes[1].plot(timestamp, velocity[:, 2], label="Velocity Z", linewidth=1)
-axes[1].set_xlabel("Time (s)")
-axes[1].set_ylabel("Velocity (m/s)")
-axes[1].set_title("Velocity Components Over Time")
-axes[1].legend()
-axes[1].grid(True)
-
-# === Subplot 3: Accelerations over Time ===
-axes[2].plot(timestamp, acceleration[:, 0], label="Acceleration X", linewidth=1)
-axes[2].plot(timestamp, acceleration[:, 1], label="Acceleration Y", linewidth=1)
-axes[2].plot(timestamp, acceleration[:, 2], label="Acceleration Z", linewidth=1)
-axes[2].set_xlabel("Time (s)")
-axes[2].set_ylabel("Acceleration (m/s²)")
-axes[2].set_title("Acceleration Components Over Time")
-axes[2].legend()
-axes[2].grid(True)
-
-# === Plot is_moving mask on velocity plot ===
-axes[1].fill_between(timestamp, -5, 5, where=is_moving, color='orange', alpha=0.2, label='Motion Detected')
-axes[1].legend()
-
-# Add extra space between subplots
-pyplot.tight_layout(pad=4.0)
+ax.set_xlabel("X Position (m)")
+ax.set_ylabel("Y Position (m)")
+ax.set_title("Trajectory Comparison Across Motion Thresholds (0.1 → 3.0)")
+ax.axis("equal")
+ax.grid(True)
+fig.tight_layout()
 pyplot.show()
