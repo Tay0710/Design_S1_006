@@ -20,12 +20,21 @@ print("Sample Rate: ", sample_rate)
 offset = imufusion.Offset(int(sample_rate))
 ahrs = imufusion.Ahrs()
 
+# Tuning Variables
+gain = 0.5
+gyro_range = 500
+accel_rej = 10
+mag_rej = 0
+rej_timeout = 3 * int(sample_rate)
+motion_threshold = 0.4
+smoothing_margin = int(0.2 * sample_rate)
+
 ahrs.settings = imufusion.Settings(imufusion.CONVENTION_NWU,
-                                   0.3,  # gain
-                                   500,  # gyroscope range
-                                   5,  # acceleration rejection
-                                   0,  # magnetic rejection
-                                   3 * int(sample_rate))  # rejection timeout = 5 seconds
+                                   gain,
+                                   gyro_range,
+                                   accel_rej,
+                                   mag_rej,
+                                   rej_timeout)
 
 # Process sensor data
 delta_time = numpy.diff(timestamp, prepend=timestamp[0])
@@ -44,40 +53,51 @@ for index in range(len(timestamp)):
         internal.accelerometer_ignored,
         internal.acceleration_recovery_trigger
     ])
-    acceleration[index] = 9.81 * ahrs.earth_acceleration
+    acceleration[index] = ahrs.earth_acceleration
     if index % 500 == 0:  # Only print every 500 samples to avoid flooding
         print(f"[{index}] accel = {acceleration[index]}, norm = {numpy.linalg.norm(acceleration[index]):.2f}")
+    print(f"[{index}] scaled = {acceleration[index]}")
 
 
-motion_threshold = 0.2
+acc_norms = numpy.linalg.norm(acceleration, axis=1)
+print(f"\n📊 Acceleration stats:")
+print(f"  Mean norm: {numpy.mean(acc_norms):.2f} m/s²")
+print(f"  Min norm:  {numpy.min(acc_norms):.2f} m/s²")
+print(f"  Max norm:  {numpy.max(acc_norms):.2f} m/s²")
+print(f"  Std dev:   {numpy.std(acc_norms):.2f} m/s²")
+
 
 # Identify moving periods
 is_moving = numpy.zeros(len(timestamp), dtype=bool)
 for index in range(len(timestamp)):
     acc_norm = numpy.linalg.norm(acceleration[index])
-    if index % 500 == 0:
-        print(f"[{index}] Acc norm for motion check = {acc_norm:.2f}")
+    # if index % 500 == 0:
+    #     print(f"[{index}] Acc norm for motion check = {acc_norm:.2f}")
     is_moving[index] = acc_norm > motion_threshold
 
 
-margin = int(0.1 * sample_rate)
-for index in range(len(timestamp) - margin):
-    is_moving[index] = numpy.any(is_moving[index:(index + margin)])
+for index in range(len(timestamp) - smoothing_margin):
+    is_moving[index] = numpy.any(is_moving[index:(index + smoothing_margin)])
 
-for index in range(len(timestamp) - 1, margin, -1):
-    is_moving[index] = numpy.any(is_moving[(index - margin):index])
+for index in range(len(timestamp) - 1, smoothing_margin, -1):
+    is_moving[index] = numpy.any(is_moving[(index - smoothing_margin):index])
 
+print(f"\n✅ Motion detection summary:")
+print(f"Total samples: {len(is_moving)}")
+print(f"Moving samples: {numpy.count_nonzero(is_moving)}")
+print(f"Still samples: {len(is_moving) - numpy.count_nonzero(is_moving)}\n")
 
 # Calculate velocity
 velocity = numpy.zeros((len(timestamp), 3))
+
 for index in range(len(timestamp)):
     if is_moving[index]:
         velocity[index] = velocity[index - 1] + delta_time[index] * acceleration[index]
     else:
-        velocity[index] = velocity[index - 1]  # carry forward
+        velocity[index] = numpy.zeros(3)  # clamp to zero during still  # carry forward
 
-    if index % 500 == 0:
-        print(f"[{index}] velocity = {velocity[index]}, norm = {numpy.linalg.norm(velocity[index]):.3f}, is_moving = {bool(is_moving[index])}")
+    # if index % 500 == 0:
+    #     print(f"[{index}] velocity = {velocity[index]}, norm = {numpy.linalg.norm(velocity[index]):.3f}, is_moving = {bool(is_moving[index])}")
 
 print("Motion detected in", numpy.count_nonzero(is_moving), "out of", len(is_moving), "samples")
 
@@ -117,39 +137,40 @@ for index in range(len(timestamp)):
 # Print final error
 print("Error: {:.3f} m".format(numpy.linalg.norm(position[-1])))
 
-# === 2D PLOT: X vs Y ===
-pyplot.figure(figsize=(8, 6))
-pyplot.plot(position[:, 0], position[:, 1], marker='o', markersize=1, linewidth=1)
-pyplot.xlabel("X Position (m)")
-pyplot.ylabel("Y Position (m)")
-pyplot.title("2D Trajectory (X-Y Plane)")
-pyplot.axis('equal')
-pyplot.grid(True)
-pyplot.tight_layout()
-pyplot.show()
+fig, axes = pyplot.subplots(nrows=3, figsize=(10, 12))
 
-# === Plot velocities over time ===
-pyplot.figure(figsize=(10, 6))
-pyplot.plot(timestamp, velocity[:, 0], label="Velocity X", linewidth=1)
-pyplot.plot(timestamp, velocity[:, 1], label="Velocity Y", linewidth=1)
-pyplot.plot(timestamp, velocity[:, 2], label="Velocity Z", linewidth=1)
-pyplot.xlabel("Time (s)")
-pyplot.ylabel("Velocity (m/s)")
-pyplot.title("Velocity Components Over Time")
-pyplot.legend()
-pyplot.grid(True)
-pyplot.tight_layout()
-pyplot.show()
+# === Subplot 1: 2D Trajectory (X vs Y) ===
+axes[0].plot(position[:, 0], position[:, 1], marker='o', markersize=1, linewidth=1)
+axes[0].set_xlabel("X Position (m)")
+axes[0].set_ylabel("Y Position (m)")
+axes[0].set_title("2D Trajectory (X-Y Plane)")
+axes[0].axis('equal')
+axes[0].grid(True)
 
-# === Plot accelerations over time ===
-pyplot.figure(figsize=(10, 6))
-pyplot.plot(timestamp, acceleration[:, 0], label="Acceleration X", linewidth=1)
-pyplot.plot(timestamp, acceleration[:, 1], label="Acceleration Y", linewidth=1)
-pyplot.plot(timestamp, acceleration[:, 2], label="Acceleration Z", linewidth=1)
-pyplot.xlabel("Time (s)")
-pyplot.ylabel("Acceleration (m/s²)")
-pyplot.title("Acceleration Components Over Time")
-pyplot.legend()
-pyplot.grid(True)
-pyplot.tight_layout()
+# === Subplot 2: Velocities over Time ===
+axes[1].plot(timestamp, velocity[:, 0], label="Velocity X", linewidth=1)
+axes[1].plot(timestamp, velocity[:, 1], label="Velocity Y", linewidth=1)
+axes[1].plot(timestamp, velocity[:, 2], label="Velocity Z", linewidth=1)
+axes[1].set_xlabel("Time (s)")
+axes[1].set_ylabel("Velocity (m/s)")
+axes[1].set_title("Velocity Components Over Time")
+axes[1].legend()
+axes[1].grid(True)
+
+# === Subplot 3: Accelerations over Time ===
+axes[2].plot(timestamp, acceleration[:, 0], label="Acceleration X", linewidth=1)
+axes[2].plot(timestamp, acceleration[:, 1], label="Acceleration Y", linewidth=1)
+axes[2].plot(timestamp, acceleration[:, 2], label="Acceleration Z", linewidth=1)
+axes[2].set_xlabel("Time (s)")
+axes[2].set_ylabel("Acceleration (m/s²)")
+axes[2].set_title("Acceleration Components Over Time")
+axes[2].legend()
+axes[2].grid(True)
+
+# === Plot is_moving mask on velocity plot ===
+axes[1].fill_between(timestamp, -5, 5, where=is_moving, color='orange', alpha=0.2, label='Motion Detected')
+axes[1].legend()
+
+# Add extra space between subplots
+pyplot.tight_layout(pad=4.0)
 pyplot.show()
