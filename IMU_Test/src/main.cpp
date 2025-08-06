@@ -181,7 +181,7 @@ void setup(void) {
 
   Serial.println("");
 
-  // Serial.println("Time (s),Gyroscope X (deg/s),Gyroscope Y (deg/s),Gyroscope Z (deg/s),Accelerometer X (g),Accelerometer Y (g),Accelerometer Z (g)");
+  // Serial.println("Time (s),Gyroscope X (deg/s),Gyroscope Y (deg/s),Gyroscope Z (deg/s),Accelerometer X (g),Accelerometer Y (g), Accelerometer Z (g)");
   delay(100);
 
   // Setup ESP32 as access point
