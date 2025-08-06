@@ -1,7 +1,6 @@
 // Code for extracting raw data from the MPU-6050
 
-#include <Adafruit_MPU6050.h>
-#include <Adafruit_Sensor.h>
+#include 
 #include <Wire.h>
 
 #define SDA_PIN   21
