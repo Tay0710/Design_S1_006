@@ -107,10 +107,6 @@ void printFormattedFloat(float val, uint8_t leading, uint8_t decimals)
   {
     SERIAL_PORT.print("-");
   }
-  else
-  {
-    SERIAL_PORT.print(" ");
-  }
   for (uint8_t indi = 0; indi < leading; indi++)
   {
     uint32_t tenpow = 0;
@@ -133,7 +129,7 @@ void printFormattedFloat(float val, uint8_t leading, uint8_t decimals)
   }
   if (val < 0)
   {
-    SERIAL_PORT.print(-val, decimals);
+    SERIAL_PORT.print(val, decimals);
   }
   else
   {
@@ -214,8 +210,8 @@ void loop()
   if (myICM.dataReady())
   {
     myICM.getAGMT();         // The values are only updated when you call 'getAGMT'
-                                printRawAGMT( myICM.agmt );     // Uncomment this to see the raw values, taken directly from the agmt structure
-    // printScaledAGMT(&myICM); // This function takes into account the scale settings from when the measurement was made to calculate the values with units
+    // printRawAGMT( myICM.agmt );     // Uncomment this to see the raw values, taken directly from the agmt structure
+    printScaledAGMT(&myICM); // This function takes into account the scale settings from when the measurement was made to calculate the values with units
     delay(30);
   }
   else
