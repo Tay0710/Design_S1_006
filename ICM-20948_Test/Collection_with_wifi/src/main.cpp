@@ -28,6 +28,7 @@ float timeStamp, accelXOffset, accelYOffset, accelZOffset, rollOffset, pitchOffs
 #define AD0_VAL 1
 
 ICM_20948_I2C myICM; // Otherwise create an ICM_20948_I2C object
+ICM_20948_fss_t myFSS; 
 
 void sendData() {
 
@@ -74,7 +75,7 @@ static void handleData(void* arg, AsyncClient* client, void *data, size_t len) {
 
 void onConnect(void* arg, AsyncClient* client) {
 	Serial.printf("\n client has been connected to %s on port %d \n", SERVER_HOST_NAME, TCP_PORT);
-	sendTimer.attach(0.1, sendData);  // interval in seconds
+	sendTimer.attach(0.01, sendData);  // interval in seconds
 }
 
 void onDisconnect(void* arg, AsyncClient* client) {
@@ -119,6 +120,10 @@ void setup(void) {
     }
   }
 
+  // Specifying ranges
+  myFSS.a = gpm8;
+  myFSS.g = dps1000;
+
   Serial.println("");
 
   Serial.println("Calibrating...");
@@ -132,7 +137,7 @@ void setup(void) {
     rollOffset += myICM.gyrX();
     pitchOffset += myICM.gyrY();
     yawOffset += myICM.gyrZ();
-    delay(1);
+    delay(2);
   }
 
   accelXOffset /= num_avg;
