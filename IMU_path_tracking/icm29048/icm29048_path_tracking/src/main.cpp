@@ -1,5 +1,6 @@
 #include <ICM_20948.h> // SparkFun ICM-20948 Library
 #include <Wire.h>
+#include <Arduino.h>
 
 #define SDA_PIN   21
 #define SCL_PIN   44
@@ -7,6 +8,7 @@
 // float accelXOffset, accelYOffset, accelZOffset, rollOffset, pitchOffset, yawOffset; // Calibration floats
 
 //#define USE_SPI       // Uncomment this to use SPI
+#undef USE_SPI
 
 #define SERIAL_PORT Serial
 
@@ -17,70 +19,14 @@
 #define AD0_VAL 1
 
 #ifdef USE_SPI
+typedef ICM_20948_SPI ICM_20948_DEV;
 ICM_20948_SPI myICM; // If using SPI create an ICM_20948_SPI object
 #else
+typedef ICM_20948_I2C ICM_20948_DEV;
 ICM_20948_I2C myICM; // Otherwise create an ICM_20948_I2C object
 #endif
 
-void setup()
-{
-  SERIAL_PORT.begin(115200);
-
-  Wire.begin(SDA_PIN, SCL_PIN);  // changing the SDA and SCL pins due to T-Display
-
-  while (!SERIAL_PORT){};
-
-  #ifdef USE_SPI
-    SPI_PORT.begin();
-  #else
-    WIRE_PORT.begin();
-    WIRE_PORT.setClock(400000);
-  #endif
-
-  // myICM.enableDebugging(); // Uncomment this line to enable helpful debug messages on Serial
-
-  bool initialized = false;
-  while (!initialized)
-  {
-
-  #ifdef USE_SPI
-      myICM.begin(CS_PIN, SPI_PORT);
-  #else
-      myICM.begin(WIRE_PORT, AD0_VAL); // Initialises ICM-20948
-  #endif
-
-    SERIAL_PORT.print(F("Initialization of the sensor returned: "));
-    SERIAL_PORT.println(myICM.statusString());
-    if (myICM.status != ICM_20948_Stat_Ok)
-    {
-      SERIAL_PORT.println("Trying again...");
-      delay(500);
-    }
-    else
-    {
-      initialized = true;
-    }
-  }
-}
-
-void loop()
-{
-
-  if (myICM.dataReady())
-  {
-    myICM.getAGMT();         // The values are only updated when you call 'getAGMT'
-                             //    printRawAGMT( myICM.agmt );     // Uncomment this to see the raw values, taken directly from the agmt structure
-    printScaledAGMT(&myICM); // This function takes into account the scale settings from when the measurement was made to calculate the values with units
-    delay(30);
-  }
-  else
-  {
-    SERIAL_PORT.println("Waiting for data");
-    delay(500);
-  }
-}
-
-// Below here are some helper functions to print the data nicely!
+// Declaring helper functions
 
 void printPaddedInt16b(int16_t val)
 {
@@ -195,13 +141,8 @@ void printFormattedFloat(float val, uint8_t leading, uint8_t decimals)
   }
 }
 
-#ifdef USE_SPI
-void printScaledAGMT(ICM_20948_SPI *sensor)
+void printScaledAGMT(ICM_20948_DEV *sensor)
 {
-#else
-void printScaledAGMT(ICM_20948_I2C *sensor)
-{
-#endif
   SERIAL_PORT.print("Scaled. Acc (mg) [ ");
   printFormattedFloat(sensor->accX(), 5, 2);
   SERIAL_PORT.print(", ");
@@ -224,4 +165,62 @@ void printScaledAGMT(ICM_20948_I2C *sensor)
   printFormattedFloat(sensor->temp(), 5, 2);
   SERIAL_PORT.print(" ]");
   SERIAL_PORT.println();
+}
+
+void setup()
+{
+  SERIAL_PORT.begin(115200);
+
+  Wire.begin(SDA_PIN, SCL_PIN);  // changing the SDA and SCL pins due to T-Display
+
+  while (!SERIAL_PORT){};
+
+  #ifdef USE_SPI
+    SPI_PORT.begin();
+  #else
+    WIRE_PORT.begin();
+    WIRE_PORT.setClock(400000);
+  #endif
+
+  // myICM.enableDebugging(); // Uncomment this line to enable helpful debug messages on Serial
+
+  bool initialized = false;
+  while (!initialized)
+  {
+
+  #ifdef USE_SPI
+      myICM.begin(CS_PIN, SPI_PORT);
+  #else
+      myICM.begin(WIRE_PORT, AD0_VAL); // Initialises ICM-20948
+  #endif
+
+    SERIAL_PORT.print(F("Initialization of the sensor returned: "));
+    SERIAL_PORT.println(myICM.statusString());
+    if (myICM.status != ICM_20948_Stat_Ok)
+    {
+      SERIAL_PORT.println("Trying again...");
+      delay(500);
+    }
+    else
+    {
+      initialized = true;
+    }
+  }
+}
+
+void loop()
+{
+
+  if (myICM.dataReady())
+  {
+    myICM.getAGMT();         // The values are only updated when you call 'getAGMT'
+                             //    printRawAGMT( myICM.agmt );     // Uncomment this to see the raw values, taken directly from the agmt structure
+    printScaledAGMT(&myICM); // This function takes into account the scale settings from when the measurement was made to calculate the values with units
+    delay(30);
+  }
+  else
+  {
+    SERIAL_PORT.println("Waiting for data");
+    delay(500);
+  }
 }
