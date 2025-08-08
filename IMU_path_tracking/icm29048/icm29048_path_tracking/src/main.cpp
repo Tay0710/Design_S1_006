@@ -7,9 +7,6 @@
 
 // float accelXOffset, accelYOffset, accelZOffset, rollOffset, pitchOffset, yawOffset; // Calibration floats
 
-//#define USE_SPI       // Uncomment this to use SPI
-#undef USE_SPI
-
 #define SERIAL_PORT Serial
 
 #define SPI_PORT SPI // Your desired SPI port.       Used only when "USE_SPI" is defined
