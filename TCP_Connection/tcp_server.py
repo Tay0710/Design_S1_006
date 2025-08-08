@@ -16,7 +16,7 @@ PORT = 7050  # Port to listen on (non-privileged ports are > 1023)
 current_datetime = datetime.now().replace(microsecond=0)
 
 
-foldername = "MPU6050_DATA" # REPLACE WITH FOLDER NAME
+foldername = "ICM20948_DATA" # REPLACE WITH FOLDER NAME
 filename = str(current_datetime) + ".csv"
 filename = filename.replace(":", "-")
 
