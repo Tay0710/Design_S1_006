@@ -39,11 +39,11 @@ void sendData() {
   sprintf(buffer, "(%.4f, %.4f, %.4f, %.4f, %.4f, %.4f, %.4f)",
           timeStamp,
           myICM.gyrX() - rollOffset,
-          myICM.gyrY() - pitchOffset,
           myICM.gyrZ() - yawOffset,
-          myICM.accX() - accelXOffset,
-          myICM.accY() - accelYOffset,
-          myICM.accZ() - accelZOffset);
+          myICM.gyrY() - pitchOffset,
+          (myICM.accX() - accelXOffset)/1000,
+          (myICM.accY() - accelYOffset)/1000,
+          (myICM.accZ() - accelZOffset)/1000);
   
 	// Send data
 	if (client->canSend()) {
