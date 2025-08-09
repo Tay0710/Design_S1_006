@@ -1,4 +1,6 @@
 #include <Arduino.h>
+#include <vl53l7cx_api.h>
+#include <platform.h>
 
 // put function declarations here:
 int myFunction(int, int);
