@@ -1,4 +1,4 @@
-# MPU6050 Test Data Generation
+# ICM-20948 Test Data Generation
 
 ## ESP32-S3 Setup Up
 
