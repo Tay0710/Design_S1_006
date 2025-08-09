@@ -4,24 +4,37 @@
 #include <string.h>
 #include <stdio.h>
 
-#include <vl53l7cx_api.h>
-#include <platform.h>
+extern "C" {
+  #include <vl53l7cx_api.h>
+}
+
+// #include <vl53l7cx_buffers.h>
+// #include <vl53l7cx_plugin_detection_thresholds.h>
+// #include <vl53l7cx_plugin_motion_indicator.h>
+// #include <vl53l7cx_plugin_xtalk.h>
+extern "C" {
+  #include <platform.h>
+}
 
 #define SDA_PIN   21
 #define SCL_PIN   44
 
 // Function declarations
-int example1(void) {}
+int example1();
 
 void setup() {
   Serial.begin(115200);
-
   while (!Serial) {};
   delay(500);
 
-  Wire.begin(SDA_PIN, SCL_PIN);  // changing the SDA and SCL pins due to T-Display
+  Wire.begin(SDA_PIN, SCL_PIN);
 
-  example1();
+  int status = example1();
+  if (status) {
+    Serial.println("VL53L7CX initialization failed!");
+  } else {
+    Serial.println("VL53L7CX initialized successfully.");
+  }
 }
 
 void loop() {}
@@ -48,7 +61,7 @@ int example1(void)
 	/* Fill the platform structure with customer's implementation. For this
 	* example, only the I2C address is used.
 	*/
-	Dev.platform.address = VL53L7CX_DEFAULT_I2C_ADDRESS;
+	Dev.platform.address = 0x29;
 
 	/* (Optional) Reset sensor toggling PINs (see platform, not in API) */
 	//VL53L7CX_Reset_Sensor(&(Dev.platform));
