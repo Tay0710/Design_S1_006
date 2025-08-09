@@ -18,14 +18,25 @@ extern "C" {
 
 #define SDA_PIN   21
 #define SCL_PIN   44
+#define PWREN_PIN 3
+#define LPN_PIN   12
 
 // Function declarations
 int example1();
 
 void setup() {
   Serial.begin(115200);
-  while (!Serial) {};
+  while (!Serial) {}
   delay(500);
+
+  // Enable sensor
+  pinMode(PWREN_PIN, OUTPUT);
+  digitalWrite(PWREN_PIN, HIGH);
+  delay(10);
+
+  pinMode(LPN_PIN, OUTPUT);
+  digitalWrite(LPN_PIN, HIGH);
+  delay(10);
 
   Wire.begin(SDA_PIN, SCL_PIN);
 
