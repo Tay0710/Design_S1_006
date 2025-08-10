@@ -63,5 +63,5 @@ void loop () {
     sbus_tx.data(data);
     /* Write the data to the servos */
     sbus_tx.Write();
-    delay(1000);
+    //delay(1000);
 }
