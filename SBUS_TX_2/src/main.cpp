@@ -15,6 +15,7 @@
 #define SBUS_STATE_FAILSAFE 0x08
 #define SBUS_STATE_SIGNALLOSS 0x04
 #define SBUS_UPDATE_RATE 15 
+#define SBUS_BAUD_RATE 100000
 
 #define RX_PIN 18
 #define TX_PIN 17
@@ -81,7 +82,7 @@ void sbusPreparePacket(uint8_t packet[], int channels[], bool isSignalLoss, bool
       rcChannels[i] = 1500;
     }
     
-    Serial1.begin(100000, SERIAL_8E2, RX_PIN, TX_PIN);
+    Serial1.begin(SBUS_BAUD_RATE, SERIAL_8E2, RX_PIN, TX_PIN);
   }
   
   void loop() {
