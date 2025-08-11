@@ -21,6 +21,7 @@
 1. Calibrate MPU6050
 1. Setup ESP32 as Wifi
 1. Connects to TCP server. Note: the rest of the code will not run unless the ESP32 is connected to a TCP server (i.e. PC)
+1. Ensure AD0 pin is high
 1. Once connected to a TCP server, the ESP32 sends data to the server every 0.1 seconds in the format: 
     (time, gyro.x, gyro.y, gyro.z, acceleration.x, acceleration.y, acceleration.z), including offsets from calibration
 
