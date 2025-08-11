@@ -75,7 +75,7 @@ static void handleData(void* arg, AsyncClient* client, void *data, size_t len) {
 
 void onConnect(void* arg, AsyncClient* client) {
 	Serial.printf("\n client has been connected to %s on port %d \n", SERVER_HOST_NAME, TCP_PORT);
-	sendTimer.attach(0.01, sendData);  // interval in seconds
+	sendTimer.attach(0.1, sendData);  // interval in seconds
 }
 
 void onDisconnect(void* arg, AsyncClient* client) {
