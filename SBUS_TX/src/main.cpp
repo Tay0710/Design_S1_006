@@ -35,12 +35,31 @@
 #define SBUS_MID 1500
 #define SBUS_CHANNELS 16
 
+#define SBUS_DIGITAL_CHANNEL_MIN 173
+#define SBUS_DIGITAL_CHANNEL_MAX 1812
+
+
 /* SBUS object, reading SBUS */
 bfs::SbusRx sbus_rx(&Serial1, RX_PIN, TX_PIN, false, false);
 /* SBUS object, writing SBUS */
 bfs::SbusTx sbus_tx(&Serial1, RX_PIN, TX_PIN, false, false);
 /* SBUS data */
 bfs::SbusData data;
+
+static float sbusChannelsReadRawRC(const rxRuntimeState_t *rxRuntimeState, uint8_t chan)
+{
+    // Linear fitting values read from OpenTX-ppmus and comparing with values received by X4R
+    // http://www.wolframalpha.com/input/?i=linear+fit+%7B173%2C+988%7D%2C+%7B1812%2C+2012%7D%2C+%7B993%2C+1500%7D
+    return (5 * (float)rxRuntimeState->channelData[chan] / 8) + 880;
+}
+
+void sbusChannelsInit(const rxConfig_t *rxConfig, rxRuntimeState_t *rxRuntimeState)
+{
+    rxRuntimeState->rcReadRawFn = sbusChannelsReadRawRC;
+    for (int b = 0; b < SBUS_CHANNELS; b++) {
+        rxRuntimeState->channelData[b] = (16 * rxConfig->midrc) / 10 - 1408;
+    }
+}
 
 void setup() {
   /* Serial to display data */
