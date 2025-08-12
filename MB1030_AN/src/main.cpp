@@ -40,6 +40,7 @@ void loop() {
  // collect raw data for different attenuations levels at different distances. Then can attempt to find a relationship between raw value and distance.
 
  // Also maybe look at getting a better ADC chip. This would mean the project is getting a bit too complex than required. This is still the 2nd mapping option, so does not need to be perfect. I think PW will be good enough. 
+ // The voltage reading on the osciliscope seems to be right with calculation, where the voltage reading can be converted to a distance, e.g. 77mV ~ 30cm. It just seems the ADC on the ESP32 is struglling or something else is causing issues. For example when the attenuation is set at 11dB (ADC_11db), each step is 0.805mV per ADC which should be good enough, so IDK why it is not working. 
  
  
   float avgRaw = (float)sum / SAMPLE_COUNT; // Average raw value
