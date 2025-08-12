@@ -14,3 +14,11 @@ rectangle.csv:
     magnetic rejection: 0
     rejection timeout: 3 * int(sample_rate)
 
+MPU6050/2025-07-31 14-08-52.csv:
+    gain = 0.5
+    gyro_range = 500
+    accel_rej = 14
+    mag_rej = 0
+    rej_timeout = 3 * int(sample_rate)
+    motion_threshold = 0.5
+    smoothing_margin = int(0.3 * sample_rate)
