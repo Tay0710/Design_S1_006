@@ -8,7 +8,7 @@ from mpl_toolkits.mplot3d import Axes3D
 import numpy
 
 # === Import sensor data ===
-data = numpy.genfromtxt("../sensor_logs/2025-08-08 19-14-49.csv", delimiter=",", skip_header=1)
+data = numpy.genfromtxt("../sensor_logs/ICM20948/2025-08-11 15-45-19.csv", delimiter=",", skip_header=1)
 
 timestamp = data[:, 0]
 gyroscope = data[:, 1:4]
@@ -23,13 +23,13 @@ offset = imufusion.Offset(int(sample_rate))
 ahrs = imufusion.Ahrs()
 
 # === Tuning Variables ===
-gain = 0.6
-gyro_range = 500
-accel_rej = 16
+gain = 0.5
+gyro_range = 2000
+accel_rej = 14
 mag_rej = 0
 rej_timeout = 3 * int(sample_rate)
-motion_threshold = 0.5
-smoothing_margin = int(0.3 * sample_rate)
+motion_threshold = 0.01
+smoothing_margin = int(0.2 * sample_rate)
 
 ahrs.settings = imufusion.Settings(imufusion.CONVENTION_NWU,
                                    gain,
@@ -37,6 +37,10 @@ ahrs.settings = imufusion.Settings(imufusion.CONVENTION_NWU,
                                    accel_rej,
                                    mag_rej,
                                    rej_timeout)
+
+# === Gravity removal constants ===
+G = 9.80665
+GRAVITY_G_NWU = numpy.array([0.0, 0.0, -1.0])  # NWU: Up=+Z
 
 # === Process sensor data ===
 delta_time = numpy.diff(timestamp, prepend=timestamp[0])
@@ -47,7 +51,11 @@ acceleration = numpy.empty((len(timestamp), 3))
 
 for index in range(len(timestamp)):
     gyroscope[index] = offset.update(gyroscope[index])
-    ahrs.update_no_magnetometer(gyroscope[index], accelerometer[index], delta_time[index])
+
+    # Convert accel to g for imufusion
+    accel_g = accelerometer[index] / G
+    ahrs.update_no_magnetometer(gyroscope[index], accel_g, delta_time[index])
+
     euler[index] = ahrs.quaternion.to_euler()
     internal = ahrs.internal_states
     internal_states[index] = numpy.array([
@@ -55,9 +63,14 @@ for index in range(len(timestamp)):
         internal.accelerometer_ignored,
         internal.acceleration_recovery_trigger
     ])
-    acceleration[index] = ahrs.earth_acceleration
+
+    # Gravity removal: earth_acceleration is in g → subtract gravity vector → m/s²
+    earth_accel_g = ahrs.earth_acceleration
+    linear_accel_mps2 = (earth_accel_g - GRAVITY_G_NWU) * G
+    acceleration[index] = linear_accel_mps2
+
     if index % 500 == 0:
-        print(f"[{index}] accel = {acceleration[index]}, norm = {numpy.linalg.norm(acceleration[index]):.2f}")
+        print(f"[{index}] lin_acc (m/s^2) = {acceleration[index]}, norm = {numpy.linalg.norm(acceleration[index]):.2f}")
 
 # === Acceleration statistics ===
 acc_norms = numpy.linalg.norm(acceleration, axis=1)
