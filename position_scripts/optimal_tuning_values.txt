@@ -22,3 +22,12 @@ MPU6050/2025-07-31 14-08-52.csv:
     rej_timeout = 3 * int(sample_rate)
     motion_threshold = 0.5
     smoothing_margin = int(0.3 * sample_rate)
+
+ICM20948/2025-08-11 15-45-19.csv: (stationary)
+    gain = 0.5
+    gyro_range = 2000
+    accel_rej = 14
+    mag_rej = 0
+    rej_timeout = 3 * int(sample_rate)
+    motion_threshold = 0.01
+    smoothing_margin = int(0.2 * sample_rate)
