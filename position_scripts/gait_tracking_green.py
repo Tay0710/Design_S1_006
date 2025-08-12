@@ -6,7 +6,7 @@ import matplotlib.pyplot as pyplot
 import numpy
 
 # Import sensor data
-data = numpy.genfromtxt("../sensor_logs/MPU6050/2025-07-31 14-08-52.csv", delimiter=",", skip_header=1)
+data = numpy.genfromtxt("../sensor_logs/ICM20948/2025-08-11 15-45-19.csv", delimiter=",", skip_header=1)
 
 timestamp = data[:, 0]
 gyroscope = data[:, 1:4]
@@ -22,12 +22,12 @@ ahrs = imufusion.Ahrs()
 
 # Tuning Variables
 gain = 0.5
-gyro_range = 500
+gyro_range = 2000
 accel_rej = 14
 mag_rej = 0
 rej_timeout = 3 * int(sample_rate)
-motion_threshold = 0.5
-smoothing_margin = int(0.3 * sample_rate)
+motion_threshold = 1
+smoothing_margin = int(0.1 * sample_rate)
 
 ahrs.settings = imufusion.Settings(imufusion.CONVENTION_NWU,
                                    gain,
