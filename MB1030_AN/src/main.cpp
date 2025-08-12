@@ -15,6 +15,10 @@ void setup() {
   Serial.begin(115200);
   pinMode(anPin, INPUT);
   Serial.println("MB1030 analog distance measurement (cm)");
+
+  // Ensure ADC1 usage and best sensitivity
+  analogSetPinAttenuation(anPin, ADC_0db); // 0dB -> best sensitivity (~1.1V FS); This is not accurate for a 3.3V supply, however seems to work better for objects that are 40-60cm away. Otherwise objects are read as closer for onjects that are closer (e.g. 30cm is read as 10cm); or further for objects that are further away (80cm is read as 300cm). 
+  analogSetWidth(12);                      // 12-bit -> 0..4095
 }
 
 
@@ -33,20 +37,24 @@ void loop() {
     Serial.print(",");
     sum += rawValues[i];
   }
+ // collect raw data for different attenuations levels at different distances. Then can attempt to find a relationship between raw value and distance.
 
-  // float avgRaw = (float)sum / SAMPLE_COUNT; // Average raw value
+ // Also maybe look at getting a better ADC chip. This would mean the project is getting a bit too complex than required. This is still the 2nd mapping option, so does not need to be perfect. I think PW will be good enough. 
+ 
+ 
+  float avgRaw = (float)sum / SAMPLE_COUNT; // Average raw value
 
-  // float voltage = (avgRaw / 4095.0) * Vcc*10^3;   // Convert raw ADC to voltage
+  float voltage = (avgRaw / 4095.0) * Vcc;   // Convert raw ADC to voltage
 
-  // float distanceCm = voltage / (Vcc / (512.0 * 2.54));   // Convert voltage directly to centimeters
+  float distanceCm = voltage / (Vcc / (512.0 * 2.54));   // Convert voltage directly to centimeters
 
-  // Serial.println("Raw values Complete!");
-  // Serial.print(avgRaw);
-  // Serial.print(",");
-  // Serial.print(voltage);
-  // Serial.print(",");
-  // Serial.print(distanceCm);
-  // Serial.println(" cm");
+  Serial.println("Raw values Complete!");
+  Serial.print(avgRaw);
+  Serial.print(",");
+  Serial.print(voltage);
+  Serial.print(",");
+  Serial.print(distanceCm);
+  Serial.println(" cm");
 
-  delay(100); // small delay for readability
+  delay(500); // small delay for readability
 }
