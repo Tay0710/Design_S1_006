@@ -5,7 +5,7 @@ Sensor pin assignment:
 
 SDA : SDA pin (21)
 SCL : SCL pin (22)
-LPn : 3.3V (High)
+LPn : 3.3V (High) (This is the reset pin, need to use it with a GPIO pin when using mutlpile sensors on the I2C bus to chnage addresses.)
 PWR_EN : 3.3V (High)
 AVDD : 3.3V or 5V (used in voltage regulator, this and PWR_EN are required to make sensor work)
 IOVDD : 3.3V
