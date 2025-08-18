@@ -17,8 +17,9 @@
 #define SBUS_UPDATE_RATE 15 
 #define SBUS_BAUD_RATE 100000
 
-#define RX_PIN 18
+#define RX_PIN 16
 #define TX_PIN 17
+
 
 void sbusPreparePacket(uint8_t packet[], int channels[], bool isSignalLoss, bool isFailsafe) {
   static int output[SBUS_CHANNEL_NUMBER] = {0};
@@ -82,11 +83,15 @@ void sbusPreparePacket(uint8_t packet[], int channels[], bool isSignalLoss, bool
       rcChannels[i] = 1500;
     }
     
-    Serial1.begin(SBUS_BAUD_RATE, SERIAL_8E2, RX_PIN, TX_PIN);
+    Serial1.begin(SBUS_BAUD_RATE, SERIAL_8E2, -1, 1); // Initialize Serial1 with 100000 baud rate, TX = GPIO 9??
   }
   
   void loop() {
     uint32_t currentMillis = millis();
+
+    for (int i = 0; i < SBUS_CHANNEL_NUMBER; i++) {
+      rcChannels[i] = 2000;
+    }
     
     /*
     * Here you can modify values of rcChannels while keeping it in 1000:2000 range

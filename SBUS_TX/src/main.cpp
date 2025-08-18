@@ -38,6 +38,8 @@
 #define SBUS_DIGITAL_CHANNEL_MIN 173
 #define SBUS_DIGITAL_CHANNEL_MAX 1812
 
+#define MID_RC 1500
+
 
 /* SBUS object, reading SBUS */
 bfs::SbusRx sbus_rx(&Serial1, RX_PIN, TX_PIN, false, false);
@@ -46,20 +48,22 @@ bfs::SbusTx sbus_tx(&Serial1, RX_PIN, TX_PIN, false, false);
 /* SBUS data */
 bfs::SbusData data;
 
-static float sbusChannelsReadRawRC(const rxRuntimeState_t *rxRuntimeState, uint8_t chan)
-{
-    // Linear fitting values read from OpenTX-ppmus and comparing with values received by X4R
-    // http://www.wolframalpha.com/input/?i=linear+fit+%7B173%2C+988%7D%2C+%7B1812%2C+2012%7D%2C+%7B993%2C+1500%7D
-    return (5 * (float)rxRuntimeState->channelData[chan] / 8) + 880;
-}
+// static float sbusChannelsReadRawRC(const rxRuntimeState_t *rxRuntimeState, uint8_t chan)
+// {
+//     // Linear fitting values read from OpenTX-ppmus and comparing with values received by X4R
+//     // http://www.wolframalpha.com/input/?i=linear+fit+%7B173%2C+988%7D%2C+%7B1812%2C+2012%7D%2C+%7B993%2C+1500%7D
+//     return (5 * (float)rxRuntimeState->channelData[chan] / 8) + 880;
+//     // if channel = 992 --> 1500
+// }
 
-void sbusChannelsInit(const rxConfig_t *rxConfig, rxRuntimeState_t *rxRuntimeState)
-{
-    rxRuntimeState->rcReadRawFn = sbusChannelsReadRawRC;
-    for (int b = 0; b < SBUS_CHANNELS; b++) {
-        rxRuntimeState->channelData[b] = (16 * rxConfig->midrc) / 10 - 1408;
-    }
-}
+// void sbusChannelsInit(const rxConfig_t *rxConfig, rxRuntimeState_t *rxRuntimeState)
+// {
+//     rxRuntimeState->rcReadRawFn = sbusChannelsReadRawRC;
+//     for (int b = 0; b < SBUS_CHANNELS; b++) {
+//         rxRuntimeState->channelData[b] = (16 * rxConfig->midrc) / 10 - 1408;
+//         // maps mid_rc = 1500 to 992
+//     }
+// }
 
 void setup() {
   /* Serial to display data */
@@ -72,7 +76,7 @@ void setup() {
 
   // Initialise data as mid values
   for (int i = 0; i < SBUS_CHANNELS; i++) {
-    data.ch[i] = SBUS_MID;
+    data.ch[i] = 992;
   }
 }
 
@@ -82,5 +86,5 @@ void loop () {
     sbus_tx.data(data);
     /* Write the data to the servos */
     sbus_tx.Write();
-    //delay(1000);
+    delay(100);
 }
