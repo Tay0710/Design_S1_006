@@ -18,7 +18,12 @@
 
 // LPn pins to control sensor power/reset
 #define LPN_PIN_1 12
-#define LPN_PIN_2 14
+
+// I2C Reset pin
+#define I2C_RST_PIN 26
+
+// Power Enable pin
+#define PWR_EN_PIN  14
 
 // VL53L5CX default and new I2C addresses
 #define SENSOR1_ADDR 0x29
@@ -37,19 +42,7 @@ int imageWidth1 = 0;
 int imageResolution2 = 0;
 int imageWidth2 = 0;
 
-// SparkFun_VL53L5CX myImager;
-// VL53L5CX_ResultsData measurementData; // Result data class structure, 1356 byes of RAM
 
-// int imageResolution = 0; //Used to pretty print output
-// int imageWidth = 0; //Used to pretty print output
-
-// #define LPN_PIN   39  // I don't think this is even needed. LPn just needs to be high for I2C to be active. 
-
-void powerDownBoth() {
-  digitalWrite(LPN_PIN_1, LOW);
-  digitalWrite(LPN_PIN_2, LOW);
-  delay(10);
-}
 
 void scanI2C() {
   Serial.println("Scanning I2C bus...");
@@ -74,53 +67,45 @@ void setup()
   delay(1000);
   Serial.println("SparkFun VL53L5CX Dual Sensor Example");
 
+// Activating PWR_EN (Make High). 
+  pinMode(PWR_EN_PIN, OUTPUT);
+  digitalWrite(PWR_EN_PIN, HIGH); 
+  delay(100);   
 
 
+// Activating I2C Reset pin to reset the addresses (Pulse High). 
+  pinMode(I2C_RST_PIN, OUTPUT);
+  digitalWrite(I2C_RST_PIN, HIGH); 
+  delay(100); 
+  digitalWrite(I2C_RST_PIN, LOW); 
+  delay(100); 
 
-  // // Configure LPn pins
-  // pinMode(LPN_PIN_1, OUTPUT);
-  // pinMode(LPN_PIN_2, OUTPUT);
 
-  // // Power down both sensors
-  // digitalWrite(LPN_PIN_1, LOW);
-  // digitalWrite(LPN_PIN_2, LOW);
-  delay(100); // Ensure full reset - this does not ensure a full reset of address back to 0x29. To do a full reset of the I2C, the I2C_RST pin must be pulled high then pull low again. This just tells the sensor to reset its address however the address at this point has still not been changed from XxXX to 0x29. TO change it to 0x29, the sensor must be powered-off then on again. (Which pin needs to be powered-on and off I do not know (testing is done in comment below), so far i have been powering off and on the whole board.)
-  // Pin to disconnect, then reconnect is: (any one of the following) IOVDO, AVDD, PWREN, GND. 
-  // So disconnecting and reconnecting (NOT CHANGING THE STATE!) of any of the power related pins is enough. 
+// Deactivating PWR_EN (Make Low). Reseting Sensors.  
+  digitalWrite(PWR_EN_PIN, LOW); 
+  delay(100);   
+  digitalWrite(PWR_EN_PIN, HIGH); // Make High again.
+  delay(100);  
+
+
+  // Configure LPn pins
+  pinMode(LPN_PIN_1, OUTPUT);
+  // Set Sensor 1 LPn low (Deactivate I2C communication). 
+  digitalWrite(LPN_PIN_1, LOW); // One LPn should be set HIGH permanently
+  delay(100); 
 
   Wire.begin(); // Initialize I2C bus
   Wire.setClock(400000); // Optional: 400 kHz I2C
 
-  // // --- Step 1: Initialize Sensor 2 first (address 0x30) ---
-  // digitalWrite(LPN_PIN_2, HIGH);
-  // delay(50);
-
   Serial.println("SCAN #1");
   scanI2C(); // Scan I2C bus to find devices
 
+
+
   // Set sensor 2 to 0x30 before calling begin()
-  Serial.println("Initializing Sensor 2 at 0x29...");
+  Serial.println("Initializing Sensor 2 at 0x29 (It will become 0x30)...");
 
-  Serial.println("SCAN #2");
-  scanI2C(); // Scan I2C bus to find devices
-
-
-
-  while (!Serial) ; // Wait for Serial Monitor to connect (USB boards)
-  
-  Serial.println("Make sensor2 LPn pin HIGH. Press Y to change I2C addresses, or N to skip:");
-  
-  // Wait until some input arrives
-  while (!Serial.available()) {
-    delay(10);
-  }
-
-  String input1 = Serial.readStringUntil('\n'); // Read until newline
-  input1.trim(); // Remove spaces/newlines
-
-  if (input1.equalsIgnoreCase("Y")) {
-    Serial.println("Changing addresses of Sensor 2");
-    if (!sensor2.begin()) { // IF both sensors are active then it will identify both sensors and begin both of them. This means when the address is changed, both addresses for each sensor will be changed to 0x30 from 0x29. Therefore, have to ensure that only one sensor is active when the address change is made. 
+    if (!sensor2.begin()) { 
     Serial.println("Sensor 2 not found at 0x29!");
     while (1);
   }
@@ -129,47 +114,27 @@ void setup()
   Serial.println("SCAN for Sensor 2 Address change, should be 0x30!");
   scanI2C(); // Scan I2C bus to find devices
 
-
   sensor2.setResolution(8 * 8);
   imageResolution2 = sensor2.getResolution();
   imageWidth2 = sqrt(imageResolution2);
   Serial.println("Sensor 2 initialized successfully at 0x30");
 
-
-  } else {
-    Serial.println("Skipping address change.");
-  }
-
-
-
-
-
-  // // --- Step 2: Initialize Sensor 1 (default 0x29) ---
-  // digitalWrite(LPN_PIN_1, HIGH);
-      Serial.println("You have 10 seconds to set LPN high!! Go GO GO!!");
-  // delay(10000); // Wait for user to set LPN high for Sensor 1
-
-    Serial.println("SCAN #3");
+    Serial.println("SCAN #3: Looking for Sensor 2 at 0x30");
     scanI2C(); // Scan I2C bus to find devices
   delay(50);
 
 
 
+  // Sensor 1 initialization
+  Serial.println("Initializing Sensor 1 at 0x29 (Stays at 0x29)...");
+  // Set Sensor 1 LPn HIGH (Activate I2C communication). 
+  digitalWrite(LPN_PIN_1, HIGH); // Other LPn should still be set HIGH
+  delay(100); 
 
-  
-  Serial.println("Make sensor 1 LPn pin HIGH (keep sensor 2 LPn Pin HIGH). Press Y to change I2C addresses, or N to skip:");
-  
-  // Wait until some input arrives
-  while (!Serial.available()) {
-    delay(10);
-  }
+  Serial.println("SCAN #4: Looking for Sensor 1 at 0x29 (Sensor 2 is at 0x30).");
+  scanI2C(); // Scan I2C bus to find devices
+  delay(50);
 
-  String inpu2 = Serial.readStringUntil('\n'); // Read until newline
-  inpu2.trim(); // Remove spaces/newlines
-
-  if (inpu2.equalsIgnoreCase("Y")) {
-    Serial.println("Changing addresses...");
-    Serial.println("Initializing Sensor 1 at 0x29...");
   if (!sensor1.begin()) {
     Serial.println("Sensor 1 not found at 0x29!");
     while (1);
@@ -180,84 +145,20 @@ void setup()
   imageWidth1 = sqrt(imageResolution1);
   Serial.println("Sensor 1 initialized successfully at 0x29");
 
-
-  } else {
-    Serial.println("Skipping address change.");
-  }
-
-    Serial.println("SCAN #4"); // Expect two device found, one at 0x29 and one at 0x30. 
+    Serial.println("SCAN #5: Checking that both are there"); // Expect two device found, one at 0x29 and one at 0x30. 
     scanI2C(); // Scan I2C bus to find devices
   delay(50);
 
-  // --- Step 3: Start ranging on both sensors ---
-  // Have to make sure both LPn pins are set high before starting ranging, otherwise you will get an Error message. 
-  // If the ranging has already started, then does it need to be reset or can it be skipped?
-    //    ANS: Both Sensors have to be reset, everytime ESP32 is restarted.  
 
 
-  Serial.println("Do both sensors need to start their ranging?. Press Y to change I2C addresses, or N to skip:");
-  
-  // Wait until some input arrives
-  while (!Serial.available()) {
-    delay(10);
-  }
-
-  String RangeInput = Serial.readStringUntil('\n'); // Read until newline
-  RangeInput.trim(); // Remove spaces/newlines
-
-  if (RangeInput.equalsIgnoreCase("Y")) {
-    Serial.println("Starting ranging on both sensors...");
+  // Start ranging on both sensors. 
+  Serial.println("Starting ranging on both sensors...");
   sensor1.startRanging();
   sensor2.startRanging();
 
-  } else {
-    Serial.println("Skipping address change.");
-  }
-
   Serial.println("Both sensors are now ranging.");
+
 }
-
-
-
-  // Serial.println("Initializing sensor board. This can take up to 10s. Please wait.");
-  // if (myImager.begin() == false)
-  // {
-  //   Serial.println(F("Sensor not found - check your wiring. Freezing"));
-  //   while (1) ;
-  // }
-
-  // myImager.setResolution(8*8); //Enable all 64 pads
-
-  // imageResolution = myImager.getResolution(); //Query sensor for current resolution - either 4x4 or 8x8
-  // imageWidth = sqrt(imageResolution); //Calculate printing width
-
-  // myImager.startRanging();
-//}
-
-// void loop()
-// {
-//   //Poll sensor for new data
-//   if (myImager.isDataReady() == true)
-//   {
-//     if (myImager.getRangingData(&measurementData)) //Read distance data into array
-//     {
-//       //The ST library returns the data transposed from zone mapping shown in datasheet
-//       //Pretty-print data with increasing y, decreasing x to reflect reality
-//       for (int y = 0 ; y <= imageWidth * (imageWidth - 1) ; y += imageWidth)
-//       {
-//         for (int x = imageWidth - 1 ; x >= 0 ; x--)
-//         {
-//           Serial.print("\t");
-//           Serial.print(measurementData.distance_mm[x + y]);
-//         }
-//         Serial.println();
-//       }
-//       Serial.println();
-//     }
-//   }
-
-//   delay(5); //Small delay between polling
-// }
 
 
 
