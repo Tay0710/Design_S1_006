@@ -77,8 +77,8 @@ void loop()
       {
         for (int x = imageWidth - 1 ; x >= 0 ; x--)
         {
-          Serial.print("\t");
           Serial.print(measurementData.distance_mm[x + y]);
+          Serial.print("\t");
         }
         Serial.println();
       }
