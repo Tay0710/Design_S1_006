@@ -92,20 +92,28 @@ void setup()
 
   // Initialize serial for output.
   Serial.begin(115200);
+  Serial.println("Monitor has begun!");
+
 
   // Initialize I2C bus.
   DEV_I2C.begin();
 
+  Serial.println("DEV_I2C Begun!!");
+
   // Configure VL53L8CX component.
   sensor_vl53l8cx_top.begin();
+  Serial.println("Sensor Begun!!");
   status = sensor_vl53l8cx_top.init();
 
   // Start Measurements
   status = sensor_vl53l8cx_top.start_ranging();
+  Serial.println("Ranging Begun!!");
+
 }
 
 void loop()
 {
+  Serial.println("Made it to the LOOP@");
   VL53L8CX_ResultsData Results;
   uint8_t NewDataReady = 0;
 
