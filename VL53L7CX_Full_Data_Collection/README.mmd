@@ -1,0 +1,49 @@
+
+---
+
+## 📊 Data available from `VL53L5CX_ResultsData`
+
+### 🔹 Per-zone data (shared across all targets in that zone)
+
+* `ambient_per_spad[]` → background photon count per SPAD (IR noise).
+* `nb_target_detected[]` → number of detected targets in that zone (0–4 typically).
+* `nb_spads_enabled[]` → number of active SPADs used in measurement.
+* `zone_id[]` (depending on driver version) → zone index in the grid.
+
+---
+
+### 🔹 Per-target data (one entry per detected object in a zone)
+
+* `signal_per_spad[]` → return signal strength.
+* `range_sigma_mm[]` → statistical error of distance in millimeters.
+* `distance_mm[]` → measured distance to target in millimeters.
+* `reflectance[]` → estimated reflectivity (%) of target.
+* `target_status[]` → quality/status code (valid, too close, out of range, etc).
+
+---
+
+### 🔹 Global/frame-level metadata
+
+* `stream_count` → increments each frame (can be used as frame counter).
+* `wrap_dmax_mm` → maximum measurable distance before ambiguity (depends on timing budget and SPAD config).
+
+---
+
+## 📦 Extra (configurable modes)
+
+With certain configs you can also get:
+
+* **Number of zones**: either 4×4 (16) or 8×8 (64).
+* **Number of targets per zone**: default 1, but configurable up to 4.
+* **Motion indicator** (if enabled in L5/L7 API): vector showing movement between frames.
+* **Integration time**: can be set/query via API (default 20 ms).
+
+---
+
+✅ So in short:
+
+* **Zone-level fields:** ambient light, number of detected objects, number of SPADs.
+* **Target-level fields:** distance, signal strength, reflectance, uncertainty, status.
+* **Frame-level fields:** frame counter, max range.
+
+---
