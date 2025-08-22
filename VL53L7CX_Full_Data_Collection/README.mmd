@@ -47,3 +47,19 @@ With certain configs you can also get:
 * **Frame-level fields:** frame counter, max range.
 
 ---
+
+Target Status Codes
+
+| Code | Description                                                                                    |   |
+| ---- | ---------------------------------------------------------------------------------------------- | - |
+| 0    | **No target detected** – No valid target in the zone.                                          |   |
+| 1    | **Signal too weak** – Insufficient signal strength for a reliable measurement.                 |   |
+| 2    | **Signal too strong** – Signal saturation detected; measurement may be unreliable.             |   |
+| 3    | **Out of range** – Target is beyond the sensor's maximum detectable distance.                  |   |
+| 4    | **Minimum range violation** – Target is too close to the sensor.                               |   |
+| 5    | **Valid target** – Measurement is valid and reliable.                                          |   |
+| 6    | **Valid target with low confidence** – Measurement is valid but with reduced confidence.       |   |
+| 9    | **Valid target with moderate confidence** – Measurement is valid with moderate confidence.     |   |
+| 13   | **Phase or signal wrap problem** – Measurement failed due to phase ambiguity or signal issues. |   |
+| 255  | **Invalid data** – Measurement data is invalid or not available.                               |   |
+
