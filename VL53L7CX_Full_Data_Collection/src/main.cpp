@@ -133,8 +133,8 @@ void loop() {
           if (!valid) Serial.print(F(" (INVALID)"));
 
           Serial.print(F("  distance_mm="));
-          if (valid) Serial.print(dist);
-          else       Serial.print('X'); // or 0
+          Serial.print(dist);
+          if (!valid)  Serial.print('X'); // or 0
 
           Serial.print(F("  range_sigma_mm="));
           Serial.print(sigm);
@@ -150,5 +150,5 @@ void loop() {
     }
   }
 
-  delay(5); // small poll delay
+  delay(1000); // small poll delay
 }
