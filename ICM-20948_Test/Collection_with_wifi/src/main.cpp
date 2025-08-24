@@ -18,7 +18,7 @@ Ticker sendTimer;
 int counter = 0;
 
 #define SDA_PIN   21
-#define SCL_PIN   44
+#define SCL_PIN   22
 
 float timeStamp, accelXOffset, accelYOffset, accelZOffset, rollOffset, pitchOffset, yawOffset; // Calibration floats
 

@@ -7,6 +7,7 @@
 - GND
 - SDA PIN: GPIO 21
 - SCL PIN: GPIO 44
+- ADO PIN: 3.3V
 
 ### Firmware Libraries Required
 - Adafruit MPU6050
