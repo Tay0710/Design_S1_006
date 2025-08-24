@@ -1,0 +1,96 @@
+METHOD 2. I2C
+
+| IMU Pin  | ESP32 Pin | Notes                                        |
+| -------- | --------- | -------------------------------------------- |
+| VCC      | 3V3       | Power the sensor with 3.3 V                  |
+| GND      | GND       | Ground                                       |
+| SDA      | 21        | I2C data line                                |
+| SCL      | 22        | I2C clock line                               |
+| CS       | 3V3       | Pull high for I2C mode (default)             |
+| SDO      | GND       | Sets I2C address LSB: GND = 0x68, VCC = 0x69 |
+| INT1     | 19        | Optional: interrupt output from IMU          |
+| OSOD     | NC        | Not used for basic I2C operation             |
+| OCS      | NC        | Not used for basic I2C operation             |
+| CLK      | NC        | Not used for I2C                             |
+| SCX      | NC        | Not used for I2C                             |
+| SDX      | NC        | Not used for I2C                             |
+| CLK\_CTL | NC        | Leave unconnected                            |
+
+
+
+
+METHOD 1. SPI
+
+| ICM-45686 Pin      | Function                        | ESP32 Pin (example)   |
+| ------------------ | ------------------------------- | --------------------- |
+| **VCC** or **3V3** | Power 3.3 V                     | 3.3V                  |
+| **GND**            | Ground                          | GND                   |
+| **CS**             | Chip Select (active low)        | GPIO5                 |
+| **SCX** (or SCLK)  | SPI Clock                       | GPIO18                |
+| **SDX** (or MOSI)  | Master Out, Slave In            | GPIO23                |
+| **SDO** (or MISO)  | Master In, Slave Out            | GPIO19                |
+| **INT1**           | Optional interrupt (data ready) | GPIO4 (any free GPIO) |
+
+
+Code:
+
+#include <SPI.h>
+#include "ICM45686.h"
+
+// Use VSPI bus on ESP32, CS on GPIO5
+ICM456xx IMU(SPI, 5);
+
+void setup() {
+  int ret;
+  Serial.begin(115200);
+
+  // Optional: initialize SPI bus explicitly
+  SPI.begin(18, 19, 23, 5); // SCK=18, MISO=19, MOSI=23, CS=5
+
+  // --- SPI low-level WHO_AM_I test ---
+  pinMode(5, OUTPUT);
+  digitalWrite(5, HIGH); // CS high idle
+
+  SPI.beginTransaction(SPISettings(1000000, MSBFIRST, SPI_MODE0));
+  digitalWrite(5, LOW); // select IMU
+  SPI.transfer(0x75 | 0x80); // 0x75 = WHO_AM_I, 0x80 = read flag
+  uint8_t who_am_i = SPI.transfer(0x00); // read data
+  digitalWrite(5, HIGH); // deselect
+  SPI.endTransaction();
+  Serial.print("WHO_AM_I = 0x");
+  Serial.println(who_am_i, HEX);
+  // -----------------------------------
+
+  // Initialize the IMU using the library
+  ret = IMU.begin();
+  if (ret != 0) {
+    Serial.print("ICM456xx initialization failed: ");
+    Serial.println(ret);
+    while(1);
+  }
+
+  // Configure accelerometer and gyro
+  IMU.startAccel(100, 16);     // 100 Hz, ±16 g
+  IMU.startGyro(100, 2000);    // 100 Hz, ±2000 dps
+
+  delay(100); // wait for IMU startup
+}
+
+
+void loop() {
+  inv_imu_sensor_data_t imu_data;
+
+  // Read sensor data
+  IMU.getDataFromRegisters(imu_data);
+
+  // Print data
+  Serial.print("AccelX: "); Serial.println(imu_data.accel_data[0]);
+  Serial.print("AccelY: "); Serial.println(imu_data.accel_data[1]);
+  Serial.print("AccelZ: "); Serial.println(imu_data.accel_data[2]);
+  Serial.print("GyroX: ");  Serial.println(imu_data.gyro_data[0]);
+  Serial.print("GyroY: ");  Serial.println(imu_data.gyro_data[1]);
+  Serial.print("GyroZ: ");  Serial.println(imu_data.gyro_data[2]);
+  Serial.print("Temp: ");   Serial.println(imu_data.temp_data);
+
+  delay(10); // ~100 Hz loop
+}
