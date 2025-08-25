@@ -1,6 +1,4 @@
 import csv
-# time stamp validation
-# check that the timestamps match first before saving
 
 def velocity_calc(wx, wy, h):
     v_x = wx * h
@@ -23,7 +21,15 @@ def main():
         
         for i, (row_a, row_h) in enumerate(zip(reader_angular, reader_height), start=1):
             
-            t = float(row_a["time (s)"]) # this is only getting time from the angular file at the moment
+            # read in both timestamps
+            t_a = float(row_a["time (s)"])
+            t_h = float(row_h["time (s)"])
+
+            # only proceed if timestamps match (allow noise for now)
+            if round(t_a, 6) != round(t_h, 6):
+                continue
+            
+            t = t_a
             wx = float(row_a["wx (rad/s)"])
             wy = float(row_a["wy (rad/s)"])
             h  = float(row_h["height (mm)"])
