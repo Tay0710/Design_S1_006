@@ -5,7 +5,6 @@ import ast
 # Maybe an outlier fn - but how can you make sure this doesn't include the dodgy one
 # 163.28125 is average - maybe twice this as outlier cancel
 
-
 def calculate_height(arr):
     """
     The field of view (fov) of the VL53L7CX_2 is 90 degrees
@@ -55,11 +54,15 @@ def main():
     print("Times shape:", times.shape)       # (N,)
     print("Arrays shape:", arrays.shape)     # (N, 8, 8)
     
-    heights = []
-    for i, (t, frame) in enumerate(zip(times, arrays)):
-        print(f"\n[frame {i}] t={t}")
-        h = calculate_height(frame)  # <-- pass a single (8,8) frame
-        heights.append(h)
+    with open(output_path, "w", newline="") as f_out:
+        writer = csv.writer(f_out)  # ✅ pass file handle, not path
+        writer.writerow(["time (s)", "height (mm)"])
+    
+        for i, (t, frame) in enumerate(zip(times, arrays)):
+            print(f"\n[frame {i}] t={t}")
+            h = calculate_height(frame)  
 
+            writer.writerow([f"{t:.6f}", f"{h:.6f}"])
+        
 if __name__ == "__main__":
     main()
