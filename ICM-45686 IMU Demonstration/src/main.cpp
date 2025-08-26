@@ -1,70 +1,61 @@
-#include <Wire.h>
+#include <SPI.h>
 #include "ICM45686.h"
 
-// Define your I2C pins for ESP32
-#define SDA_PIN 21
-#define SCL_PIN 22
-
-// Instantiate IMU (use default I2C address 0 or 0x68)
-ICM456xx IMU(Wire, 0);
-
-
-void scanI2C() {
-  Serial.println("Scanning I2C bus...");
-  byte count = 0;
-  for (byte addr = 1; addr < 127; addr++) {
-    Wire.beginTransmission(addr);
-    if (Wire.endTransmission() == 0) {
-      Serial.print("Found device at 0x");
-      if (addr < 16) Serial.print("0");
-      Serial.println(addr, HEX);
-      count++;
-    }
-  }
-  if (count == 0) Serial.println("No I2C devices found.");
-  Serial.println();
-}
-
+// Use VSPI bus on ESP32, CS on GPIO5
+ICM456xx IMU(SPI, 5);
 
 void setup() {
+  int ret;
   Serial.begin(115200);
 
-  // Initialize I2C
-  Wire.begin(SDA_PIN, SCL_PIN);
+  // Optional: initialize SPI bus explicitly
+  SPI.begin(18, 19, 23, 5); // SCK=18, MISO=19, MOSI=23, CS=5
 
-  scanI2C(); // <--- Run I2C scan before initializing sensor
+  // --- SPI low-level WHO_AM_I test ---
+  pinMode(5, OUTPUT);
+  digitalWrite(5, HIGH); // CS high idle
 
-  // Initializing the ICM456XX
-  int ret = IMU.begin();
+  SPI.beginTransaction(SPISettings(1000000, MSBFIRST, SPI_MODE0));
+  digitalWrite(5, LOW); // select IMU
+  SPI.transfer(0x75 | 0x80); // 0x75 = WHO_AM_I, 0x80 = read flag
+  uint8_t who_am_i = SPI.transfer(0x00); // read data
+  digitalWrite(5, HIGH); // deselect
+  SPI.endTransaction();
+  Serial.print("WHO_AM_I = 0x");
+  Serial.println(who_am_i, HEX);
+  // -----------------------------------
+
+  // Initialize the IMU using the library
+  ret = IMU.begin();
   if (ret != 0) {
     Serial.print("ICM456xx initialization failed: ");
     Serial.println(ret);
     while(1);
   }
 
-  // Accel ODR = 100 Hz, Full Scale = 16G
-  IMU.startAccel(100,16);
+  // Configure accelerometer and gyro
+  IMU.startAccel(100, 16);     // 100 Hz, ±16 g
+  IMU.startGyro(100, 2000);    // 100 Hz, ±2000 dps
 
-  // Gyro ODR = 100 Hz, Full Scale = 2000 dps
-  IMU.startGyro(100,2000);
-
-  delay(100); // wait for IMU to stabilize
+  delay(100); // wait for IMU startup
 }
+
 
 void loop() {
   inv_imu_sensor_data_t imu_data;
 
-  // Read data from sensor
+  // Read sensor data
   IMU.getDataFromRegisters(imu_data);
 
-  // Print formatted data
-  Serial.print("AccelX:"); Serial.println(imu_data.accel_data[0]);
-  Serial.print("AccelY:"); Serial.println(imu_data.accel_data[1]);
-  Serial.print("AccelZ:"); Serial.println(imu_data.accel_data[2]);
-  Serial.print("GyroX:");  Serial.println(imu_data.gyro_data[0]);
-  Serial.print("GyroY:");  Serial.println(imu_data.gyro_data[1]);
-  Serial.print("GyroZ:");  Serial.println(imu_data.gyro_data[2]);
-  Serial.print("Temperature:"); Serial.println(imu_data.temp_data);
+  
+  // Print data
+  Serial.print("AccelX: "); Serial.println(imu_data.accel_data[0]);
+  Serial.print("AccelY: "); Serial.println(imu_data.accel_data[1]);
+  Serial.print("AccelZ: "); Serial.println(imu_data.accel_data[2]);
+  Serial.print("GyroX: ");  Serial.println(imu_data.gyro_data[0]);
+  Serial.print("GyroY: ");  Serial.println(imu_data.gyro_data[1]);
+  Serial.print("GyroZ: ");  Serial.println(imu_data.gyro_data[2]);
+  Serial.print("Temp: ");   Serial.println(imu_data.temp_data);
 
-  delay(10); // ~100 Hz
+  delay(10); // ~100 Hz loop
 }

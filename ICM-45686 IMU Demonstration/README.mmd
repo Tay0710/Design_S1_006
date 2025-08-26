@@ -1,11 +1,101 @@
+Notes:
+
+Pin connection to breakout board (White - DTQSYS)
+VCC: -
+3v3:3v3
+GND; GND
+SCL: 18
+SDA: 23
+CS: 5
+SDO: 19
+
+magnetometer
+
+
+GitHub user with board design: https://github.com/kounocom/Mumo?utm_source=chatgpt.com
+
+Datasheets. 
+IMC: https://www.mouser.com/catalog/specsheets/TDK_DS_000577_ICM_45686.pdf?srsltid=AfmBOopb3sXL3XEovt4wMMOfDsnouNdV4r2X705D8TWd-1Blp3viVCPQ
+Mag: https://www.qstcorp.com/upload/pdf/202202/13-52-15%20QMC6308%20Datasheet%20Rev.%20F(1).pdf
+CLK: http://www.hci.com.hk/uploadfiles/Show/20220609094407575.pdf
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Want the IMU to be in OIS Mode. 
+Pin explanation:
+1 (INPUT)     :  AP_SDO (MISO) SPI Output is MISO and corresponds to SDO. 
+2 (IN/OUT PUT):  AUX1_SDI
+3 (INPUT)     :  AUX1_SCLK (Master clock used to communicate to other components on the board. Not    ESP32!!)
+
+4 (OUTPUT):  INT1
+5 (INPUT):  VDDIO (3v3?)
+6 (Constant):  GND
+*7 (RESV):  RESV (no connect, pull up or pull down - have to go through library code to find out)
+8 (INPUT):  VDD
+9* (IN/OUT PUT):  INT2 ??? CLKIN? (CLK_CTL) Enternal clock. 
+10 (INPUT): AUX1_CS (chip select)
+11 (OUTPUT): AUX1_SDO (MOSI?)
+12 (INPUT): AP_CS (chip select) (connect to VDDIO if using I2C)
+13 (INPUT): AP_SCLK: AP SPI Serial Clock
+14 (OUTPUT): AP_SDI (MOSI?)
+
+AUX1 is a different SPI communication line from the default SPI comms line??
+SPI pins?: Vcc, 3v3, GND, CS, 
+
+1,2,3,7,9*,10,11
+PIN name Connections:
+| IMU Pin  | ESP32 Pin | Notes                                        |
+| -------- | --------- | -------------------------------------------- |
+| VCC (8)     | 3V3       | Power the sensor with 3.3 V                  |
+| 3V3 (5)    | 3V3       | Power the sensor with 3.3 V                  |
+| GND (6)   | GND       | Ground                                       |
+| SCL  (13)    |           |                                |
+| SDA (14)     |           |                                 |
+| CS   (12)    |           |                   |
+| SDO      |           |                 |
+
+| OSOD     |           |                 |
+| OCS      |           |                 |
+| CLK   (3?? No)   |           |Internal 32.768 kHz quartz crystal clock (Chip name: TKD 32.768)       |
+Would the RTC go into the ICM? and 3 is the Output?
+
+| INT1 (4)    |           |                      |
+| SCX      |           |                            |
+| SDX      |           |                           |
+| CLK_CTL (9??) |           |                         |
+
+
 METHOD 2. I2C
 
 | IMU Pin  | ESP32 Pin | Notes                                        |
 | -------- | --------- | -------------------------------------------- |
 | VCC      | 3V3       | Power the sensor with 3.3 V                  |
+| 3V3      | 3V3       | Power the sensor with 3.3 V                  |
 | GND      | GND       | Ground                                       |
-| SDA      | 21        | I2C data line                                |
 | SCL      | 22        | I2C clock line                               |
+| SDA      | 21        | I2C data line                                |
 | CS       | 3V3       | Pull high for I2C mode (default)             |
 | SDO      | GND       | Sets I2C address LSB: GND = 0x68, VCC = 0x69 |
 | INT1     | 19        | Optional: interrupt output from IMU          |
@@ -93,4 +183,80 @@ void loop() {
   Serial.print("Temp: ");   Serial.println(imu_data.temp_data);
 
   delay(10); // ~100 Hz loop
+}
+
+
+
+
+I2C
+
+#include <Wire.h>
+#include "ICM45686.h"
+
+// Define your I2C pins for ESP32
+#define SDA_PIN 21
+#define SCL_PIN 22
+
+// Instantiate IMU (use default I2C address 0 or 0x68)
+ICM456xx IMU(Wire, 0);
+
+
+void scanI2C() {
+  Serial.println("Scanning I2C bus...");
+  byte count = 0;
+  for (byte addr = 1; addr < 127; addr++) {
+    Wire.beginTransmission(addr);
+    if (Wire.endTransmission() == 0) {
+      Serial.print("Found device at 0x");
+      if (addr < 16) Serial.print("0");
+      Serial.println(addr, HEX);
+      count++;
+    }
+  }
+  if (count == 0) Serial.println("No I2C devices found.");
+  Serial.println();
+}
+
+
+void setup() {
+  Serial.begin(115200);
+
+  // Initialize I2C
+  Wire.begin(SDA_PIN, SCL_PIN);
+
+  scanI2C(); // <--- Run I2C scan before initializing sensor
+
+  // Initializing the ICM456XX
+  int ret = IMU.begin();
+  if (ret != 0) {
+    Serial.print("ICM456xx initialization failed: ");
+    Serial.println(ret);
+    while(1);
+  }
+
+  // Accel ODR = 100 Hz, Full Scale = 16G
+  IMU.startAccel(100,16);
+
+  // Gyro ODR = 100 Hz, Full Scale = 2000 dps
+  IMU.startGyro(100,2000);
+
+  delay(100); // wait for IMU to stabilize
+}
+
+void loop() {
+  inv_imu_sensor_data_t imu_data;
+
+  // Read data from sensor
+  IMU.getDataFromRegisters(imu_data);
+
+  // Print formatted data
+  Serial.print("AccelX:"); Serial.println(imu_data.accel_data[0]);
+  Serial.print("AccelY:"); Serial.println(imu_data.accel_data[1]);
+  Serial.print("AccelZ:"); Serial.println(imu_data.accel_data[2]);
+  Serial.print("GyroX:");  Serial.println(imu_data.gyro_data[0]);
+  Serial.print("GyroY:");  Serial.println(imu_data.gyro_data[1]);
+  Serial.print("GyroZ:");  Serial.println(imu_data.gyro_data[2]);
+  Serial.print("Temperature:"); Serial.println(imu_data.temp_data);
+
+  delay(10); // ~100 Hz
 }
