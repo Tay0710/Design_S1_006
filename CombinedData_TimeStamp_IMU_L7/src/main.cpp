@@ -5,10 +5,12 @@
 #include <WebServer.h>
 #include <SD.h>
 #include <SPI.h>
+#include "ICM45686.h"
 #include <SparkFun_VL53L5CX_Library.h> //http://librarymanager/All#SparkFun_VL53L5CX
 
 SparkFun_VL53L5CX myImager;
 VL53L5CX_ResultsData measurementData; // Result data class structure, 1356 byes of RAM
+ICM456xx IMU(SPI, 5);
 
 int imageResolution = 0; // Used to pretty print output
 int imageWidth = 0;      // Used to pretty print output
@@ -16,8 +18,8 @@ int imageWidth = 0;      // Used to pretty print output
 #define TRIGGER_PIN 4  // use GPIO4 as SWITCH to turn on/off when the esp32 is recording data mode. When pulled LOW, RECORDING Starts. 
 bool recording = false;
 
-
-#define SD_CS 5  // Example CS pin for SD card
+SPIClass hspi(HSPI);   // Create HSPI instance
+#define SD_CS 15  // Example CS pin for SD card
 
 
 #define AP_SSID "ESP32_Frames"
@@ -38,6 +40,8 @@ const char* filename = "/frames.csv";
 
 void setup()
 {
+  int ret;
+
   Serial.begin(115200);
   delay(1000);
   Serial.println("SparkFun VL53L5CX Imager Example");
@@ -52,11 +56,43 @@ void setup()
   Serial.print("IP: ");
   Serial.println(WiFi.softAPIP());
 
-  // Init SD card
-  if (!SD.begin(SD_CS)) {
-    Serial.println("SD init failed!");
+// ICM45686 Begin
+  SPI.begin(18, 19, 23, 5); // SCK=18, MISO=19, MOSI=23, CS=5
+  
+  // --- SPI low-level WHO_AM_I test ---
+  pinMode(5, OUTPUT);
+  digitalWrite(5, HIGH); // CS high idle
+
+  SPI.beginTransaction(SPISettings(1000000, MSBFIRST, SPI_MODE0));
+  digitalWrite(5, LOW); // select IMU
+  SPI.transfer(0x75 | 0x80); // 0x75 = WHO_AM_I, 0x80 = read flag
+  uint8_t who_am_i = SPI.transfer(0x00); // read data
+  digitalWrite(5, HIGH); // deselect
+  SPI.endTransaction();
+  Serial.print("WHO_AM_I = 0x");
+  Serial.println(who_am_i, HEX);
+  // -----------------------------------
+
+  // Initialize the IMU using the library
+  ret = IMU.begin();
+  if (ret != 0) {
+    Serial.print("ICM456xx initialization failed: ");
+    Serial.println(ret);
     while(1);
   }
+
+  // Configure accelerometer and gyro
+  IMU.startAccel(100, 16);     // 100 Hz, ±16 g
+  IMU.startGyro(100, 2000);    // 100 Hz, ±2000 dps
+
+
+
+// Init SD card on HSPI
+hspi.begin(14, 12, 13, SD_CS); // SCK=14, MISO=12, MOSI=13, CS=15
+if (!SD.begin(SD_CS, hspi)) {
+    Serial.println("SD init failed!");
+    while(1);
+}
   // Remove old file if exists
   SD.remove(filename);
   File file = SD.open(filename, FILE_WRITE);
@@ -121,6 +157,8 @@ void setup()
 
 void loop() {
   server.handleClient(); // handle web requests
+  inv_imu_sensor_data_t imu_data; // Read IMU data
+  IMU.getDataFromRegisters(imu_data);
 
   // Read switch state
   recording = (digitalRead(TRIGGER_PIN) == LOW); // LOW = switch ON = recording
@@ -134,6 +172,14 @@ void loop() {
         file.print(",");
         file.print(measurementData.distance_mm[i]);
       }
+      file.print(","); file.print(imu_data.accel_data[0]);
+      file.print(","); file.print(imu_data.accel_data[1]);
+      file.print(","); file.print(imu_data.accel_data[2]);
+      file.print(","); file.print(imu_data.gyro_data[0]);
+      file.print(","); file.print(imu_data.gyro_data[1]);
+      file.print(","); file.print(imu_data.gyro_data[2]);
+      file.print(","); file.println(imu_data.temp_data);
+
       file.println();
       file.close();
     }
