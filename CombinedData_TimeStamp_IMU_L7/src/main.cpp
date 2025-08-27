@@ -82,9 +82,9 @@ void setup()
   }
 
   // Configure accelerometer and gyro
-  IMU.startAccel(100, 16);     // 100 Hz, ±16 g
-  IMU.startGyro(100, 2000);    // 100 Hz, ±2000 dps
-
+  IMU.startAccel(100, 16);     // 100 Hz, ±2/4/8/16/32 g
+  IMU.startGyro(100, 2000);    // 100 Hz, ±15.625/31.25/62.5/125/250/500/1000/2000/4000 dps
+  // Data comes out of the IMU as steps from -32768 to +32768 representing the full scale range
 
 
 // Init SD card on HSPI
@@ -172,13 +172,12 @@ void loop() {
         file.print(",");
         file.print(measurementData.distance_mm[i]);
       }
-      file.print(","); file.print(imu_data.accel_data[0]);
-      file.print(","); file.print(imu_data.accel_data[1]);
-      file.print(","); file.print(imu_data.accel_data[2]);
-      file.print(","); file.print(imu_data.gyro_data[0]);
-      file.print(","); file.print(imu_data.gyro_data[1]);
-      file.print(","); file.print(imu_data.gyro_data[2]);
-      file.print(","); file.println(imu_data.temp_data);
+      file.print(","); file.print(imu_data.accel_data[0]*16 / 32768.0); // Convert to g
+      file.print(","); file.print(imu_data.accel_data[1]*16 / 32768.0);
+      file.print(","); file.print(imu_data.accel_data[2]*16 / 32768.0);
+      file.print(","); file.print(imu_data.gyro_data[0]*2000 / 32768.0); // Convert to dps
+      file.print(","); file.print(imu_data.gyro_data[1]*2000 / 32768.0);
+      file.print(","); file.print(imu_data.gyro_data[2]*2000 / 32768.0);
 
       file.println();
       file.close();

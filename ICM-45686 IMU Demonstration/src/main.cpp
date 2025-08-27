@@ -33,9 +33,9 @@ void setup() {
     while(1);
   }
 
-  // Configure accelerometer and gyro
-  IMU.startAccel(100, 16);     // 100 Hz, ±16 g
-  IMU.startGyro(100, 2000);    // 100 Hz, ±2000 dps
+  // Configure accelerometer and gyro (up to 8kbytes, ususal 2kbytes, FIFO rate)
+  IMU.startAccel(100, 2);     // 100 Hz(max 6400) , ±2/4/8/16/32 g
+  IMU.startGyro(100, 15.625);    // 100 Hz, ±15.625/31.25/62.5/125/250/500/1000/2000/4000 dps
 
   delay(100); // wait for IMU startup
 }
@@ -48,7 +48,8 @@ void loop() {
   IMU.getDataFromRegisters(imu_data);
 
   
-  // Print data
+  // Print data 
+  // Data is a step value from -2^15 to +2^15 representing the full scale range
   Serial.print("AccelX: "); Serial.println(imu_data.accel_data[0]);
   Serial.print("AccelY: "); Serial.println(imu_data.accel_data[1]);
   Serial.print("AccelZ: "); Serial.println(imu_data.accel_data[2]);
