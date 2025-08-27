@@ -9,16 +9,18 @@ Has been adapted from the https://github.com/xioTechnologies/Fusion Github repo
 """
 
 # Import sensor data
-data = np.genfromtxt("../optical_flow_method_data/sensor_data.csv", delimiter=",", skip_header=1)
-# data = np.genfromtxt("../optical_flow_method_data/imc45686_data_stationary.csv", delimiter=",", skip_header=1)
-sample_rate = 100  # 100 Hz
+# data = np.genfromtxt("../optical_flow_method_data/sensor_data.csv", delimiter=",", skip_header=1)
+data = np.genfromtxt("../optical_flow_method_data/imc45686_data_stationary.csv", delimiter=",", skip_header=1)
 
 timestamp = data[:, 0]
 gyroscope = data[:, 1:4]       # [deg/s]
 accelerometer = data[:, 4:7]   # [g]
 magnetometer = data[:, 7:10]   # [uT] (can leave zeros if no mag)
 
-sample_rate = 100  # Hz
+sample_time_s = np.mean(np.diff(timestamp))/1000000
+sample_rate = int(round(1.0 / sample_time_s))
+print("Sample Rate: ", sample_rate)
+
 delta_time = np.diff(timestamp, prepend=timestamp[0])
 
 # Instantiate algorithms
@@ -28,7 +30,7 @@ ahrs = imufusion.Ahrs()
 ahrs.settings = imufusion.Settings(
     imufusion.CONVENTION_NWU,  # convention
     0.5,  # gain
-    2000,  # gyroscope range
+    50,  # gyroscope range
     10,  # acceleration rejection
     10,  # magnetic rejection
     5 * sample_rate,  # recovery trigger period = 5 seconds
@@ -39,7 +41,7 @@ rot_mats = []
 
 for i in range(len(timestamp)):
     gyroscope[i] = offset.update(gyroscope[i])
-    ahrs.update(gyroscope[i], accelerometer[i], magnetometer[i], delta_time[i])
+    ahrs.update_no_magnetometer(gyroscope[i], accelerometer[i], delta_time[i])
     R = ahrs.quaternion.to_matrix()  # 3x3 rotation matrix
     rot_mats.append(R.flatten())     # flatten to 9 numbers per row
 
