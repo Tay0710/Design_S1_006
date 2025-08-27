@@ -164,6 +164,8 @@ void loop() {
   recording = (digitalRead(TRIGGER_PIN) == LOW); // LOW = switch ON = recording
 
   // Record frame to SD card if recording
+  // THis logs the ToF and IMU data together; only IF the ToF data is ready
+  // Should update this to make the ToF and IMU data captured separately into different csv files (as the IMU data can be captured at a much higher rate). 
   if(recording && myImager.isDataReady() && myImager.getRangingData(&measurementData)){
     File file = SD.open(filename, FILE_APPEND);
     if(file){
