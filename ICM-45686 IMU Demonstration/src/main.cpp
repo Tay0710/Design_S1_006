@@ -34,6 +34,7 @@ void setup() {
   }
 
   // Configure accelerometer and gyro (up to 8kbytes, ususal 2kbytes, FIFO rate)
+  // I am assuming it is in Low Noise Mode by default. 
   IMU.startAccel(100, 2);     // 100 Hz(max 6400) , ±2/4/8/16/32 g
   IMU.startGyro(100, 15.625);    // 100 Hz, ±15.625/31.25/62.5/125/250/500/1000/2000/4000 dps
 

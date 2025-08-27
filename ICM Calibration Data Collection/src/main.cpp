@@ -42,8 +42,8 @@ void setup() {
     Serial.println("ICM456xx initialization failed");
     while(1);
   }
-  IMU.startAccel(100, 16);   // 100 Hz, ±16 g
-  IMU.startGyro(100, 2000);  // 100 Hz, ±2000 dps
+  IMU.startAccel(1600, 16);   // 100 Hz, ±16 g
+  IMU.startGyro(1600, 2000);  // 100 Hz, ±2000 dps
 
   // Initialize SPI for SD card
   hspi.begin(14, 12, 13, SD_CS); // SCK=14, MISO=12, MOSI=13, CS=15
