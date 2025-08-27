@@ -16,6 +16,14 @@ ICM456xx IMU(SPI, IMU_CS);
 
 bool recording = false;
 
+// std::array<float, 6> imu_values = {0, 0, 0, 0, 0, 0};
+
+// Calibration values
+//  -0.015272462	0.009307082	1.006992415	0.754845671	-0.746207889	-0.116757765
+//  AccelX(g)	AccelY(g)	AccelZ(g)	GyroX(dps)	GyroY(dps)	GyroZ(dps)
+
+
+
 // Web server
 WebServer server(80);
 const char* filename = "/imu.csv";
@@ -38,8 +46,8 @@ void setup() {
     Serial.println("ICM456xx initialization failed");
     while (1);
   }
-  IMU.startAccel(100, 16);   // 100 Hz, ±16 g
-  IMU.startGyro(100, 2000);  // 100 Hz, ±2000 dps
+  IMU.startAccel(1600, 16);   // 100 Hz, ±16 g
+  IMU.startGyro(1600, 2000);  // 100 Hz, ±2000 dps
 
   // Initialize SD card on same SPI bus but different CS
   if (!SD.begin(SD_CS, SPI)) {
@@ -86,13 +94,20 @@ void loop() {
   if(file) {
     file.printf("%lu,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f\n",
       micros(),
-      imu_data.accel_data[0]*16.0/32768.0,
-      imu_data.accel_data[1]*16.0/32768.0,
-      imu_data.accel_data[2]*16.0/32768.0,
-      imu_data.gyro_data[0]*2000.0/32768.0,
-      imu_data.gyro_data[1]*2000.0/32768.0,
-      imu_data.gyro_data[2]*2000.0/32768.0
+      imu_data.accel_data[0]*16.0/32768.0 + 0.015272462,
+      imu_data.accel_data[1]*16.0/32768.0 - 0.009307082,
+      imu_data.accel_data[2]*16.0/32768.0 - 0.006992415,
+      imu_data.gyro_data[0]*2000.0/32768.0 - 0.754845671,
+      imu_data.gyro_data[1]*2000.0/32768.0 + 0.746207889,
+      imu_data.gyro_data[2]*2000.0/32768.0 + 0.116757765
     );
     file.close();
   }
+  // imu_values[0] +=  imu_data.accel_data[0]*16.0/32768.0,
+  // imu_values[1] +=    imu_data.accel_data[1]*16.0/32768.0,
+  // imu_values[2] +=    imu_data.accel_data[2]*16.0/32768.0,
+  // imu_values[3] +=    imu_data.gyro_data[0]*2000.0/32768.0,
+  // imu_values[4] +=    imu_data.gyro_data[1]*2000.0/32768.0,
+  // imu_values[5] +=   imu_data.gyro_data[2]*2000.0/32768.0
+
 }

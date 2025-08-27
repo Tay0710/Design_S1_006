@@ -10,7 +10,11 @@
 
 SparkFun_VL53L5CX myImager;
 VL53L5CX_ResultsData measurementData; // Result data class structure, 1356 byes of RAM
-ICM456xx IMU(SPI, 5);
+ICM456xx IMU(SPI, 5); // CS pin 5
+
+  // Calibration values for ICM
+//  -0.015272462	0.009307082	1.006992415	0.754845671	-0.746207889	-0.116757765
+//  AccelX(g)	AccelY(g)	AccelZ(g)	GyroX(dps)	GyroY(dps)	GyroZ(dps)
 
 int imageResolution = 0; // Used to pretty print output
 int imageWidth = 0;      // Used to pretty print output
@@ -18,7 +22,6 @@ int imageWidth = 0;      // Used to pretty print output
 #define TRIGGER_PIN 4  // use GPIO4 as SWITCH to turn on/off when the esp32 is recording data mode. When pulled LOW, RECORDING Starts. 
 bool recording = false;
 
-SPIClass hspi(HSPI);   // Create HSPI instance
 #define SD_CS 15  // Example CS pin for SD card
 
 
@@ -34,7 +37,8 @@ struct Frame {
 
 // Web server
 WebServer server(80);
-const char* filename = "/frames.csv";
+const char* imuFile = "/imu_ICM45686.csv";
+const char* tofFile = "/tof_L7.csv";
 
 
 
@@ -82,37 +86,49 @@ void setup()
   }
 
   // Configure accelerometer and gyro
-  IMU.startAccel(100, 16);     // 100 Hz, ±2/4/8/16/32 g
-  IMU.startGyro(100, 2000);    // 100 Hz, ±15.625/31.25/62.5/125/250/500/1000/2000/4000 dps
+  IMU.startAccel(1600, 16);     // 100 Hz, ±2/4/8/16/32 g
+  IMU.startGyro(1600, 2000);    // 100 Hz, ±15.625/31.25/62.5/125/250/500/1000/2000/4000 dps
   // Data comes out of the IMU as steps from -32768 to +32768 representing the full scale range
 
 
-// Init SD card on HSPI
-hspi.begin(14, 12, 13, SD_CS); // SCK=14, MISO=12, MOSI=13, CS=15
-if (!SD.begin(SD_CS, hspi)) {
+
+  // --- Initialize SD card (on same VSPI but with different CS) ---
+  if (!SD.begin(SD_CS, SPI)) {
     Serial.println("SD init failed!");
-    while(1);
-}
-  // Remove old file if exists
-  SD.remove(filename);
-  File file = SD.open(filename, FILE_WRITE);
-  file.println("Frame,Timestamp(us),D0,D1,D2,D3,D4,D5,D6,D7,D8,D9,D10,D11,D12,D13,D14,D15");
-  file.close();
+    while (1);
+  }
+
+  // Init IMU CSV
+  SD.remove(imuFile);
+  File imu = SD.open(imuFile, FILE_WRITE);
+  imu.println("Timestamp(us),AccelX(g),AccelY(g),AccelZ(g),GyroX(dps),GyroY(dps),GyroZ(dps)");
+  imu.close();
+
+  // Init ToF CSV
+  SD.remove(tofFile);
+  File tof = SD.open(tofFile, FILE_WRITE);
+  tof.print("Timestamp(us)");
+  for(int i=0; i<16; i++) tof.print(",D"+String(i));
+  tof.println();
+  tof.close();
 
   // Serve web page with button
   server.on("/", HTTP_GET, []() {
-    server.send(200, "text/html", "<html><body><h1>ESP32 Frame Download</h1><a href='/download'><button>Download CSV</button></a></body></html>");
+    server.send(200, "text/html",       "<h1>ESP32 Data Logger</h1>"
+      "<a href='/download_imu'><button>Download IMU CSV</button></a><br>"
+      "<a href='/download_tof'><button>Download ToF CSV</button></a>");
   });
 
-  // Serve CSV file
-  server.on("/download", HTTP_GET, []() {
-    File f = SD.open(filename);
-    if(f) {
-      server.streamFile(f, "text/csv");
-      f.close();
-    } else {
-      server.send(404, "text/plain", "File not found");
-    }
+  server.on("/download_imu", HTTP_GET, []() {
+    File f = SD.open(imuFile);
+    if(f) { server.streamFile(f, "text/csv"); f.close(); }
+    else server.send(404, "text/plain", "IMU file not found");
+  });
+
+  server.on("/download_tof", HTTP_GET, []() {
+    File f = SD.open(tofFile);
+    if(f) { server.streamFile(f, "text/csv"); f.close(); }
+    else server.send(404, "text/plain", "ToF file not found");
   });
 
   server.begin();
@@ -138,14 +154,14 @@ if (!SD.begin(SD_CS, hspi)) {
       ;
   }
 
-  myImager.setResolution(4*4); // Enable all 64 pads or 16 pads for 4x4 resolution
+  myImager.setResolution(8*8); // Enable all 64 pads or 16 pads for 4x4 resolution
 
   imageResolution = myImager.getResolution(); // Query sensor for current resolution - either 4x4 or 8x8
   imageWidth = sqrt(imageResolution);         // Calculate printing width
 
   // Using 4x4, min frequency is 1Hz and max is 60Hz
   // Using 8x8, min frequency is 1Hz and max is 15Hz
-  myImager.setRangingFrequency(60);
+  myImager.setRangingFrequency(15);
   myImager.startRanging();
 
   Serial.println("Make sure the TRigger Pin is set to LOW, when starting (e.g. RESTART)");
@@ -154,7 +170,7 @@ if (!SD.begin(SD_CS, hspi)) {
 
 
 
-
+// GO FROM HERE CODE BELOW NOT COMPLETE!! 
 void loop() {
   server.handleClient(); // handle web requests
   inv_imu_sensor_data_t imu_data; // Read IMU data
@@ -174,12 +190,12 @@ void loop() {
         file.print(",");
         file.print(measurementData.distance_mm[i]);
       }
-      file.print(","); file.print(imu_data.accel_data[0]*16 / 32768.0); // Convert to g
-      file.print(","); file.print(imu_data.accel_data[1]*16 / 32768.0);
-      file.print(","); file.print(imu_data.accel_data[2]*16 / 32768.0);
-      file.print(","); file.print(imu_data.gyro_data[0]*2000 / 32768.0); // Convert to dps
-      file.print(","); file.print(imu_data.gyro_data[1]*2000 / 32768.0);
-      file.print(","); file.print(imu_data.gyro_data[2]*2000 / 32768.0);
+      file.print(","); file.print(imu_data.accel_data[0]*16 / 32768.0 + 0.015272462); // Convert to g
+      file.print(","); file.print(imu_data.accel_data[1]*16 / 32768.0 - 0.009307082);
+      file.print(","); file.print(imu_data.accel_data[2]*16 / 32768.0 - 0.006992415);
+      file.print(","); file.print(imu_data.gyro_data[0]*2000 / 32768.0 - 0.754845671); // Convert to dps
+      file.print(","); file.print(imu_data.gyro_data[1]*2000 / 32768.0 + 0.746207889);
+      file.print(","); file.print(imu_data.gyro_data[2]*2000 / 32768.0 + 0.116757765);
 
       file.println();
       file.close();
