@@ -38,8 +38,10 @@ float calibGyroX  = 0, calibGyroY  = 0, calibGyroZ  = 0;
 // Timing control
 unsigned long lastIMUtime = 0;
 unsigned long lastTOFtime = 0;
+unsigned long lastOFtime = 0;
 const unsigned long imuInterval = 2000;    // microseconds → ~500 Hz
 const unsigned long tofInterval = 66000;   // microseconds → ~15 Hz
+const unsigned long ofInterval = 8300;   // microseconds → ~120 Hz
 
 // ---- Calibration function ----
 void calibrateIMU(int samples) {
@@ -181,12 +183,6 @@ void setup()
 
   server.begin();
 
-
-
-
-
-
-
   Wire.begin(); // This resets I2C bus to 100kHz
   Wire.setClock(1000000); //Sensor has max I2C freq of 1MHz
 
@@ -225,14 +221,12 @@ void logIMU() {
   inv_imu_sensor_data_t imu_data;
   IMU.getDataFromRegisters(imu_data);
 
-
   float ax = imu_data.accel_data[0]*16.0/32768.0 - calibAccelX;
   float ay = imu_data.accel_data[1]*16.0/32768.0 - calibAccelY;
   float az = imu_data.accel_data[2]*16.0/32768.0 - calibAccelZ;
   float gx = imu_data.gyro_data[0]*2000.0/32768.0 - calibGyroX;
   float gy = imu_data.gyro_data[1]*2000.0/32768.0 - calibGyroY;
   float gz = imu_data.gyro_data[2]*2000.0/32768.0 - calibGyroZ;
-
 
   File file = SD.open(imuFile, FILE_APPEND);
   if(file){
@@ -261,7 +255,22 @@ void logToF() {
 }
 
 
+void logOF() {
+  unsigned long now = micros();
+  if (now - lastOFtime < ofInterval) return;  
+  lastOFtime = now;
 
+  if(myImager.isDataReady() && myImager.getRangingData(&measurementData)) {
+    File file = SD.open(tofFile, FILE_APPEND);
+    if(file){
+      file.print(now);
+      for(int i = 0; i < myImager.getResolution(); i++){
+        file.print(",");
+        file.print(measurementData.distance_mm[i]);
+      }
+      file.println();
+      file.close();
+}
 
 
 // GO FROM HERE CODE BELOW NOT COMPLETE!! 
@@ -273,5 +282,6 @@ void loop() {
 
   logIMU();
   logToF();
+  logOF();
 
 }
