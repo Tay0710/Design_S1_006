@@ -25,6 +25,8 @@ void calibrateIMU(int samples) {
   long sumGx = 0, sumGy = 0, sumGz = 0;
 
   Serial.println("Starting IMU calibration...");
+  unsigned long startTime = millis(); // record start
+
   for (int i = 0; i < samples; i++) {
     inv_imu_sensor_data_t imu_data;
     IMU.getDataFromRegisters(imu_data);
@@ -55,9 +57,15 @@ void calibrateIMU(int samples) {
   calibGyroY  = avgGy * 2000.0 / 32768.0;
   calibGyroZ  = avgGz * 2000.0 / 32768.0;
 
+  unsigned long endTime = millis();   // record end
+  unsigned long duration = endTime - startTime;
+
   Serial.println("Calibration complete:");
   Serial.printf("Accel offsets: %.6f, %.6f, %.6f\n", calibAccelX, calibAccelY, calibAccelZ);
   Serial.printf("Gyro  offsets: %.6f, %.6f, %.6f\n", calibGyroX, calibGyroY, calibGyroZ);
+
+  Serial.printf("Calibration took %lu ms (%lu samples at ~%lu Hz)\n",
+                duration, samples, (samples * 1000UL) / duration);
 }
 
 void setup() {

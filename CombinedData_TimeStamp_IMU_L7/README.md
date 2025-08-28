@@ -31,3 +31,14 @@ L7 Zones:
  ...
  i=56  i=57  i=58  ... i=63
 
+
+
+
+Old IMU Sampling code; with old/ default calibration values
+
+  float ax = imu_data.accel_data[0]*16.0/32768.0 + 0.015272462;
+  float ay = imu_data.accel_data[1]*16.0/32768.0 - 0.009307082;
+  float az = imu_data.accel_data[2]*16.0/32768.0 - 0.006992415;
+  float gx = imu_data.gyro_data[0]*2000.0/32768.0 - 0.754845671;
+  float gy = imu_data.gyro_data[1]*2000.0/32768.0 + 0.746207889;
+  float gz = imu_data.gyro_data[2]*2000.0/32768.0 + 0.116757765;

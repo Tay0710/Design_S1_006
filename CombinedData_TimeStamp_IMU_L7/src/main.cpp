@@ -12,10 +12,6 @@ SparkFun_VL53L5CX myImager;
 VL53L5CX_ResultsData measurementData; // Result data class structure, 1356 byes of RAM
 ICM456xx IMU(SPI, 5); // CS pin 5
 
-  // Calibration values for ICM
-//  -0.015272462	0.009307082	1.006992415	0.754845671	-0.746207889	-0.116757765
-//  AccelX(g)	AccelY(g)	AccelZ(g)	GyroX(dps)	GyroY(dps)	GyroZ(dps)
-
 int imageResolution = 0; // Used to pretty print output
 int imageWidth = 0;      // Used to pretty print output
 
@@ -28,18 +24,69 @@ bool recording = false;
 #define AP_SSID "ESP32_Frames"
 #define AP_PASSWORD "12345678"
 
-struct Frame {
-  unsigned long timestamp;   // micros() when captured
-  uint16_t distances[16];    // max 8x8 = 64 values, 4x4=16
-};
-
-
 
 // Web server
 WebServer server(80);
 const char* imuFile = "/imu_ICM45686.csv";
 const char* tofFile = "/tof_L7.csv";
 
+// Calibration offsets
+float calibAccelX = 0, calibAccelY = 0, calibAccelZ = 0;
+float calibGyroX  = 0, calibGyroY  = 0, calibGyroZ  = 0;
+
+
+// Timing control
+unsigned long lastIMUtime = 0;
+unsigned long lastTOFtime = 0;
+const unsigned long imuInterval = 2000;    // microseconds → ~500 Hz
+const unsigned long tofInterval = 66000;   // microseconds → ~15 Hz
+
+// ---- Calibration function ----
+void calibrateIMU(int samples) {
+  long sumAx = 0, sumAy = 0, sumAz = 0;
+  long sumGx = 0, sumGy = 0, sumGz = 0;
+
+  Serial.println("Starting IMU calibration...");
+
+  unsigned long startTime = millis();
+
+  for (int i = 0; i < samples; i++) {
+    inv_imu_sensor_data_t imu_data;
+    IMU.getDataFromRegisters(imu_data);
+
+    sumAx += imu_data.accel_data[0];
+    sumAy += imu_data.accel_data[1];
+    sumAz += imu_data.accel_data[2];
+    sumGx += imu_data.gyro_data[0];
+    sumGy += imu_data.gyro_data[1];
+    sumGz += imu_data.gyro_data[2];
+
+    delay(2); // ~500 Hz
+  }
+
+  unsigned long endTime = millis();
+  unsigned long duration = endTime - startTime;
+
+  float avgAx = (float)sumAx / samples;
+  float avgAy = (float)sumAy / samples;
+  float avgAz = (float)sumAz / samples;
+  float avgGx = (float)sumGx / samples;
+  float avgGy = (float)sumGy / samples;
+  float avgGz = (float)sumGz / samples;
+
+  calibAccelX = avgAx * 16.0 / 32768.0;
+  calibAccelY = avgAy * 16.0 / 32768.0;
+  calibAccelZ = avgAz * 16.0 / 32768.0;
+  calibGyroX  = avgGx * 2000.0 / 32768.0;
+  calibGyroY  = avgGy * 2000.0 / 32768.0;
+  calibGyroZ  = avgGz * 2000.0 / 32768.0;
+
+  Serial.println("Calibration complete:");
+  Serial.printf("Accel offsets: %.6f, %.6f, %.6f\n", calibAccelX, calibAccelY, calibAccelZ);
+  Serial.printf("Gyro  offsets: %.6f, %.6f, %.6f\n", calibGyroX, calibGyroY, calibGyroZ);
+  Serial.printf("Calibration took %lu ms (%lu samples at ~%lu Hz)\n",
+                duration, samples, (samples * 1000UL) / duration);
+}
 
 
 void setup()
@@ -90,7 +137,8 @@ void setup()
   IMU.startGyro(1600, 2000);    // 100 Hz, ±15.625/31.25/62.5/125/250/500/1000/2000/4000 dps
   // Data comes out of the IMU as steps from -32768 to +32768 representing the full scale range
 
-
+  Serial.println("Do Not move Drone while Calibrating the ICM.");
+  calibrateIMU(1000);
 
   // --- Initialize SD card (on same VSPI but with different CS) ---
   if (!SD.begin(SD_CS, SPI)) {
@@ -169,36 +217,61 @@ void setup()
 }
 
 
+void logIMU() {
+  unsigned long now = micros();
+  if (now - lastIMUtime < imuInterval) return;  
+  lastIMUtime = now;
 
-// GO FROM HERE CODE BELOW NOT COMPLETE!! 
-void loop() {
-  server.handleClient(); // handle web requests
-  inv_imu_sensor_data_t imu_data; // Read IMU data
+  inv_imu_sensor_data_t imu_data;
   IMU.getDataFromRegisters(imu_data);
 
-  // Read switch state
-  recording = (digitalRead(TRIGGER_PIN) == LOW); // LOW = switch ON = recording
 
-  // Record frame to SD card if recording
-  // THis logs the ToF and IMU data together; only IF the ToF data is ready
-  // Should update this to make the ToF and IMU data captured separately into different csv files (as the IMU data can be captured at a much higher rate). 
-  if(recording && myImager.isDataReady() && myImager.getRangingData(&measurementData)){
-    File file = SD.open(filename, FILE_APPEND);
+  float ax = imu_data.accel_data[0]*16.0/32768.0 - calibAccelX;
+  float ay = imu_data.accel_data[1]*16.0/32768.0 - calibAccelY;
+  float az = imu_data.accel_data[2]*16.0/32768.0 - calibAccelZ;
+  float gx = imu_data.gyro_data[0]*2000.0/32768.0 - calibGyroX;
+  float gy = imu_data.gyro_data[1]*2000.0/32768.0 - calibGyroY;
+  float gz = imu_data.gyro_data[2]*2000.0/32768.0 - calibGyroZ;
+
+
+  File file = SD.open(imuFile, FILE_APPEND);
+  if(file){
+    file.printf("%lu,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f\n", now, ax, ay, az, gx, gy, gz);
+    file.close();
+  }
+}
+
+void logToF() {
+  unsigned long now = micros();
+  if (now - lastTOFtime < tofInterval) return;  
+  lastTOFtime = now;
+
+  if(myImager.isDataReady() && myImager.getRangingData(&measurementData)) {
+    File file = SD.open(tofFile, FILE_APPEND);
     if(file){
-      file.print(micros());
-      for(int i = 0; i < imageResolution; i++){
+      file.print(now);
+      for(int i = 0; i < myImager.getResolution(); i++){
         file.print(",");
         file.print(measurementData.distance_mm[i]);
       }
-      file.print(","); file.print(imu_data.accel_data[0]*16 / 32768.0 + 0.015272462); // Convert to g
-      file.print(","); file.print(imu_data.accel_data[1]*16 / 32768.0 - 0.009307082);
-      file.print(","); file.print(imu_data.accel_data[2]*16 / 32768.0 - 0.006992415);
-      file.print(","); file.print(imu_data.gyro_data[0]*2000 / 32768.0 - 0.754845671); // Convert to dps
-      file.print(","); file.print(imu_data.gyro_data[1]*2000 / 32768.0 + 0.746207889);
-      file.print(","); file.print(imu_data.gyro_data[2]*2000 / 32768.0 + 0.116757765);
-
       file.println();
       file.close();
     }
   }
+}
+
+
+
+
+
+// GO FROM HERE CODE BELOW NOT COMPLETE!! 
+void loop() {
+  server.handleClient(); // handle web requests
+  
+  recording = (digitalRead(TRIGGER_PIN) == LOW);
+  if (!recording) return; // If trigger is pulled HIGH, do not record data. 
+
+  logIMU();
+  logToF();
+
 }
