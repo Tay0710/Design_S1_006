@@ -62,9 +62,11 @@ void setup() {
   SD.remove(filename);
   File file = SD.open(filename, FILE_WRITE);
   if (file) {
-    file.println("Timestamp(us),AccelX(g),AccelY(g),AccelZ(g),GyroX(dps),GyroY(dps),GyroZ(dps)");
+    file.println("time,gyro x,gyro y,gyro z,accel x,accel y,accel z");
     file.close();
   }
+
+
 
   // Web server endpoints
   server.on("/", HTTP_GET, []() {
@@ -97,12 +99,12 @@ void loop() {
   if(file) {
     file.printf("%lu,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f\n",
       micros(),
-      imu_data.accel_data[0]*G_rating/32768.0 ,
-      imu_data.accel_data[1]*G_rating/32768.0 ,
-      imu_data.accel_data[2]*G_rating/32768.0 ,
       imu_data.gyro_data[0]*dps_rating/32768.0,
       imu_data.gyro_data[1]*dps_rating/32768.0,
-      imu_data.gyro_data[2]*dps_rating/32768.0
+      imu_data.gyro_data[2]*dps_rating/32768.0,
+      imu_data.accel_data[0]*G_rating/32768.0 ,
+      imu_data.accel_data[1]*G_rating/32768.0 ,
+      imu_data.accel_data[2]*G_rating/32768.0 
     );
     file.close();
   }
