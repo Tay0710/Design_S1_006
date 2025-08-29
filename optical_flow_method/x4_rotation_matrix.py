@@ -10,7 +10,7 @@ Has been adapted from the https://github.com/xioTechnologies/Fusion Github repo
 
 # Import sensor data
 # data = np.genfromtxt("../optical_flow_method_data/sensor_data.csv", delimiter=",", skip_header=1)
-data = np.genfromtxt("../optical_flow_method_data/imc45686_data_stationary.csv", delimiter=",", skip_header=1)
+data = np.genfromtxt("../optical_flow_method_data/imc45686_data_square_scaled.csv", delimiter=",", skip_header=1)
 
 timestamp = data[:, 0]
 gyroscope = data[:, 1:4]       # [deg/s]
@@ -53,23 +53,48 @@ np.savetxt("../optical_flow_method_data/rotation_matrices.csv", rot_mats, delimi
 
 print("Saved rotation matrices to rotation_matrices.csv")
 
-# === Simple 3D animation ===
+# # === Simple 3D animation ===
+# fig = plt.figure()
+# ax = fig.add_subplot(111, projection="3d")
+# ax.set_xlim([-1, 1])
+# ax.set_ylim([-1, 1])
+# ax.set_zlim([-1, 1])
+# ax.set_xlabel("X")
+# ax.set_ylabel("Y")
+# ax.set_zlabel("Z")
+
+# # Draw basis vectors (rotated axes)
+# quiver = ax.quiver(0, 0, 0, 1, 0, 0, color="r")  # placeholder
+
+# def update(frame):
+#     ax.cla()  # clear entire 3D axis
+
+#     # Reset limits/labels every frame (since cla() wipes them)
+#     ax.set_xlim([-1, 1])
+#     ax.set_ylim([-1, 1])
+#     ax.set_zlim([-1, 1])
+#     ax.set_xlabel("X")
+#     ax.set_ylabel("Y")
+#     ax.set_zlabel("Z")
+
+#     R = rot_mats[frame].reshape(3, 3)
+#     origin = np.zeros(3)
+#     x_axis, y_axis, z_axis = R[:, 0], R[:, 1], R[:, 2]
+#     ax.quiver(*origin, *x_axis, color="r", length=1)
+#     ax.quiver(*origin, *y_axis, color="g", length=1)
+#     ax.quiver(*origin, *z_axis, color="b", length=1)
+#     ax.set_title(f"Frame {frame}/{len(rot_mats)}")
+
+# ani = FuncAnimation(fig, update, frames=len(rot_mats), interval=50)
+# plt.show()
+
+# === Interactive viewer ===
 fig = plt.figure()
 ax = fig.add_subplot(111, projection="3d")
-ax.set_xlim([-1, 1])
-ax.set_ylim([-1, 1])
-ax.set_zlim([-1, 1])
-ax.set_xlabel("X")
-ax.set_ylabel("Y")
-ax.set_zlabel("Z")
+current_frame = [0]  # use list so it's mutable in nested function
 
-# Draw basis vectors (rotated axes)
-quiver = ax.quiver(0, 0, 0, 1, 0, 0, color="r")  # placeholder
-
-def update(frame):
-    ax.cla()  # clear entire 3D axis
-
-    # Reset limits/labels every frame (since cla() wipes them)
+def draw_frame(frame):
+    ax.cla()
     ax.set_xlim([-1, 1])
     ax.set_ylim([-1, 1])
     ax.set_zlim([-1, 1])
@@ -79,11 +104,19 @@ def update(frame):
 
     R = rot_mats[frame].reshape(3, 3)
     origin = np.zeros(3)
-    x_axis, y_axis, z_axis = R[:, 0], R[:, 1], R[:, 2]
-    ax.quiver(*origin, *x_axis, color="r", length=1)
-    ax.quiver(*origin, *y_axis, color="g", length=1)
-    ax.quiver(*origin, *z_axis, color="b", length=1)
-    ax.set_title(f"Frame {frame}/{len(rot_mats)}")
+    ax.quiver(*origin, *R[:, 0], color="r", length=1)
+    ax.quiver(*origin, *R[:, 1], color="g", length=1)
+    ax.quiver(*origin, *R[:, 2], color="b", length=1)
+    ax.set_title(f"Frame {frame}/{len(rot_mats)-1}")
 
-ani = FuncAnimation(fig, update, frames=len(rot_mats), interval=50)
+def on_key(event):
+    if event.key == "right":
+        current_frame[0] = min(current_frame[0] + 1, len(rot_mats) - 1)
+    elif event.key == "left":
+        current_frame[0] = max(current_frame[0] - 1, 0)
+    draw_frame(current_frame[0])
+    plt.draw()
+
+fig.canvas.mpl_connect("key_press_event", on_key)
+draw_frame(current_frame[0])  # show first frame
 plt.show()
