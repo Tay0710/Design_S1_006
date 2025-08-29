@@ -47,6 +47,8 @@ const char* ofFile = "/of_PMW3901.csv";
 float calibAccelX = 0, calibAccelY = 0, calibAccelZ = 0;
 float calibGyroX  = 0, calibGyroY  = 0, calibGyroZ  = 0;
 
+float  G_rating = 4;      // 2/4/8/16/32 g
+float  dps_rating = 125; // 15.625/31.25/62.5/125/250/500/1000/2000/4000 dps
 
 // Timing control
 unsigned long lastIMUtime = 0;
@@ -89,12 +91,14 @@ void calibrateIMU(int samples) {
   float avgGy = (float)sumGy / samples;
   float avgGz = (float)sumGz / samples;
 
-  calibAccelX = avgAx * 16.0 / 32768.0;
-  calibAccelY = avgAy * 16.0 / 32768.0;
-  calibAccelZ = avgAz * 16.0 / 32768.0;
-  calibGyroX  = avgGx * 2000.0 / 32768.0;
-  calibGyroY  = avgGy * 2000.0 / 32768.0;
-  calibGyroZ  = avgGz * 2000.0 / 32768.0;
+
+
+  calibAccelX = avgAx * G_rating / 32768.0;
+  calibAccelY = avgAy * G_rating / 32768.0;
+  calibAccelZ = avgAz * G_rating / 32768.0;
+  calibGyroX  = avgGx * dps_rating / 32768.0;
+  calibGyroY  = avgGy * dps_rating / 32768.0;
+  calibGyroZ  = avgGz * dps_rating / 32768.0;
 
   Serial.println("Calibration complete:");
   Serial.printf("Accel offsets: %.6f, %.6f, %.6f\n", calibAccelX, calibAccelY, calibAccelZ);
@@ -146,9 +150,10 @@ void setup()
     while(1);
   }
 
+
   // Configure accelerometer and gyro
-  IMU.startAccel(1600, 4);     // 100 Hz, ±2/4/8/16/32 g
-  IMU.startGyro(1600, 125);    // 100 Hz, ±15.625/31.25/62.5/125/250/500/1000/2000/4000 dps
+  IMU.startAccel(1600, G_rating);     // 100 Hz, ±2/4/8/16/32 g
+  IMU.startGyro(1600, dps_rating);    // 100 Hz, ±15.625/31.25/62.5/125/250/500/1000/2000/4000 dps
   // Data comes out of the IMU as steps from -32768 to +32768 representing the full scale range
 
   Serial.println("Do Not move Drone while Calibrating the ICM.");
@@ -255,12 +260,12 @@ void logIMU() {
   inv_imu_sensor_data_t imu_data;
   IMU.getDataFromRegisters(imu_data);
 
-  float ax = imu_data.accel_data[0]*16.0/32768.0 - calibAccelX;
-  float ay = imu_data.accel_data[1]*16.0/32768.0 - calibAccelY;
-  float az = imu_data.accel_data[2]*16.0/32768.0 - calibAccelZ;
-  float gx = imu_data.gyro_data[0]*2000.0/32768.0 - calibGyroX;
-  float gy = imu_data.gyro_data[1]*2000.0/32768.0 - calibGyroY;
-  float gz = imu_data.gyro_data[2]*2000.0/32768.0 - calibGyroZ;
+  float ax = imu_data.accel_data[0]*G_rating/32768.0 - calibAccelX;
+  float ay = imu_data.accel_data[1]*G_rating/32768.0 - calibAccelY;
+  float az = imu_data.accel_data[2]*G_rating/32768.0 - calibAccelZ;
+  float gx = imu_data.gyro_data[0]*dps_rating/32768.0 - calibGyroX;
+  float gy = imu_data.gyro_data[1]*dps_rating/32768.0 - calibGyroY;
+  float gz = imu_data.gyro_data[2]*dps_rating/32768.0 - calibGyroZ;
 
   File file = SD.open(imuFile, FILE_APPEND);
   if(file){
