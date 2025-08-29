@@ -15,10 +15,13 @@
 #define SPI_CLK 12
 #define SPI_MISO 13
 #define RST 3
+#define SD_CS 15  // Example CS pin for SD card
+#define IMU_CS 5  // Example CS pin for SD card
+#define TRIGGER_PIN 4  // use GPIO4 as SWITCH to turn on/off when the esp32 is recording data mode. When pulled LOW, RECORDING Starts. 
 
 SparkFun_VL53L5CX myImager;
 VL53L5CX_ResultsData measurementData; // Result data class structure, 1356 byes of RAM
-ICM456xx IMU(SPI, 5); // CS pin 5
+ICM456xx IMU(SPI, IMU_CS); // CS pin 5
 
 SPIClass SPI2(HSPI);
 Bitcraze_PMW3901 flow(SPI_CS); // CS pin 10
@@ -28,10 +31,9 @@ char frame[35*35]; //array to hold the framebuffer
 int imageResolution = 0; // Used to pretty print output
 int imageWidth = 0;      // Used to pretty print output
 
-#define TRIGGER_PIN 4  // use GPIO4 as SWITCH to turn on/off when the esp32 is recording data mode. When pulled LOW, RECORDING Starts. 
+
 bool recording = false;
 
-#define SD_CS 15  // Example CS pin for SD card
 
 #define AP_SSID "ESP32_Frames"
 #define AP_PASSWORD "12345678"
