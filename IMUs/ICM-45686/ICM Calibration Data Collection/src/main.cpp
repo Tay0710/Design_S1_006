@@ -78,8 +78,8 @@ void calibrateIMU(int samples) {
   calibGyroZ  = avgGz * dps_rating / 32768.0;
 
   Serial.println("Calibration complete:");
-  Serial.printf("Accel offsets: %.18f, %.18f, %.18f\n", calibAccelX, calibAccelY, calibAccelZ);
-  Serial.printf("Gyro  offsets: %.18f, %.18f, %.18f\n", calibGyroX, calibGyroY, calibGyroZ);
+  Serial.printf("Accel offsets: %.9f, %.9f, %.9f\n", calibAccelX, calibAccelY, calibAccelZ);
+  Serial.printf("Gyro  offsets: %.9f, %.9f, %.9f\n", calibGyroX, calibGyroY, calibGyroZ);
   Serial.printf("Calibration took %lu ms (%lu samples at ~%lu Hz)\n",
                 duration, samples, (samples * 1000UL) / duration);
 }
@@ -148,33 +148,97 @@ void setup() {
   Serial.println("Entering Loop");
 }
 
+static File file;  // persistent across loop() calls
+
 void loop() {
-  server.handleClient();
+    server.handleClient();
 
-  recording = (digitalRead(TRIGGER_PIN) == LOW);
-  if (!recording) return;
+    recording = (digitalRead(TRIGGER_PIN) == LOW);
 
-  inv_imu_sensor_data_t imu_data;
-  IMU.getDataFromRegisters(imu_data);
+    if (recording) {
+        inv_imu_sensor_data_t imu_data;
+        IMU.getDataFromRegisters(imu_data);
 
-  File file = SD.open(filename, FILE_APPEND);
-  if(file) {
-    file.printf("%lu,%.18f,%.18f,%.18f,%.18f,%.18f,%.18f\n",
-      (micros() / 1000000.0), // Seconds
-      imu_data.gyro_data[0]*dps_rating/32768.0 - calibGyroX,
-      imu_data.gyro_data[1]*dps_rating/32768.0 - calibGyroY,
-      imu_data.gyro_data[2]*dps_rating/32768.0 - calibGyroZ,
-      imu_data.accel_data[0]*G_rating/32768.0 - calibAccelX,
-      imu_data.accel_data[1]*G_rating/32768.0 - calibAccelY,
-      imu_data.accel_data[2]*G_rating/32768.0 - calibAccelZ
-    );
-    file.close();
+        // static unsigned long lastMicros = 0;
+        unsigned long now = micros();
+        float now_s = now / 1000000.0;
+        // float dt = (now - lastMicros) / 1000000.0; // delta time in seconds
+        // lastMicros = now;
+
+
+        // Open, write, and close file each time
+        // Open file if not already open
+        if (!file) {
+            file = SD.open(filename, FILE_APPEND);
+            Serial.println("Opening File! You have to pull trigger pin high to close file and be able to download the data.");
+            if (!file) {
+                Serial.println("Failed to open file for writing!");
+            }
+          }
+
+        if (file) {
+            file.printf("%.9f,%.9f,%.9f,%.9f,%.9f,%.9f,%.9f\n",
+                        now_s, // dt,
+                        imu_data.gyro_data[0]*dps_rating/32768.0 - calibGyroX,
+                        imu_data.gyro_data[1]*dps_rating/32768.0 - calibGyroY,
+                        imu_data.gyro_data[2]*dps_rating/32768.0 - calibGyroZ,
+                        imu_data.accel_data[0]*G_rating/32768.0 - calibAccelX,
+                        imu_data.accel_data[1]*G_rating/32768.0 - calibAccelY,
+                        imu_data.accel_data[2]*G_rating/32768.0 - calibAccelZ);
+        }
+    }
+    else { // recording stopped
+        if (file) {
+            file.close();   // close the file
+            file = File();  // reset to null so !file is true next time
+            Serial.println("Closing File");
+    }
   }
-  // imu_values[0] +=  imu_data.accel_data[0]*16.0/32768.0,
-  // imu_values[1] +=    imu_data.accel_data[1]*16.0/32768.0,
-  // imu_values[2] +=    imu_data.accel_data[2]*16.0/32768.0,
-  // imu_values[3] +=    imu_data.gyro_data[0]*2000.0/32768.0,
-  // imu_values[4] +=    imu_data.gyro_data[1]*2000.0/32768.0,
-  // imu_values[5] +=   imu_data.gyro_data[2]*2000.0/32768.0
-
 }
+
+
+
+/////////////////////////////////////////////////////////////////////////////////
+// Micros() of ESP32 ABsolute time
+// void loop() {
+//     server.handleClient();
+
+//     recording = (digitalRead(TRIGGER_PIN) == LOW);
+
+//     static File file;
+
+//     // Open file once at start of recording
+//     if (recording && !file) {
+//         file = SD.open(filename, FILE_APPEND);
+//         if (!file) {
+//             Serial.println("Failed to open file for writing!");
+//             return;
+//         }
+//     }
+
+//     // Write data if recording
+//     if (recording && file) {
+//         inv_imu_sensor_data_t imu_data;
+//         IMU.getDataFromRegisters(imu_data);
+
+//         unsigned long timestamp = micros(); // absolute time in microseconds
+
+//         file.printf("%lu,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f\n",
+//                     timestamp,
+//                     imu_data.gyro_data[0]*dps_rating/32768.0 - calibGyroX,
+//                     imu_data.gyro_data[1]*dps_rating/32768.0 - calibGyroY,
+//                     imu_data.gyro_data[2]*dps_rating/32768.0 - calibGyroZ,
+//                     imu_data.accel_data[0]*G_rating/32768.0 - calibAccelX,
+//                     imu_data.accel_data[1]*G_rating/32768.0 - calibAccelY,
+//                     imu_data.accel_data[2]*G_rating/32768.0 - calibAccelZ);
+//     }
+
+//     // Close file if recording stopped
+//     if (!recording && file) {
+//         file.close();
+//         file = File(); // reset handle
+//     }
+
+//     delay(1); // adjust delay to control sample rate
+// }
+/////////////////////////////////////////////////////////////////////////////////
