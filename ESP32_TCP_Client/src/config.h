@@ -12,7 +12,7 @@
  * Note: default MSS for ESPAsyncTCP is 536 byte and defualt ACK timeout is 5s.
 */
 
-#define SSID "ESP-TEST"
+#define SSID "ESP-TEST-DJ"
 #define PASSWORD "123456789"
 
 #define SERVER_HOST_NAME "192.168.4.2"  // IP address of TCP server (on PC)

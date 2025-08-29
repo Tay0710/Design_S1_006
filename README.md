@@ -2,7 +2,7 @@
 
 **Students Involved:**
 - Aidan	Wheller
-- Dorothy	Jong
+- Dorothy Jong
 - Emersyn Johnson
 - Owen Spicer
 - Samuel Dixon
