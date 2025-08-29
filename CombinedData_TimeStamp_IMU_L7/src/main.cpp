@@ -264,7 +264,6 @@ void logToF() {
 
 
 
-// GO FROM HERE CODE BELOW NOT COMPLETE!! 
 void loop() {
   server.handleClient(); // handle web requests
   
