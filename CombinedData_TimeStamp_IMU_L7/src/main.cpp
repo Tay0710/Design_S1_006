@@ -5,12 +5,25 @@
 #include <WebServer.h>
 #include <SD.h>
 #include <SPI.h>
-#include "ICM45686.h"
+#include <ICM45686.h>
 #include <SparkFun_VL53L5CX_Library.h> //http://librarymanager/All#SparkFun_VL53L5CX
+#include <Bitcraze_PMW3901.h>
+
+// Optical flow SPI pins
+#define SPI_CS 10
+#define SPI_MOSI 11
+#define SPI_CLK 12
+#define SPI_MISO 13
+#define RST 3
 
 SparkFun_VL53L5CX myImager;
 VL53L5CX_ResultsData measurementData; // Result data class structure, 1356 byes of RAM
 ICM456xx IMU(SPI, 5); // CS pin 5
+
+SPIClass SPI2(HSPI);
+Bitcraze_PMW3901 flow(SPI_CS); // CS pin 10
+
+char frame[35*35]; //array to hold the framebuffer
 
 int imageResolution = 0; // Used to pretty print output
 int imageWidth = 0;      // Used to pretty print output
@@ -20,7 +33,6 @@ bool recording = false;
 
 #define SD_CS 15  // Example CS pin for SD card
 
-
 #define AP_SSID "ESP32_Frames"
 #define AP_PASSWORD "12345678"
 
@@ -29,6 +41,7 @@ bool recording = false;
 WebServer server(80);
 const char* imuFile = "/imu_ICM45686.csv";
 const char* tofFile = "/tof_L7.csv";
+const char* ofFile = "/of_PMW3901.csv";
 
 // Calibration offsets
 float calibAccelX = 0, calibAccelY = 0, calibAccelZ = 0;
@@ -38,8 +51,10 @@ float calibGyroX  = 0, calibGyroY  = 0, calibGyroZ  = 0;
 // Timing control
 unsigned long lastIMUtime = 0;
 unsigned long lastTOFtime = 0;
+unsigned long lastOFtime = 0;
 const unsigned long imuInterval = 2000;    // microseconds → ~500 Hz
 const unsigned long tofInterval = 66000;   // microseconds → ~15 Hz
+const unsigned long ofInterval = 8300;   // microseconds → ~120 Hz
 
 // ---- Calibration function ----
 void calibrateIMU(int samples) {
@@ -99,7 +114,6 @@ void setup()
 
   pinMode(TRIGGER_PIN, INPUT_PULLUP); // pull HIGH internally
 
-
   // Start Wi-Fi AP
   WiFi.softAP(AP_SSID, AP_PASSWORD);
   Serial.print("AP started. Connect to: ");
@@ -107,7 +121,7 @@ void setup()
   Serial.print("IP: ");
   Serial.println(WiFi.softAPIP());
 
-// ICM45686 Begin
+  // ICM45686 Begin
   SPI.begin(18, 19, 23, 5); // SCK=18, MISO=19, MOSI=23, CS=5
   
   // --- SPI low-level WHO_AM_I test ---
@@ -140,6 +154,14 @@ void setup()
   Serial.println("Do Not move Drone while Calibrating the ICM.");
   calibrateIMU(1000);
 
+  // PMW3901 begin
+  SPI2.begin(SPI_CLK, SPI_MISO, SPI_MOSI, SPI_CS);
+  Serial.begin(115200);
+  flow.begin();
+  delay(100);
+
+  flow.enableFrameBuffer(); 
+
   // --- Initialize SD card (on same VSPI but with different CS) ---
   if (!SD.begin(SD_CS, SPI)) {
     Serial.println("SD init failed!");
@@ -149,7 +171,7 @@ void setup()
   // Init IMU CSV
   SD.remove(imuFile);
   File imu = SD.open(imuFile, FILE_WRITE);
-  imu.println("Timestamp(us),AccelX(g),AccelY(g),AccelZ(g),GyroX(dps),GyroY(dps),GyroZ(dps)");
+  imu.println("Timestamp(ms),AccelX(g),AccelY(g),AccelZ(g),GyroX(dps),GyroY(dps),GyroZ(dps)");
   imu.close();
 
   // Init ToF CSV
@@ -159,6 +181,14 @@ void setup()
   for(int i=0; i<16; i++) tof.print(",D"+String(i));
   tof.println();
   tof.close();
+
+  // Init OF CSV
+  SD.remove(ofFile);
+  File of = SD.open(ofFile, FILE_WRITE);
+  tof.print("time");
+  for(int i=0; i<1225; i++) of.print(",P"+String(i));
+  of.println();
+  of.close();
 
   // Serve web page with button
   server.on("/", HTTP_GET, []() {
@@ -179,13 +209,13 @@ void setup()
     else server.send(404, "text/plain", "ToF file not found");
   });
 
+  server.on("/download_of", HTTP_GET, []() {
+    File f = SD.open(ofFile);
+    if(f) { server.streamFile(f, "text/csv"); f.close(); }
+    else server.send(404, "text/plain", "OF file not found");
+  });
+
   server.begin();
-
-
-
-
-
-
 
   Wire.begin(); // This resets I2C bus to 100kHz
   Wire.setClock(1000000); //Sensor has max I2C freq of 1MHz
@@ -225,7 +255,6 @@ void logIMU() {
   inv_imu_sensor_data_t imu_data;
   IMU.getDataFromRegisters(imu_data);
 
-
   float ax = imu_data.accel_data[0]*16.0/32768.0 - calibAccelX;
   float ay = imu_data.accel_data[1]*16.0/32768.0 - calibAccelY;
   float az = imu_data.accel_data[2]*16.0/32768.0 - calibAccelZ;
@@ -233,10 +262,9 @@ void logIMU() {
   float gy = imu_data.gyro_data[1]*2000.0/32768.0 - calibGyroY;
   float gz = imu_data.gyro_data[2]*2000.0/32768.0 - calibGyroZ;
 
-
   File file = SD.open(imuFile, FILE_APPEND);
   if(file){
-    file.printf("%lu,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f\n", now, ax, ay, az, gx, gy, gz);
+    file.printf("%lu,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f\n", now/1000.0, ax, ay, az, gx, gy, gz);
     file.close();
   }
 }
@@ -249,7 +277,7 @@ void logToF() {
   if(myImager.isDataReady() && myImager.getRangingData(&measurementData)) {
     File file = SD.open(tofFile, FILE_APPEND);
     if(file){
-      file.print(now);
+      file.print(now/1000.0);
       for(int i = 0; i < myImager.getResolution(); i++){
         file.print(",");
         file.print(measurementData.distance_mm[i]);
@@ -261,7 +289,21 @@ void logToF() {
 }
 
 
+void logOF() {
+  unsigned long now = micros();
+  if (now - lastOFtime < ofInterval) return;  
+  lastOFtime = now;
 
+  flow.readFrameBuffer(frame);
+
+  File file = SD.open(ofFile, FILE_APPEND);
+  if(file){
+    for (int i = 0; i < 1225; i++) { // 1 frame of 1225 pixels (35*35)
+    file.printf("%d, ", frame[i]);
+    }
+    file.close();
+  }
+}
 
 
 void loop() {
@@ -272,5 +314,6 @@ void loop() {
 
   logIMU();
   logToF();
+  logOF();
 
 }
