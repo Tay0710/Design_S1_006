@@ -31,6 +31,61 @@ float  dps_rating = 15.625; // 15.625/31.25/62.5/125/250/500/1000/2000/4000 dps
 WebServer server(80);
 const char* filename = "/imu.csv";
 
+
+// Calibration offsets
+float calibAccelX = 0, calibAccelY = 0, calibAccelZ = 0;
+float calibGyroX  = 0, calibGyroY  = 0, calibGyroZ  = 0;
+
+void calibrateIMU(int samples) {
+  long sumAx = 0, sumAy = 0, sumAz = 0;
+  long sumGx = 0, sumGy = 0, sumGz = 0;
+
+  Serial.println("Starting IMU calibration...");
+
+  unsigned long startTime = millis();
+
+  for (int i = 0; i < samples; i++) {
+    inv_imu_sensor_data_t imu_data;
+    IMU.getDataFromRegisters(imu_data);
+
+    sumAx += imu_data.accel_data[0];
+    sumAy += imu_data.accel_data[1];
+    sumAz += imu_data.accel_data[2];
+    sumGx += imu_data.gyro_data[0];
+    sumGy += imu_data.gyro_data[1];
+    sumGz += imu_data.gyro_data[2];
+
+    delay(2); // ~500 Hz
+  }
+
+  unsigned long endTime = millis();
+  unsigned long duration = endTime - startTime;
+
+  float avgAx = (float)sumAx / samples;
+  float avgAy = (float)sumAy / samples;
+  float avgAz = (float)sumAz / samples;
+  float avgGx = (float)sumGx / samples;
+  float avgGy = (float)sumGy / samples;
+  float avgGz = (float)sumGz / samples;
+
+
+
+  calibAccelX = avgAx * G_rating / 32768.0;
+  calibAccelY = avgAy * G_rating / 32768.0;
+  calibAccelZ = avgAz * G_rating / 32768.0;
+  calibGyroX  = avgGx * dps_rating / 32768.0;
+  calibGyroY  = avgGy * dps_rating / 32768.0;
+  calibGyroZ  = avgGz * dps_rating / 32768.0;
+
+  Serial.println("Calibration complete:");
+  Serial.printf("Accel offsets: %.18f, %.18f, %.18f\n", calibAccelX, calibAccelY, calibAccelZ);
+  Serial.printf("Gyro  offsets: %.18f, %.18f, %.18f\n", calibGyroX, calibGyroY, calibGyroZ);
+  Serial.printf("Calibration took %lu ms (%lu samples at ~%lu Hz)\n",
+                duration, samples, (samples * 1000UL) / duration);
+}
+
+
+
 void setup() {
   Serial.begin(115200);
   delay(1000);
@@ -52,6 +107,7 @@ void setup() {
   IMU.startAccel(1600, G_rating);   // 100 Hz, ±16 g
   IMU.startGyro(1600, dps_rating);  // 100 Hz, ±2000 dps
 
+  
   // Initialize SD card on same SPI bus but different CS
   if (!SD.begin(SD_CS, SPI)) {
     Serial.println("SD init failed!");
@@ -81,6 +137,12 @@ void setup() {
     } else {
       server.send(404, "text/plain", "File not found");
     }
+
+
+  Serial.println("Do Not move Drone while Calibrating the ICM.");
+  calibrateIMU(1000);
+
+  Serial.println("Entering Loop");
   });
 
   server.begin();
@@ -97,14 +159,14 @@ void loop() {
 
   File file = SD.open(filename, FILE_APPEND);
   if(file) {
-    file.printf("%lu,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f\n",
-      micros(),
-      imu_data.gyro_data[0]*dps_rating/32768.0,
-      imu_data.gyro_data[1]*dps_rating/32768.0,
-      imu_data.gyro_data[2]*dps_rating/32768.0,
-      imu_data.accel_data[0]*G_rating/32768.0 ,
-      imu_data.accel_data[1]*G_rating/32768.0 ,
-      imu_data.accel_data[2]*G_rating/32768.0 
+    file.printf("%lu,%.18f,%.18f,%.18f,%.18f,%.18f,%.18f\n",
+      micros() / 1000000.0, // Seconds
+      imu_data.gyro_data[0]*dps_rating/32768.0 - calibGyroX,
+      imu_data.gyro_data[1]*dps_rating/32768.0 - calibGyroY,
+      imu_data.gyro_data[2]*dps_rating/32768.0 - calibGyroZ,
+      imu_data.accel_data[0]*G_rating/32768.0 - calibAccelX,
+      imu_data.accel_data[1]*G_rating/32768.0 - calibAccelY,
+      imu_data.accel_data[2]*G_rating/32768.0 - calibAccelZ
     );
     file.close();
   }
