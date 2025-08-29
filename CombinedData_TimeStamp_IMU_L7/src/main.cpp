@@ -269,7 +269,7 @@ void logIMU() {
 
   File file = SD.open(imuFile, FILE_APPEND);
   if(file){
-    file.printf("%lu,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f\n", now/1000.0, ax, ay, az, gx, gy, gz);
+    file.printf("%lu,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f\n", now/1000000.0, ax, ay, az, gx, gy, gz);
     file.close();
   }
 }
@@ -282,7 +282,7 @@ void logToF() {
   if(myImager.isDataReady() && myImager.getRangingData(&measurementData)) {
     File file = SD.open(tofFile, FILE_APPEND);
     if(file){
-      file.print(now/1000.0);
+      file.print(now/1000000.0);
       for(int i = 0; i < myImager.getResolution(); i++){
         file.print(",");
         file.print(measurementData.distance_mm[i]);
