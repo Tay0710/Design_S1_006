@@ -133,8 +133,8 @@ void setup()
   }
 
   // Configure accelerometer and gyro
-  IMU.startAccel(1600, 16);     // 100 Hz, ±2/4/8/16/32 g
-  IMU.startGyro(1600, 2000);    // 100 Hz, ±15.625/31.25/62.5/125/250/500/1000/2000/4000 dps
+  IMU.startAccel(1600, 4);     // 100 Hz, ±2/4/8/16/32 g
+  IMU.startGyro(1600, 125);    // 100 Hz, ±15.625/31.25/62.5/125/250/500/1000/2000/4000 dps
   // Data comes out of the IMU as steps from -32768 to +32768 representing the full scale range
 
   Serial.println("Do Not move Drone while Calibrating the ICM.");
