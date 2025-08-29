@@ -55,7 +55,7 @@ void calibrateIMU(int samples) {
     sumGy += imu_data.gyro_data[1];
     sumGz += imu_data.gyro_data[2];
 
-    delay(2); // ~500 Hz
+    // delay(2); // ~500 Hz
   }
 
   unsigned long endTime = millis();
@@ -138,14 +138,14 @@ void setup() {
       server.send(404, "text/plain", "File not found");
     }
 
+  });
+
+  server.begin();
 
   Serial.println("Do Not move Drone while Calibrating the ICM.");
   calibrateIMU(1000);
 
   Serial.println("Entering Loop");
-  });
-
-  server.begin();
 }
 
 void loop() {
@@ -160,7 +160,7 @@ void loop() {
   File file = SD.open(filename, FILE_APPEND);
   if(file) {
     file.printf("%lu,%.18f,%.18f,%.18f,%.18f,%.18f,%.18f\n",
-      micros() / 1000000.0, // Seconds
+      (micros() / 1000000.0), // Seconds
       imu_data.gyro_data[0]*dps_rating/32768.0 - calibGyroX,
       imu_data.gyro_data[1]*dps_rating/32768.0 - calibGyroY,
       imu_data.gyro_data[2]*dps_rating/32768.0 - calibGyroZ,
