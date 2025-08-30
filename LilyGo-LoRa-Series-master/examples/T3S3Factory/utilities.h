@@ -32,7 +32,7 @@
 // #define T_BEAM_S3_SUPREME_SX1262
 // #define T_BEAM_S3_SUPREME_LR1121
 
-// #define T3_S3_V1_2_SX1262
+#define T3_S3_V1_2_SX1262
 // #define T3_S3_V1_2_SX1276
 // #define T3_S3_V1_2_SX1278
 // #define T3_S3_V1_2_SX1280
