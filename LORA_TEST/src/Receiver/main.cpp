@@ -18,7 +18,7 @@
 
 // uncomment the following only on one
 // of the nodes to initiate the pings
-// #define INITIATING_NODE
+#define INITIATING_NODE
 
 // SX1262 has the following connections:
 // NSS pin:   10
@@ -105,6 +105,22 @@ void setup()
         }
     }
 
+    radio.setFrequency(915);
+    radio.setBandwidth(125);
+    radio.setSpreadingFactor(7);
+    radio.setCodingRate(5);
+    radio.setPreambleLength(8);
+    // TO DO: check if I need to set any other settings
+    // Update: currently working with these settings :)
+
+    /*
+    #define LORA_BANDWIDTH 0		// [0: 125 kHz, 1: 250 kHz, 2: 500 kHz, 3: Reserved]
+    #define LORA_SPREADING_FACTOR 7 // [SF7..SF12], SF7 is fastest, SF12 is slowest but greatest range and more robust
+    #define LORA_CODINGRATE 1		// [1: 4/5, 2: 4/6,  3: 4/7,  4: 4/8]
+    #define LORA_PREAMBLE_LENGTH 8	// Same for Tx and Rx
+    #define LORA_SYMBOL_TIMEOUT 0	// Symbols
+    */
+
     // set the function that will be called
     // when new packet is received
     radio.setDio1Action(setFlag);
@@ -141,6 +157,9 @@ void loop()
     {
         // reset flag
         operationDone = false;
+
+        Serial.print("Transmitting = ");
+        Serial.println(transmitFlag);
 
         if (transmitFlag)
         {

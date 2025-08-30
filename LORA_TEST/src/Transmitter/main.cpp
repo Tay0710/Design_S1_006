@@ -18,14 +18,33 @@
 
 // uncomment the following only on one
 // of the nodes to initiate the pings
-//#define INITIATING_NODE
+// #define INITIATING_NODE
 
 // SX1262 has the following connections:
 // NSS pin:   1
 // DIO1 pin:  2
 // NRST pin:  3
 // BUSY pin:  10
-SX1262 radio = new Module(1, 2, 3, 10);
+
+// For TTGO
+// #define RADIO_DIO1_PIN 2  // 2
+// #define RADIO_BUSY_PIN 3 // 3
+// #define RADIO_SCLK_PIN 12
+// #define RADIO_MISO_PIN 11
+// #define RADIO_MOSI_PIN 13
+// #define RADIO_CS_PIN 10
+// #define RADIO_RST_PIN 1
+
+// For ESP32 Dev kit
+#define RADIO_DIO1_PIN 21 // 2
+#define RADIO_BUSY_PIN 15 // 3
+#define RADIO_SCLK_PIN 18
+#define RADIO_MISO_PIN 19
+#define RADIO_MOSI_PIN 23
+#define RADIO_CS_PIN 5
+#define RADIO_RST_PIN 22
+
+SX1262 radio = new Module(RADIO_CS_PIN, RADIO_DIO1_PIN, RADIO_RST_PIN, RADIO_BUSY_PIN);
 
 // or detect the pinout automatically using RadioBoards
 // https://github.com/radiolib-org/RadioBoards
@@ -49,80 +68,126 @@ volatile bool operationDone = false;
 // IMPORTANT: this function MUST be 'void' type
 //            and MUST NOT have any arguments!
 #if defined(ESP8266) || defined(ESP32)
-  ICACHE_RAM_ATTR
+ICACHE_RAM_ATTR
 #endif
-void setFlag(void) {
+void setFlag(void)
+{
   // we sent or received a packet, set the flag
   operationDone = true;
 }
 
-void setup() {
-  Serial.begin(9600);
+void setupBoards()
+{
+  Serial.begin(115200);
+
+  while (!Serial);
+  delay(1000);
+
+  Serial.println("setupBoards");
+
+  // getChipInfo();
+
+  SPI.begin(RADIO_SCLK_PIN, RADIO_MISO_PIN, RADIO_MOSI_PIN); // This doesnt change anything for ESP32 but was required for LoRa TTGO?
+  
+
+  delay(1000);
+
+
+  Serial.println("init done . ");
+}
+
+void setup()
+{
+
+  setupBoards();
+
+  // When the power is turned on, a delay is required.
+  delay(1500);
+
+  //Serial.println(radio.setTCXO(3.3));
 
   // initialize SX1262 with default settings
   Serial.print(F("[SX1262] Initializing ... "));
   int state = radio.begin();
-  if (state == RADIOLIB_ERR_NONE) {
+  if (state == RADIOLIB_ERR_NONE)
+  {
     Serial.println(F("success!"));
-  } else {
+  }
+  else
+  {
     Serial.print(F("failed, code "));
     Serial.println(state);
-    while (true) { delay(10); }
+    while (true)
+    {
+      delay(10);
+    }
   }
 
   // set the function that will be called
   // when new packet is received
   radio.setDio1Action(setFlag);
 
-  #if defined(INITIATING_NODE)
-    // send the first packet on this node
-    Serial.print(F("[SX1262] Sending first packet ... "));
-    transmissionState = radio.startTransmit("Hello World!");
-    transmitFlag = true;
-  #else
-    // start listening for LoRa packets on this node
-    Serial.print(F("[SX1262] Starting to listen ... "));
-    state = radio.startReceive();
-    if (state == RADIOLIB_ERR_NONE) {
-      Serial.println(F("success!"));
-    } else {
-      Serial.print(F("failed, code "));
-      Serial.println(state);
-      while (true) { delay(10); }
+#if defined(INITIATING_NODE)
+  // send the first packet on this node
+  Serial.print(F("[SX1262] Sending first packet ... "));
+  transmissionState = radio.startTransmit("Hello World!");
+  transmitFlag = true;
+#else
+  // start listening for LoRa packets on this node
+  Serial.print(F("[SX1262] Starting to listen ... "));
+  state = radio.startReceive();
+  if (state == RADIOLIB_ERR_NONE)
+  {
+    Serial.println(F("success!"));
+  }
+  else
+  {
+    Serial.print(F("failed, code "));
+    Serial.println(state);
+    while (true)
+    {
+      delay(10);
     }
-  #endif
+  }
+#endif
 }
 
-void loop() {
+void loop()
+{
   // check if the previous operation finished
-  if(operationDone) {
+  if (operationDone)
+  {
     // reset flag
     operationDone = false;
 
-    if(transmitFlag) {
+    if (transmitFlag)
+    {
       // the previous operation was transmission, listen for response
       // print the result
-      if (transmissionState == RADIOLIB_ERR_NONE) {
+      if (transmissionState == RADIOLIB_ERR_NONE)
+      {
         // packet was successfully sent
         Serial.println(F("transmission finished!"));
-
-      } else {
+      }
+      else
+      {
         Serial.print(F("failed, code "));
         Serial.println(transmissionState);
-
       }
 
       // listen for response
       radio.startReceive();
       transmitFlag = false;
-
-    } else {
+    }
+    else
+    {
       // the previous operation was reception
       // print data and send another packet
       String str;
       int state = radio.readData(str);
 
-      if (state == RADIOLIB_ERR_NONE) {
+      if (state == RADIOLIB_ERR_NONE)
+      {
         // packet was successfully received
         Serial.println(F("[SX1262] Received packet!"));
 
@@ -139,7 +204,6 @@ void loop() {
         Serial.print(F("[SX1262] SNR:\t\t"));
         Serial.print(radio.getSNR());
         Serial.println(F(" dB"));
-
       }
 
       // wait a second before transmitting again
@@ -150,6 +214,5 @@ void loop() {
       transmissionState = radio.startTransmit("Hello World!");
       transmitFlag = true;
     }
-  
   }
 }
