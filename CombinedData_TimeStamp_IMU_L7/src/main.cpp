@@ -7,19 +7,17 @@
 #include <SparkFun_VL53L5CX_Library.h> //http://librarymanager/All#SparkFun_VL53L5CX
 #include <Bitcraze_PMW3901.h>
 
-// Optical flow SPI pins
-#define OF_CS 
-#define OF_MOSI 
-#define OF_CLK 
-#define OF_MISO 
-#define IMU_MOSI 19
+// Optical flow SPI pins (pins for Owen's ESP32)
+#define OF_CS 15
+#define OF_MOSI 13
+#define OF_CLK 14
+#define OF_MISO 12
+#define IMU_MOSI 23 // (19)
 #define IMU_CLK 18
-#define IMU_MISO 23
-#define SD_CS 15  // Example CS pin for SD card
+#define IMU_MISO 19 // (23)
+#define SD_CS 36  // Example CS pin for SD card
 #define IMU_CS 5  // Example CS pin for SD card
 #define TRIGGER_PIN 4  // use GPIO4 as SWITCH to turn on/off when the esp32 is recording data mode. When pulled LOW, RECORDING Starts. 
-#define 
-// SCK=18, MISO=19, MOSI=23, CS=5
 
 #define AP_SSID "ESP32_Frames"
 #define AP_PASSWORD "12345678"
@@ -127,14 +125,14 @@ void setup()
   SPI.begin(IMU_CLK, IMU_MISO, IMU_MOSI, IMU_CS);
   
   // --- SPI low-level WHO_AM_I test ---
-  pinMode(5, OUTPUT);
-  digitalWrite(5, HIGH); // CS high idle
+  pinMode(IMU_CS, OUTPUT);
+  digitalWrite(IMU_CS, HIGH); // CS high idle
 
   SPI.beginTransaction(SPISettings(1000000, MSBFIRST, SPI_MODE0));
-  digitalWrite(5, LOW); // select IMU
+  digitalWrite(IMU_CS, LOW); // select IMU
   SPI.transfer(0x75 | 0x80); // 0x75 = WHO_AM_I, 0x80 = read flag
   uint8_t who_am_i = SPI.transfer(0x00); // read data
-  digitalWrite(5, HIGH); // deselect
+  digitalWrite(IMU_CS, HIGH); // deselect
   SPI.endTransaction();
   Serial.print("WHO_AM_I = 0x");
   Serial.println(who_am_i, HEX);
