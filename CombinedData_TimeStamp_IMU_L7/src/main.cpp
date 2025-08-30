@@ -1,5 +1,3 @@
-
-
 #include <Wire.h>
 #include <WiFi.h>
 #include <WebServer.h>
@@ -10,34 +8,34 @@
 #include <Bitcraze_PMW3901.h>
 
 // Optical flow SPI pins
-#define SPI_CS 10
-#define SPI_MOSI 11
-#define SPI_CLK 12
-#define SPI_MISO 13
-#define RST 3
+#define OF_CS 
+#define OF_MOSI 
+#define OF_CLK 
+#define OF_MISO 
+#define IMU_MOSI 19
+#define IMU_CLK 18
+#define IMU_MISO 23
 #define SD_CS 15  // Example CS pin for SD card
 #define IMU_CS 5  // Example CS pin for SD card
 #define TRIGGER_PIN 4  // use GPIO4 as SWITCH to turn on/off when the esp32 is recording data mode. When pulled LOW, RECORDING Starts. 
+#define 
+// SCK=18, MISO=19, MOSI=23, CS=5
+
+#define AP_SSID "ESP32_Frames"
+#define AP_PASSWORD "12345678"
 
 SparkFun_VL53L5CX myImager;
 VL53L5CX_ResultsData measurementData; // Result data class structure, 1356 byes of RAM
-ICM456xx IMU(SPI, IMU_CS); // CS pin 5
+ICM456xx IMU(SPI, IMU_CS); 
 
 SPIClass SPI2(HSPI);
-Bitcraze_PMW3901 flow(SPI_CS); // CS pin 10
+Bitcraze_PMW3901 flow(OF_CS); // CS pin 10
 
 char frame[35*35]; //array to hold the framebuffer
 
 int imageResolution = 0; // Used to pretty print output
 int imageWidth = 0;      // Used to pretty print output
-
-
 bool recording = false;
-
-
-#define AP_SSID "ESP32_Frames"
-#define AP_PASSWORD "12345678"
-
 
 // Web server
 WebServer server(80);
@@ -93,8 +91,6 @@ void calibrateIMU(int samples) {
   float avgGy = (float)sumGy / samples;
   float avgGz = (float)sumGz / samples;
 
-
-
   calibAccelX = avgAx * G_rating / 32768.0;
   calibAccelY = avgAy * G_rating / 32768.0;
   calibAccelZ = avgAz * G_rating / 32768.0;
@@ -128,7 +124,7 @@ void setup()
   Serial.println(WiFi.softAPIP());
 
   // ICM45686 Begin
-  SPI.begin(18, 19, 23, 5); // SCK=18, MISO=19, MOSI=23, CS=5
+  SPI.begin(IMU_CLK, IMU_MISO, IMU_MOSI, IMU_CS);
   
   // --- SPI low-level WHO_AM_I test ---
   pinMode(5, OUTPUT);
@@ -162,7 +158,7 @@ void setup()
   calibrateIMU(1000);
 
   // PMW3901 begin
-  SPI2.begin(SPI_CLK, SPI_MISO, SPI_MOSI, SPI_CS);
+  SPI2.begin(OF_CLK, OF_MISO, OF_MOSI, OF_CS);
   Serial.begin(115200);
   flow.begin();
   delay(100);
