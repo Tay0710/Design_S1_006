@@ -70,6 +70,10 @@ const unsigned long imuInterval = 625;    // microseconds → ~1600 Hz
 const unsigned long tofInterval = 5000000;   // microseconds → ~15 Hz
 const unsigned long ofInterval = 10000000;   // microseconds → ~120 Hz
 
+char imuBuf[128];
+char tofBuf[512];
+char ofBuf[4096];
+
 // ---- Calibration function ----
 void calibrateIMU(int samples) {
   long sumAx = 0, sumAy = 0, sumAz = 0;
@@ -265,6 +269,40 @@ void setup()
   Serial.println("Wi-Fi Serving takes time. Record the data first, then stop the recording, then connect to the ESP32 AP and download the files. Otherwise will risk reducing data recording rate as the loop has to constantly check Wi-Fi client (Having No client - means it just checks which takes ~ tens of us)");
 }
 
+// Helper: append unsigned long to buffer, returns number of chars
+int appendULong(char* buf, unsigned long val) {
+    char temp[11]; // max 10 digits + null
+    int i = 0;
+    if(val == 0) {
+        buf[0] = '0';
+        return 1;
+    }
+    while(val > 0) {
+        temp[i++] = '0' + (val % 10);
+        val /= 10;
+    }
+    for(int j = 0; j < i; j++) buf[j] = temp[i - j - 1];
+    return i;
+}
+
+// Write timestamp in seconds.microseconds
+int appendTimestamp(char* buf, unsigned long micros_val) {
+    unsigned long seconds = micros_val / 1000000;
+    unsigned long us      = micros_val % 1000000;
+    int idx = 0;
+    idx += appendULong(buf + idx, seconds);
+    buf[idx++] = '.';
+    // Pad microseconds with leading zeros
+    int digits = 6;
+    char temp[6];
+    for(int i = 5; i >= 0; i--) {
+        temp[i] = '0' + (us % 10);
+        us /= 10;
+    }
+    for(int i = 0; i < 6; i++) buf[idx++] = temp[i];
+    return idx;
+}
+
 
 void logIMU() {
   unsigned long now = micros();
@@ -284,7 +322,9 @@ void logIMU() {
   float gy = imu_data.gyro_data[1]*dps_rating/32768.0 - calibGyroY;
   float gz = imu_data.gyro_data[2]*dps_rating/32768.0 - calibGyroZ;
 
-  imuFile.printf("%.9f,%.9f,%.9f,%.9f,%.9f,%.9f,%.9f\n", now/1000000.0, ax, ay, az, gx, gy, gz);
+  int idx = appendTimestamp(imuBuf, now);
+  idx += snprintf(imuBuf + idx, sizeof(imuBuf) - idx, ",%.9f,%.9f,%.9f,%.9f,%.9f,%.9f\n", ax, ay, az, gx, gy, gz);
+  imuFile.write((uint8_t*)imuBuf, idx);
   Serial.print("leaving_imu:");
   now = micros();
   Serial.printf("%.9f",now/1000000.0);
@@ -311,7 +351,6 @@ int intToStr(int val, char* buf) {
     return i;
 }
 
- char line[512];
 void logToF() {
     unsigned long now = micros();
     if (now - lastTOFtime < tofInterval) return;  
@@ -325,19 +364,13 @@ void logToF() {
           now = micros();
           Serial.printf("%.9f",now/1000000.0);
           Serial.println("");
-        int idx = 0;
-        idx = snprintf(line, sizeof(line), "%.9f", now / 1000000.0);
-
+        int idx = appendTimestamp(tofBuf, now); // write timestamp
         for(int i = 0; i < imageResolution; i++) {
-            line[idx++] = ',';                  // add comma
-            idx += intToStr(measurementData.distance_mm[i], line + idx); // fast int -> string
+            tofBuf[idx++] = ',';                  
+            idx += intToStr(measurementData.distance_mm[i], tofBuf + idx); // fast int -> string
         }
-
-        line[idx++] = '\n';
-        // line[idx] = 0;
-
-        tofFile.write((uint8_t*)line, idx);  // write raw bytes
-
+        tofBuf[idx++] = '\n';
+        tofFile.write((uint8_t*)tofBuf, idx);  // write raw bytes
     }
     Serial.print("       leaving_tof:");
     now = micros();
@@ -360,11 +393,17 @@ void logOF() {
     Serial.printf("%.9f",now/1000000.0);
     Serial.println("");
 
-    ofFile.printf("%.9f,", now/1000000.0); // timestamp in seconds
-    for (int i = 0; i < 1225; i++) {
-        ofFile.printf("%d,", frame[i]);
+    int idx = appendTimestamp(ofBuf, now);
+    ofBuf[idx++] = ','; // separator
+
+    for(int i = 0; i < 1225; i++) {
+        idx += intToStr(frame[i], ofBuf + idx);
+        ofBuf[idx++] = ',';
     }
-    ofFile.println();
+    ofBuf[idx++] = '\n';
+    ofFile.write((uint8_t*)ofBuf, idx);
+
+    
     Serial.print("      leaving_of:");
     now = micros();
     Serial.printf("%.9f",now/1000000.0);
