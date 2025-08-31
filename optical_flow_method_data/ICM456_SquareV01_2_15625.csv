@@ -1,3 +1,6 @@
+The rating it too low for it to pick up accurate changes. Limit is 2gs and 15.625 dps. 
+THis exceeds the 15.625dps limit. 
+
 time,gyro x,gyro y,gyro z,accel x,accel y,accel z
 30.474979401,-15.382057190,-5.882690430,9.200302124,0.055047363,-0.083288940,-0.008651972
 30.485084534,-16.289001465,-4.768798828,6.133285522,0.044061035,-0.132605347,-0.111435175
