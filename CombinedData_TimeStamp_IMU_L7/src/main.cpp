@@ -259,7 +259,7 @@ void setup()
 
   // Using 4x4, min frequency is 1Hz and max is 60Hz
   // Using 8x8, min frequency is 1Hz and max is 15Hz
-  myImager.setRangingFrequency(15);
+  myImager.setRangingFrequency(5);
   myImager.startRanging();
 
   Serial.println("Make sure the Trigger Pin is set to LOW, to initate recording of data. Or High to pause / prevent recording. This pin does not act as a reset of the files!");
@@ -307,12 +307,16 @@ void logToF() {
           now = micros();
           Serial.printf("%.9f",now/1000000.0);
           Serial.println("");
-          tofFile.printf("%.9f", now/1000000.0);
-        for(int i = 0; i < myImager.getResolution(); i++){
-            tofFile.print(",");
-            tofFile.print(measurementData.distance_mm[i]);
+        char line[512];
+        int idx = snprintf(line, sizeof(line), "%.9f", now/1000000.0);
+
+        for(int i = 0; i < myImager.getResolution(); i++) {
+           idx += snprintf(line+idx, sizeof(line)-idx, ",%d", measurementData.distance_mm[i]);
         }
-        tofFile.println();
+
+        snprintf(line+idx, sizeof(line)-idx, "\n");
+        tofFile.print(line);
+
     }
     Serial.print("       leaving_tof:");
     now = micros();
