@@ -10,9 +10,8 @@ import numpy
 # === Import sensor data ===
 data = numpy.genfromtxt("../optical_flow_method_data/icm456_still_2_15625.csv", delimiter=",", skip_header=1)
 
-timestamp_micro_s = data[:, 0]
-timestamp = timestamp_micro_s/1000000
-
+time_increments = data[:, 0]
+timestamp = numpy.cumsum(time_increments)
 gyroscope = data[:, 1:4]
 accelerometer = data[:, 4:7]
 
@@ -30,7 +29,7 @@ gyro_range = 2000
 accel_rej = 14
 mag_rej = 0
 rej_timeout = 3 * int(sample_rate)
-motion_threshold = 0.01
+motion_threshold = 0.001
 smoothing_margin = int(0.2 * sample_rate)
 
 ahrs.settings = imufusion.Settings(imufusion.CONVENTION_NWU,
