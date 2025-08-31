@@ -42,7 +42,6 @@ Bitcraze_PMW3901 flow(OF_CS);
 char frame[35*35]; //array to hold the framebuffer
 
 int imageResolution = 0; // Used to pretty print output
-bool recording = false;
 
 // Web server
 WebServer server(80);
@@ -138,30 +137,15 @@ void setup()
   Serial.print("IP: ");
   Serial.println(WiFi.softAPIP());
 
+  // VSPI Setup
+  SPI.begin(IMU_CLK, IMU_MISO, IMU_MOSI);
+
   // ICM45686 Begin
-  SPI.begin(IMU_CLK, IMU_MISO, IMU_MOSI, IMU_CS);
-  
-  // --- SPI low-level WHO_AM_I test ---
-  pinMode(IMU_CS, OUTPUT);
-  digitalWrite(IMU_CS, HIGH); // CS high idle
-
-  SPI.beginTransaction(SPISettings(1000000, MSBFIRST, SPI_MODE0));
-  digitalWrite(IMU_CS, LOW); // select IMU
-  SPI.transfer(0x75 | 0x80); // 0x75 = WHO_AM_I, 0x80 = read flag
-  uint8_t who_am_i = SPI.transfer(0x00); // read data
-  digitalWrite(IMU_CS, HIGH); // deselect
-  SPI.endTransaction();
-  Serial.print("WHO_AM_I = 0x");
-  Serial.println(who_am_i, HEX);
-  // -----------------------------------
-
-  // Initialize the IMU using the library
-  ret = IMU.begin();
-  if (ret != 0) {
-    Serial.print("ICM456xx initialization failed: ");
-    Serial.println(ret);
-    while(1);
+  if (IMU.begin() != 0) {
+    Serial.println("ICM456xx initialization failed");
+    while (1);
   }
+  
 
   // Configure accelerometer and gyro
   IMU.startAccel(1600, G_rating);     // Max 6400Hz; 100 Hz, ±2/4/8/16/32 g
@@ -172,9 +156,10 @@ void setup()
   calibrateIMU(1000);
 
   // PMW3901 begin
-  SPI.begin(IMU_CLK, IMU_MISO, IMU_MOSI, OF_CS);
-  Serial.println("a");
-  flow.begin();
+  if (!flow.begin()) {
+      Serial.println("PMW3901 initialization failed. Check wiring!");
+      while (1);  // stop if not found
+  }
   Serial.println("b");
   delay(100);
 
@@ -365,7 +350,7 @@ void logToF() {
           Serial.printf("%.9f",now/1000000.0);
           Serial.println("");
         int idx = appendTimestamp(tofBuf, now); // write timestamp
-        for(int i = 0; i < imageResolution; i++) {
+        for(int i = 0; i < 64; i++) { //8x8 = 64; 4x4 = 16
             tofBuf[idx++] = ',';                  
             idx += intToStr(measurementData.distance_mm[i], tofBuf + idx); // fast int -> string
         }
