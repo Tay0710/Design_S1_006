@@ -42,7 +42,6 @@ Bitcraze_PMW3901 flow(OF_CS);
 char frame[35*35]; //array to hold the framebuffer
 
 int imageResolution = 0; // Used to pretty print output
-int imageWidth = 0;      // Used to pretty print output
 bool recording = false;
 
 // Web server
@@ -255,7 +254,6 @@ void setup()
   myImager.setResolution(8*8); // Enable all 64 pads or 16 pads for 4x4 resolution
 
   imageResolution = myImager.getResolution(); // Query sensor for current resolution - either 4x4 or 8x8
-  imageWidth = sqrt(imageResolution);         // Calculate printing width
 
   // Using 4x4, min frequency is 1Hz and max is 60Hz
   // Using 8x8, min frequency is 1Hz and max is 15Hz
@@ -310,7 +308,7 @@ void logToF() {
         char line[512];
         int idx = snprintf(line, sizeof(line), "%.9f", now/1000000.0);
 
-        for(int i = 0; i < myImager.getResolution(); i++) {
+        for(int i = 0; i < imageResolution; i++) {
            idx += snprintf(line+idx, sizeof(line)-idx, ",%d", measurementData.distance_mm[i]);
         }
 

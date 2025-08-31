@@ -37,7 +37,7 @@ void setup()
 
   Serial.println("Clock Has been Set!");
 
- // myImager.setWireMaxPacketSize(128); // Increase default from 32 bytes to 128 - not supported on all platforms. Default is 32 bytes. 
+//  myImager.setWireMaxPacketSize(32); // Increase default from 32 bytes to 128 - not supported on all platforms. Default is 32 bytes. 
 
   Serial.println("Initializing sensor board. This can take up to 10s. Please wait.");
   if (myImager.begin() == false)
@@ -82,11 +82,11 @@ void loop()
       Serial.println();
 
       // Uncomment to display actual measurement rate
-      // measurements++;
-      // float measurementTime = (millis() - measurementStartTime) / 1000.0;
-      // Serial.print("rate: ");
-      // Serial.print(measurements / measurementTime, 3);
-      // Serial.println("Hz");
+      measurements++;
+      float measurementTime = (millis() - measurementStartTime) / 1000.0;
+      Serial.print("rate: ");
+      Serial.print(measurements / measurementTime, 3);
+      Serial.println("Hz");
     }
   }
 
