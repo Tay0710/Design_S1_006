@@ -305,15 +305,18 @@ void logToF() {
           now = micros();
           Serial.printf("%.9f",now/1000000.0);
           Serial.println("");
-        char line[512];
-        int idx = snprintf(line, sizeof(line), "%.9f", now/1000000.0);
+        int idx = 0;
+        idx = snprintf(line, sizeof(line), "%.9f", now / 1000000.0);
 
         for(int i = 0; i < imageResolution; i++) {
-           idx += snprintf(line+idx, sizeof(line)-idx, ",%d", measurementData.distance_mm[i]);
-        }
+          // Instead of snprintf, use simple itoa/itoa-like conversion:
+          idx += sprintf(line + idx, ",%d", measurementData.distance_mm[i]);
+          }
 
-        snprintf(line+idx, sizeof(line)-idx, "\n");
-        tofFile.print(line);
+        line[idx++] = '\n';
+        line[idx] = 0;
+
+        tofFile.write((uint8_t*)line, idx);  // write raw bytes
 
     }
     Serial.print("       leaving_tof:");
