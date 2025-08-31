@@ -18,7 +18,7 @@
 #include <Bitcraze_PMW3901.h>
 
 // Optical flow SPI pins (pins for Owen's ESP32)
-#define OF_CS 16 // Optical Flow CS pin
+#define OF_CS 17 // Optical Flow CS pin
 #define OF_MOSI 13
 #define OF_CLK 14
 #define OF_MISO 33
@@ -136,7 +136,7 @@ void setup()
   Serial.println(WiFi.softAPIP());
 
   // ICM45686 Begin
-  SPI.begin(V_CLK, V_MISO, V_MOSI, IMU_CS);
+  SPI.begin(IMU_CLK, IMU_MISO, IMU_MOSI, IMU_CS);
   
   // --- SPI low-level WHO_AM_I test ---
   pinMode(IMU_CS, OUTPUT);
@@ -166,16 +166,18 @@ void setup()
   IMU.startGyro(1600, dps_rating);    // 100 Hz, ±15.625/31.25/62.5/125/250/500/1000/2000/4000 dps
   // Data comes out of the IMU as steps from -32768 to +32768 representing the full scale range
 
-  Serial.println("Do Not move Drone while Calibrating the ICM.");
+  Serial.println("Do not move drone while calibrating the ICM.");
   calibrateIMU(1000);
 
   // PMW3901 begin
   SPI2.begin(OF_CLK, OF_MISO, OF_MOSI, OF_CS);
-  Serial.begin(115200);
+  Serial.println("a");
   flow.begin();
+  Serial.println("b");
   delay(100);
 
   flow.enableFrameBuffer(); 
+  Serial.println("c");
 
   // --- Initialize SD card (on same VSPI but with different CS) ---
   if (!SD.begin(SD_CS, SPI)) {
@@ -212,6 +214,7 @@ void setup()
       "<a href='/download_tof'><button>Download ToF CSV</button></a><br>"
     "<a href='/download_of'><button>Download OF CSV</button></a>");
   });
+  Serial.println("d");
 
   server.on("/download_imu", HTTP_GET, []() {
     File f = SD.open(imuFileName);
@@ -232,6 +235,7 @@ void setup()
   });
 
   server.begin();
+  Serial.println("e");
 
   Wire.begin(); // This resets I2C bus to 100kHz
   Wire.setClock(1000000); //Sensor has max I2C freq of 1MHz
@@ -247,6 +251,7 @@ void setup()
     while (1)
       ;
   }
+  Serial.println("f");
 
   myImager.setResolution(8*8); // Enable all 64 pads or 16 pads for 4x4 resolution
 
