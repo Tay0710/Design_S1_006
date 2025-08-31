@@ -41,6 +41,11 @@ const char* imuFileName = "/imu_ICM45686.csv";
 const char* tofFileName = "/tof_L7.csv";
 const char* ofFileName = "/of_PMW3901.csv";
 
+// Global file handles
+File imuFile;
+File tofFile;
+File ofFile;
+
 // Calibration offsets
 float calibAccelX = 0, calibAccelY = 0, calibAccelZ = 0;
 float calibGyroX  = 0, calibGyroY  = 0, calibGyroZ  = 0;
@@ -310,10 +315,6 @@ void logOF() {
 // This method opens all the files when trigger is set LOW. The files stay open until trigger is HIGH (or Not Low - it is pulled high internally)
 // This is to eliminate the time it takes to open and close the files each time for each sensor, which can make up few hundreds of us to low ms. 
 
-// Global file handles
-File imuFile;
-File tofFile;
-File ofFile;
 
 void loop() {
     server.handleClient();
