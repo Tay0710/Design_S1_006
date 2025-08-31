@@ -68,7 +68,7 @@ unsigned long lastIMUtime = 0;
 unsigned long lastTOFtime = 0;
 unsigned long lastOFtime = 0;
 const unsigned long imuInterval = 625;    // microseconds → ~1600 Hz
-const unsigned long tofInterval = 10000000;   // microseconds → ~15 Hz
+const unsigned long tofInterval = 5000000;   // microseconds → ~15 Hz
 const unsigned long ofInterval = 10000000;   // microseconds → ~120 Hz
 
 // ---- Calibration function ----
@@ -259,7 +259,7 @@ void setup()
 
   // Using 4x4, min frequency is 1Hz and max is 60Hz
   // Using 8x8, min frequency is 1Hz and max is 15Hz
-  myImager.setRangingFrequency(5);
+  myImager.setRangingFrequency(15);
   myImager.startRanging();
 
   Serial.println("Make sure the Trigger Pin is set to LOW, to initate recording of data. Or High to pause / prevent recording. This pin does not act as a reset of the files!");
