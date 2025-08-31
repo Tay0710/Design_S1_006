@@ -68,7 +68,7 @@ unsigned long lastTOFtime = 0;
 unsigned long lastOFtime = 0;
 const unsigned long imuInterval = 625;    // microseconds → ~1600 Hz
 const unsigned long tofInterval = 5000000;   // microseconds → ~15 Hz
-const unsigned long ofInterval = 10000000;   // microseconds → ~120 Hz
+const unsigned long ofInterval = 5000000;   // microseconds → ~120 Hz
 
 // ---- Calibration function ----
 void calibrateIMU(int samples) {
@@ -292,6 +292,8 @@ void logIMU() {
   // imuFile.flush(); // optional for safety -- check this out?
 }
 
+char line[512];
+
 void logToF() {
     unsigned long now = micros();
     if (now - lastTOFtime < tofInterval) return;  
@@ -340,11 +342,25 @@ void logOF() {
     Serial.printf("%.9f",now/1000000.0);
     Serial.println("");
 
-    ofFile.printf("%.9f,", now/1000000.0); // timestamp in seconds
+    char line[4096];  // buffer for one frame
+    int idx = 0;
+
+    // Add timestamp
+    idx = snprintf(line, sizeof(line), "%.9f", now / 1000000.0);
+
+    // Add each pixel value
     for (int i = 0; i < 1225; i++) {
-        ofFile.printf("%d,", frame[i]);
+        idx += sprintf(line + idx, ",%d", frame[i]);
+        if (idx >= sizeof(line) - 10) break; // safeguard
     }
-    ofFile.println();
+
+    // Add newline
+    line[idx++] = '\n';
+    line[idx] = 0;
+
+    // Write raw bytes to SD
+    ofFile.write((uint8_t*)line, idx);
+    
     Serial.print("      leaving_of:");
     now = micros();
     Serial.printf("%.9f",now/1000000.0);

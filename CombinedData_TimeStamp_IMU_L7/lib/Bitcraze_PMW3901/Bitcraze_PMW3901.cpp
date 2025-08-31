@@ -107,44 +107,44 @@ void Bitcraze_PMW3901::enableFrameBuffer()
 
 void Bitcraze_PMW3901::readFrameBuffer(char *FBuffer)
 {
-    // Wait until the frame is ready (bits 7:6 != 0x03)
-    uint8_t status;
-    do {
-        status = registerRead(0x58) >> 6;
-    } while (status == 0x03);
+  int count = 0;
+  uint8_t a; //temp value for reading register
+  uint8_t b; //temp value for second register
+  uint8_t hold; //holding value for checking bits
+  uint8_t mask = 0x0c; //mask to take bits 2 and 3 from b
+  uint8_t pixel = 0; //temp holding value for pixel
 
-    // Begin SPI transaction once for the full frame
-    SPI.beginTransaction(SPISettings(2000000, MSBFIRST, SPI_MODE3));
-    digitalWrite(_cs, LOW);
-
-    for (int i = 0; i < 1225; i++) {
-        uint8_t a, b;
-        uint8_t hold;
-
-        // Wait until valid pixel (upper 6 bits ready)
-        do {
-            a = SPI.transfer(0x58);  // read pixel register
-            hold = a >> 6;
-        } while (hold == 0x00 || hold == 0x03);
-
-        if (hold == 0x01) {
-            // Read lower 2 bits
-            b = SPI.transfer(0x58);
-            FBuffer[i] = (a << 2) | (b & 0x03);
-        }
-        else {
-            // For safety: ignore invalid pixels
-            FBuffer[i] = 0;
-        }
+  for (int ii = 0; ii < 1225; ii++) { //for 1 frame of 1225 pixels (35*35)
+    do { 
+      //if data is either invalid status
+      //check status bits 6 and 7
+      //if 01 move upper 6 bits into temp value
+      //if 00 or 11, reread
+      //else lower 2 bits into temp value
+      a = registerRead(0x58); //read register
+      hold = a >> 6; //right shift to leave top two bits for ease of check.
+    } while((hold == 0x03) || (hold == 0x00));
+    
+    if (hold == 0x01) { //if data is upper 6 bits
+      b = registerRead(0x58); //read next set to get lower 2 bits
+      pixel = a; //set pixel to a
+      pixel = pixel << 2; //push left to 7:2
+      pixel += (b & mask); //set lower 2 from b to 1:0
+      FBuffer[count++] = pixel; //put temp value in fbuffer array
+      //delayMicroseconds(100);
     }
+  }
+  registerWrite(0x70, 0x00);   //More magic? 
+  registerWrite(0x58, 0xFF);
 
-    digitalWrite(_cs, HIGH);
-    SPI.endTransaction();
+  int temp, check; 
 
-    // End-of-frame housekeeping
-    registerWrite(0x70, 0x00);
-    registerWrite(0x58, 0xFF);
+  do { //keep reading and testing
+    temp = registerRead(0x58); //read status register
+    check = temp>>6; //rightshift 6 bits so only top two stay 
+  } while(check == 0x03); //while bits aren't set denoting ready state
 }
+
 
 // Low level register access
 void Bitcraze_PMW3901::registerWrite(uint8_t reg, uint8_t value) {
