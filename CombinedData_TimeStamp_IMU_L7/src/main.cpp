@@ -1,3 +1,9 @@
+// Changes that can be made:
+// 1. Add timestamps to Optical Flow data (currently commented out)???
+// 2. Add Flush to force code out of buffer to SD Card, to prevent data loss. 
+// 3. Move OF onto VSPI, instead of HSPI
+// 4. Add Code for additional ToF L7 sensor on the same I2C bus (different address) - make one L7 4x4 (roof or floor) and one L7 8x8 (side wall). 
+
 #include <Wire.h>
 #include <WiFi.h>
 #include <WebServer.h>
