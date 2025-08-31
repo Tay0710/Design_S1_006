@@ -18,10 +18,10 @@
 #include <Bitcraze_PMW3901.h>
 
 // Optical flow SPI pins (pins for Owen's ESP32)
-#define OF_CS 17 // Optical Flow CS pin
-#define OF_MOSI 13
-#define OF_CLK 14
-#define OF_MISO 33
+#define OF_CS 15 // Optical Flow CS pin
+// #define OF_MOSI 13
+// #define OF_CLK 14
+// #define OF_MISO 33
 #define IMU_MOSI 23 // (19)
 #define IMU_CLK 18
 #define IMU_MISO 19 // (23)
@@ -36,7 +36,7 @@ SparkFun_VL53L5CX myImager;
 VL53L5CX_ResultsData measurementData; // Result data class structure, 1356 byes of RAM
 ICM456xx IMU(SPI, IMU_CS); 
 
-SPIClass SPI2(HSPI);
+// SPIClass SPI2(HSPI);
 Bitcraze_PMW3901 flow(OF_CS);
 
 char frame[35*35]; //array to hold the framebuffer
@@ -160,7 +160,6 @@ void setup()
     while(1);
   }
 
-
   // Configure accelerometer and gyro
   IMU.startAccel(1600, G_rating);     // Max 6400Hz; 100 Hz, ±2/4/8/16/32 g
   IMU.startGyro(1600, dps_rating);    // 100 Hz, ±15.625/31.25/62.5/125/250/500/1000/2000/4000 dps
@@ -170,7 +169,7 @@ void setup()
   calibrateIMU(1000);
 
   // PMW3901 begin
-  SPI2.begin(OF_CLK, OF_MISO, OF_MOSI, OF_CS);
+  SPI.begin(IMU_CLK, IMU_MISO, IMU_MOSI, OF_CS);
   Serial.println("a");
   flow.begin();
   Serial.println("b");
@@ -194,7 +193,7 @@ void setup()
   // Init ToF CSV
   SD.remove(tofFileName);
   File tof = SD.open(tofFileName, FILE_WRITE);
-  tof.print("Timestamp(us)");
+  tof.print("time");
   for(int i=0; i<16; i++) tof.print(",D"+String(i));
   tof.println();
   tof.close();
@@ -298,7 +297,7 @@ void logToF() {
     if (!tofFile) return;
 
     if(myImager.isDataReady() && myImager.getRangingData(&measurementData)) {
-        tofFile.print(now/1000000.0);
+        tofFile.printf("%.9f", now/1000000.0);
         for(int i = 0; i < myImager.getResolution(); i++){
             tofFile.print(",");
             tofFile.print(measurementData.distance_mm[i]);
@@ -316,8 +315,7 @@ void logOF() {
 
     flow.readFrameBuffer(frame);
 
-    // Do you want to add Timestamps to the Optical Flow? 
-    // ofFile.printf("%.9f,", now/1000000.0); // timestamp in seconds
+    ofFile.printf("%.9f,", now/1000000.0); // timestamp in seconds
     for (int i = 0; i < 1225; i++) {
         ofFile.printf("%d,", frame[i]);
     }
@@ -369,6 +367,7 @@ void loop() {
             ofFile = File();
         }
         Serial.println("Files closed, safe to download.");
+        while(digitalRead(TRIGGER_PIN) == HIGH){};
     }
 
 // Data is stored in RAM buffer temporarily before being written to SD card. Flushing forces the data being stored in the RAM buffer to be written to the SD card immediately.
