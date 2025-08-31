@@ -19,7 +19,7 @@ bool recording = false;
 // std::array<float, 6> imu_values = {0, 0, 0, 0, 0, 0};
 
 float  G_rating = 2;      // 2/4/8/16/32 g
-float  dps_rating = 15.625; // 15.625/31.25/62.5/125/250/500/1000/2000/4000 dps
+float  dps_rating = 62.5; // 15.625/31.25/62.5/125/250/500/1000/2000/4000 dps
 
 // Calibration values
 //  -0.015272462	0.009307082	1.006992415	0.754845671	-0.746207889	-0.116757765

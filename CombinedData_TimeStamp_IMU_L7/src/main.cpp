@@ -8,15 +8,15 @@
 #include <Bitcraze_PMW3901.h>
 
 // Optical flow SPI pins (pins for Owen's ESP32)
-#define OF_CS 15
+#define OF_CS 15 // Optical Flow CS pin
 #define OF_MOSI 13
 #define OF_CLK 14
 #define OF_MISO 12
-#define IMU_MOSI 23 // (19)
-#define IMU_CLK 18
-#define IMU_MISO 19 // (23)
+#define V_MOSI 23 // (19)
+#define V_CLK 18
+#define V_MISO 19 // (23)
 #define SD_CS 36  // Example CS pin for SD card
-#define IMU_CS 5  // Example CS pin for SD card
+#define IMU_CS 5  // Example CS pin for ICM-IMU
 #define TRIGGER_PIN 4  // use GPIO4 as SWITCH to turn on/off when the esp32 is recording data mode. When pulled LOW, RECORDING Starts. 
 
 #define AP_SSID "ESP32_Frames"
@@ -27,7 +27,7 @@ VL53L5CX_ResultsData measurementData; // Result data class structure, 1356 byes 
 ICM456xx IMU(SPI, IMU_CS); 
 
 SPIClass SPI2(HSPI);
-Bitcraze_PMW3901 flow(OF_CS); // CS pin 10
+Bitcraze_PMW3901 flow(OF_CS);
 
 char frame[35*35]; //array to hold the framebuffer
 
@@ -37,9 +37,9 @@ bool recording = false;
 
 // Web server
 WebServer server(80);
-const char* imuFile = "/imu_ICM45686.csv";
-const char* tofFile = "/tof_L7.csv";
-const char* ofFile = "/of_PMW3901.csv";
+const char* imuFileName = "/imu_ICM45686.csv";
+const char* tofFileName = "/tof_L7.csv";
+const char* ofFileName = "/of_PMW3901.csv";
 
 // Calibration offsets
 float calibAccelX = 0, calibAccelY = 0, calibAccelZ = 0;
@@ -76,7 +76,7 @@ void calibrateIMU(int samples) {
     sumGy += imu_data.gyro_data[1];
     sumGz += imu_data.gyro_data[2];
 
-    delay(2); // ~500 Hz
+    // delay(2); // ~500 Hz - Delay is not required (ignore CHATGPT suggestion)
   }
 
   unsigned long endTime = millis();
@@ -122,7 +122,7 @@ void setup()
   Serial.println(WiFi.softAPIP());
 
   // ICM45686 Begin
-  SPI.begin(IMU_CLK, IMU_MISO, IMU_MOSI, IMU_CS);
+  SPI.begin(V_CLK, V_MISO, V_MOSI, IMU_CS);
   
   // --- SPI low-level WHO_AM_I test ---
   pinMode(IMU_CS, OUTPUT);
@@ -148,7 +148,7 @@ void setup()
 
 
   // Configure accelerometer and gyro
-  IMU.startAccel(1600, G_rating);     // 100 Hz, ±2/4/8/16/32 g
+  IMU.startAccel(1600, G_rating);     // Max 6400Hz; 100 Hz, ±2/4/8/16/32 g
   IMU.startGyro(1600, dps_rating);    // 100 Hz, ±15.625/31.25/62.5/125/250/500/1000/2000/4000 dps
   // Data comes out of the IMU as steps from -32768 to +32768 representing the full scale range
 
@@ -170,22 +170,22 @@ void setup()
   }
 
   // Init IMU CSV
-  SD.remove(imuFile);
-  File imu = SD.open(imuFile, FILE_WRITE);
-  imu.println("Timestamp(ms),AccelX(g),AccelY(g),AccelZ(g),GyroX(dps),GyroY(dps),GyroZ(dps)");
+  SD.remove(imuFileName);
+  File imu = SD.open(imuFileName, FILE_WRITE);
+  imu.println("time,gyro x,gyro y,gyro z,accel x,accel y,accel z");
   imu.close();
 
   // Init ToF CSV
-  SD.remove(tofFile);
-  File tof = SD.open(tofFile, FILE_WRITE);
+  SD.remove(tofFileName);
+  File tof = SD.open(tofFileName, FILE_WRITE);
   tof.print("Timestamp(us)");
   for(int i=0; i<16; i++) tof.print(",D"+String(i));
   tof.println();
   tof.close();
 
   // Init OF CSV
-  SD.remove(ofFile);
-  File of = SD.open(ofFile, FILE_WRITE);
+  SD.remove(ofFileName);
+  File of = SD.open(ofFileName, FILE_WRITE);
   tof.print("time");
   for(int i=0; i<1225; i++) of.print(",P"+String(i));
   of.println();
@@ -195,23 +195,24 @@ void setup()
   server.on("/", HTTP_GET, []() {
     server.send(200, "text/html",       "<h1>ESP32 Data Logger</h1>"
       "<a href='/download_imu'><button>Download IMU CSV</button></a><br>"
-      "<a href='/download_tof'><button>Download ToF CSV</button></a>");
+      "<a href='/download_tof'><button>Download ToF CSV</button></a><br>"
+    "<a href='/download_of'><button>Download OF CSV</button></a>");
   });
 
   server.on("/download_imu", HTTP_GET, []() {
-    File f = SD.open(imuFile);
+    File f = SD.open(imuFileName);
     if(f) { server.streamFile(f, "text/csv"); f.close(); }
     else server.send(404, "text/plain", "IMU file not found");
   });
 
   server.on("/download_tof", HTTP_GET, []() {
-    File f = SD.open(tofFile);
+    File f = SD.open(tofFileName);
     if(f) { server.streamFile(f, "text/csv"); f.close(); }
     else server.send(404, "text/plain", "ToF file not found");
   });
 
   server.on("/download_of", HTTP_GET, []() {
-    File f = SD.open(ofFile);
+    File f = SD.open(ofFileName);
     if(f) { server.streamFile(f, "text/csv"); f.close(); }
     else server.send(404, "text/plain", "OF file not found");
   });
@@ -221,14 +222,14 @@ void setup()
   Wire.begin(); // This resets I2C bus to 100kHz
   Wire.setClock(1000000); //Sensor has max I2C freq of 1MHz
 
-  Serial.println("Clock Has been Set!");
+  Serial.println("Clock Has been Set for I2C!");
 
  // myImager.setWireMaxPacketSize(128); // Increase default from 32 bytes to 128 - not supported on all platforms. Default is 32 bytes. 
 
   Serial.println("Initializing sensor board. This can take up to 10s. Please wait.");
   if (myImager.begin() == false)
   {
-    Serial.println(F("Sensor not found - check your wiring. Freezing"));
+    Serial.println(F("ToF Sensor not found - check your wiring. Freezing"));
     while (1)
       ;
   }
@@ -243,8 +244,9 @@ void setup()
   myImager.setRangingFrequency(15);
   myImager.startRanging();
 
-  Serial.println("Make sure the TRigger Pin is set to LOW, when starting (e.g. RESTART)");
+  Serial.println("Make sure the Trigger Pin is set to LOW, to initate recording of data. Or High to pause / prevent recording. This pin does not act as a reset of the files!");
 
+  Serial.println("Wi-Fi Serving takes time. Record the data first, then stop the recording, then connect to the ESP32 AP and download the files. Otherwise will risk reducing data recording rate as the loop has to constantly check Wi-Fi client (Having No client - means it just checks which takes ~ tens of us)");
 }
 
 
@@ -252,6 +254,8 @@ void logIMU() {
   unsigned long now = micros();
   if (now - lastIMUtime < imuInterval) return;  
   lastIMUtime = now;
+
+  if (!imuFile) return; // if file is not open; skip!
 
   inv_imu_sensor_data_t imu_data;
   IMU.getDataFromRegisters(imu_data);
@@ -263,58 +267,97 @@ void logIMU() {
   float gy = imu_data.gyro_data[1]*dps_rating/32768.0 - calibGyroY;
   float gz = imu_data.gyro_data[2]*dps_rating/32768.0 - calibGyroZ;
 
-  File file = SD.open(imuFile, FILE_APPEND);
-  if(file){
-    file.printf("%lu,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f\n", now/1000000.0, ax, ay, az, gx, gy, gz);
-    file.close();
-  }
+  imuFile.printf("%.9f,%.9f,%.9f,%.9f,%.9f,%.9f,%.9f\n", now/1000000.0, ax, ay, az, gx, gy, gz);
+  // imuFile.flush(); // optional for safety -- check this out?
 }
 
 void logToF() {
-  unsigned long now = micros();
-  if (now - lastTOFtime < tofInterval) return;  
-  lastTOFtime = now;
+    unsigned long now = micros();
+    if (now - lastTOFtime < tofInterval) return;  
+    lastTOFtime = now;
 
-  if(myImager.isDataReady() && myImager.getRangingData(&measurementData)) {
-    File file = SD.open(tofFile, FILE_APPEND);
-    if(file){
-      file.print(now/1000000.0);
-      for(int i = 0; i < myImager.getResolution(); i++){
-        file.print(",");
-        file.print(measurementData.distance_mm[i]);
-      }
-      file.println();
-      file.close();
+    if (!tofFile) return;
+
+    if(myImager.isDataReady() && myImager.getRangingData(&measurementData)) {
+        tofFile.print(now/1000000.0);
+        for(int i = 0; i < myImager.getResolution(); i++){
+            tofFile.print(",");
+            tofFile.print(measurementData.distance_mm[i]);
+        }
+        tofFile.println();
     }
-  }
 }
-
 
 void logOF() {
-  unsigned long now = micros();
-  if (now - lastOFtime < ofInterval) return;  
-  lastOFtime = now;
+    unsigned long now = micros();
+    if (now - lastOFtime < ofInterval) return;  
+    lastOFtime = now;
 
-  flow.readFrameBuffer(frame);
+    if (!ofFile) return;
 
-  File file = SD.open(ofFile, FILE_APPEND);
-  if(file){
-    for (int i = 0; i < 1225; i++) { // 1 frame of 1225 pixels (35*35)
-    file.printf("%d, ", frame[i]);
+    flow.readFrameBuffer(frame);
+
+    // Do you want to add Timestamps to the Optical Flow? 
+    // ofFile.printf("%.9f,", now/1000000.0); // timestamp in seconds
+    for (int i = 0; i < 1225; i++) {
+        ofFile.printf("%d,", frame[i]);
     }
-    file.close();
-  }
+    ofFile.println();
 }
 
 
-void loop() {
-  server.handleClient(); // handle web requests
-  
-  recording = (digitalRead(TRIGGER_PIN) == LOW);
-  if (!recording) return; // If trigger is pulled HIGH, do not record data. 
 
-  logIMU();
-  logToF();
-  logOF();
+// This method opens all the files when trigger is set LOW. The files stay open until trigger is HIGH (or Not Low - it is pulled high internally)
+// This is to eliminate the time it takes to open and close the files each time for each sensor, which can make up few hundreds of us to low ms. 
+
+// Global file handles
+File imuFile;
+File tofFile;
+File ofFile;
+
+void loop() {
+    server.handleClient();
+
+    bool recording = (digitalRead(TRIGGER_PIN) == LOW);
+
+    if (recording) {
+        // --- Open files once when recording starts ---
+        if (!imuFile) {
+          imuFile = SD.open(imuFileName, FILE_APPEND);
+          tofFile = SD.open(tofFileName, FILE_APPEND);
+          ofFile = SD.open(ofFileName, FILE_APPEND);
+
+
+            Serial.println("Opening files for logging...");
+            if (!imuFile || !tofFile || !ofFile) {
+                Serial.println("Failed to open one or more files!");
+            }
+        }
+
+        // --- Write data ---
+        logIMU();   // writes to imuFile
+        logToF();   // writes to tofFile
+        logOF();    // writes to ofFile
+    } 
+    else {
+        // --- Close files once when recording stops ---
+        if (imuFile) {
+            imuFile.close();
+            imuFile = File(); // reset handle
+        }
+        if (tofFile) {
+            tofFile.close();
+            tofFile = File();
+        }
+        if (ofFile) {
+            ofFile.close();
+            ofFile = File();
+        }
+        Serial.println("Files closed, safe to download.");
+    }
+
+// Data is stored in RAM buffer temporarily before being written to SD card. Flushing forces the data being stored in the RAM buffer to be written to the SD card immediately.
+// Frequent flushing can reduce data logging rate as it takes time to write to SD card, but flushing prevents data loss in case of power failure or unexpected reset.
+// Investigate this. 
 
 }
