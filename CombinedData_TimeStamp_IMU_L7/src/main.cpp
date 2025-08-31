@@ -319,81 +319,92 @@ void logIMU() {
 
 // Fast integer to string conversion, returns number of chars written
 int intToStr(int val, char* buf) {
-    char temp[6]; // max 3500 -> 4 digits + null
-    int i = 0;
-    if(val == 0) {
-        buf[0] = '0';
-        return 1;
-    }
-    while(val > 0) {
-        temp[i++] = '0' + (val % 10);
-        val /= 10;
-    }
-    // reverse
-    for(int j = 0; j < i; j++) {
-        buf[j] = temp[i - j - 1];
-    }
-    return i;
+  char temp[6]; // max 3500 -> 4 digits + null
+  int i = 0;
+  if(val == 0) {
+      buf[0] = '0';
+      return 1;
+  }
+  while(val > 0) {
+      temp[i++] = '0' + (val % 10);
+      val /= 10;
+  }
+  // reverse
+  for(int j = 0; j < i; j++) {
+      buf[j] = temp[i - j - 1];
+  }
+  return i;
 }
 
 void logToF() {
-    unsigned long now = micros();
-    if (now - lastTOFtime < tofInterval) return;  
-    lastTOFtime = now;
-    Serial.print("entering_tof:");
-    Serial.printf("%.9f",now/1000000.0);
-    if (!tofFile) return;
+  unsigned long now = micros();
+  if (now - lastTOFtime < tofInterval) return;  
+  lastTOFtime = now;
+  Serial.print("entering_tof:");
+  Serial.printf("%.9f",now/1000000.0);
+  if (!tofFile) return;
 
-    if(myImager.isDataReady() && myImager.getRangingData(&measurementData)) {
-          Serial.print("      read:");
-          now = micros();
-          Serial.printf("%.9f",now/1000000.0);
-          Serial.println("");
-        int idx = appendTimestamp(tofBuf, now); // write timestamp
-        for(int i = 0; i < 64; i++) { //8x8 = 64; 4x4 = 16
-            tofBuf[idx++] = ',';                  
-            idx += intToStr(measurementData.distance_mm[i], tofBuf + idx); // fast int -> string
-        }
-        tofBuf[idx++] = '\n';
-        tofFile.write((uint8_t*)tofBuf, idx);  // write raw bytes
-    }
-    Serial.print("       leaving_tof:");
-    now = micros();
-    Serial.printf("%.9f",now/1000000.0);
-    Serial.println("");
+  if(myImager.isDataReady() && myImager.getRangingData(&measurementData)) {
+        Serial.print("      read:");
+        now = micros();
+        Serial.printf("%.9f",now/1000000.0);
+        Serial.println("");
+      int idx = appendTimestamp(tofBuf, now); // write timestamp
+      for(int i = 0; i < 64; i++) { //8x8 = 64; 4x4 = 16
+          tofBuf[idx++] = ',';                  
+          idx += intToStr(measurementData.distance_mm[i], tofBuf + idx); // fast int -> string
+      }
+      tofBuf[idx++] = '\n';
+      tofFile.write((uint8_t*)tofBuf, idx);  // write raw bytes
+  }
+  Serial.print("       leaving_tof:");
+  now = micros();
+  Serial.printf("%.9f",now/1000000.0);
+  Serial.println("");
 }
 
 void logOF() {
-    unsigned long now = micros();
-    if (now - lastOFtime < ofInterval) return;  
-    lastOFtime = now;
-    Serial.print("entering_of:");
-    Serial.printf("%.9f",now/1000000.0);
+  unsigned long now = micros();
+  if (now - lastOFtime < ofInterval) return;  
+  lastOFtime = now;
 
-    if (!ofFile) return;
+  Serial.print("entering_of:");
+  Serial.printf("%.9f", now / 1000000.0);
 
-    flow.readFrameBuffer(frame);
-    Serial.print("      read:");
-    now = micros();
-    Serial.printf("%.9f",now/1000000.0);
-    Serial.println("");
+  if (!ofFile) return;
 
-    int idx = appendTimestamp(ofBuf, now);
-    ofBuf[idx++] = ','; // separator
+  flow.readFrameBuffer(frame);
 
-    for(int i = 0; i < 1225; i++) {
-        idx += intToStr(frame[i], ofBuf + idx);
-        ofBuf[idx++] = ',';
-    }
-    ofBuf[idx++] = '\n';
-    ofFile.write((uint8_t*)ofBuf, idx);
+  Serial.print("      read:");
+  now = micros();
+  Serial.printf("%.9f", now / 1000000.0);
+  Serial.println("");
 
-    
-    Serial.print("      leaving_of:");
-    now = micros();
-    Serial.printf("%.9f",now/1000000.0);
-    Serial.println("");
+  char line[4096];  // buffer for one frame
+  int idx = 0;
+
+  // Add timestamp
+  idx = snprintf(line, sizeof(line), "%.9f", now / 1000000.0);
+
+  // Add each pixel value
+  for (int i = 0; i < 1225; i++) {
+      idx += sprintf(line + idx, ",%d", frame[i]);
+      if (idx >= sizeof(line) - 10) break; // safeguard
   }
+
+  // Add newline
+  line[idx++] = '\n';
+  line[idx] = 0;
+
+  // Write raw bytes to SD
+  ofFile.write((uint8_t*)line, idx);
+
+  Serial.print("      leaving_of:");
+  now = micros();
+  Serial.printf("%.9f", now / 1000000.0);
+  Serial.println("");
+}
+
 
 
 
