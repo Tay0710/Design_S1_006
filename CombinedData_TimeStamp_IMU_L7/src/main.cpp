@@ -8,16 +8,16 @@
 #include <Bitcraze_PMW3901.h>
 
 // Optical flow SPI pins (pins for Owen's ESP32)
-#define OF_CS 15
+#define OF_CS 16
 #define OF_MOSI 13
 #define OF_CLK 14
-#define OF_MISO 12
+#define OF_MISO 33
 #define IMU_MOSI 23 // (19)
 #define IMU_CLK 18
 #define IMU_MISO 19 // (23)
-#define SD_CS 36  // Example CS pin for SD card
+#define SD_CS 32  // (36) Example CS pin for SD card
 #define IMU_CS 5  // Example CS pin for SD card
-#define TRIGGER_PIN 4  // use GPIO4 as SWITCH to turn on/off when the esp32 is recording data mode. When pulled LOW, RECORDING Starts. 
+#define TRIGGER_PIN 25 // (4) use GPIO4 as SWITCH to turn on/off when the esp32 is recording data mode. When pulled LOW, RECORDING Starts. 
 
 #define AP_SSID "ESP32_Frames"
 #define AP_PASSWORD "12345678"
@@ -110,7 +110,6 @@ void setup()
 
   Serial.begin(115200);
   delay(1000);
-  Serial.println("SparkFun VL53L5CX Imager Example");
 
   pinMode(TRIGGER_PIN, INPUT_PULLUP); // pull HIGH internally
 
