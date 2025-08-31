@@ -67,9 +67,9 @@ float  dps_rating = 125; // 15.625/31.25/62.5/125/250/500/1000/2000/4000 dps
 unsigned long lastIMUtime = 0;
 unsigned long lastTOFtime = 0;
 unsigned long lastOFtime = 0;
-const unsigned long imuInterval = 2000;    // microseconds → ~500 Hz
-const unsigned long tofInterval = 66000;   // microseconds → ~15 Hz
-const unsigned long ofInterval = 8300;   // microseconds → ~120 Hz
+const unsigned long imuInterval = 625;    // microseconds → ~1600 Hz
+const unsigned long tofInterval = 10000000;   // microseconds → ~15 Hz
+const unsigned long ofInterval = 10000000;   // microseconds → ~120 Hz
 
 // ---- Calibration function ----
 void calibrateIMU(int samples) {
@@ -272,7 +272,8 @@ void logIMU() {
   unsigned long now = micros();
   if (now - lastIMUtime < imuInterval) return;  
   lastIMUtime = now;
-
+  Serial.print("entering_imu:");
+  Serial.printf("%.9f",now/1000000.0);
   if (!imuFile) return; // if file is not open; skip!
 
   inv_imu_sensor_data_t imu_data;
@@ -286,6 +287,10 @@ void logIMU() {
   float gz = imu_data.gyro_data[2]*dps_rating/32768.0 - calibGyroZ;
 
   imuFile.printf("%.9f,%.9f,%.9f,%.9f,%.9f,%.9f,%.9f\n", now/1000000.0, ax, ay, az, gx, gy, gz);
+  Serial.print("leaving_imu:");
+  now = micros();
+  Serial.printf("%.9f",now/1000000.0);
+  Serial.println("");
   // imuFile.flush(); // optional for safety -- check this out?
 }
 
@@ -293,34 +298,53 @@ void logToF() {
     unsigned long now = micros();
     if (now - lastTOFtime < tofInterval) return;  
     lastTOFtime = now;
-
+    Serial.print("entering_tof:");
+    Serial.printf("%.9f",now/1000000.0);
     if (!tofFile) return;
 
     if(myImager.isDataReady() && myImager.getRangingData(&measurementData)) {
-        tofFile.printf("%.9f", now/1000000.0);
+          Serial.print("      read:");
+          now = micros();
+          Serial.printf("%.9f",now/1000000.0);
+          Serial.println("");
+          tofFile.printf("%.9f", now/1000000.0);
         for(int i = 0; i < myImager.getResolution(); i++){
             tofFile.print(",");
             tofFile.print(measurementData.distance_mm[i]);
         }
         tofFile.println();
     }
+    Serial.print("       leaving_tof:");
+    now = micros();
+    Serial.printf("%.9f",now/1000000.0);
+    Serial.println("");
 }
 
 void logOF() {
     unsigned long now = micros();
     if (now - lastOFtime < ofInterval) return;  
     lastOFtime = now;
+    Serial.print("entering_of:");
+    Serial.printf("%.9f",now/1000000.0);
 
     if (!ofFile) return;
 
     flow.readFrameBuffer(frame);
+    Serial.print("      read:");
+    now = micros();
+    Serial.printf("%.9f",now/1000000.0);
+    Serial.println("");
 
     ofFile.printf("%.9f,", now/1000000.0); // timestamp in seconds
     for (int i = 0; i < 1225; i++) {
         ofFile.printf("%d,", frame[i]);
     }
     ofFile.println();
-}
+    Serial.print("      leaving_of:");
+    now = micros();
+    Serial.printf("%.9f",now/1000000.0);
+    Serial.println("");
+  }
 
 
 
@@ -365,9 +389,8 @@ void loop() {
         if (ofFile) {
             ofFile.close();
             ofFile = File();
+            Serial.println("Files closed, safe to download.");
         }
-        Serial.println("Files closed, safe to download.");
-        while(digitalRead(TRIGGER_PIN) == HIGH){};
     }
 
 // Data is stored in RAM buffer temporarily before being written to SD card. Flushing forces the data being stored in the RAM buffer to be written to the SD card immediately.
