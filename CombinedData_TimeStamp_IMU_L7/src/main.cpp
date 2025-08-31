@@ -291,6 +291,26 @@ void logIMU() {
   Serial.println("");
   // imuFile.flush(); // optional for safety -- check this out?
 }
+
+// Fast integer to string conversion, returns number of chars written
+int intToStr(int val, char* buf) {
+    char temp[6]; // max 3500 -> 4 digits + null
+    int i = 0;
+    if(val == 0) {
+        buf[0] = '0';
+        return 1;
+    }
+    while(val > 0) {
+        temp[i++] = '0' + (val % 10);
+        val /= 10;
+    }
+    // reverse
+    for(int j = 0; j < i; j++) {
+        buf[j] = temp[i - j - 1];
+    }
+    return i;
+}
+
  char line[512];
 void logToF() {
     unsigned long now = micros();
@@ -309,12 +329,12 @@ void logToF() {
         idx = snprintf(line, sizeof(line), "%.9f", now / 1000000.0);
 
         for(int i = 0; i < imageResolution; i++) {
-          // Instead of snprintf, use simple itoa/itoa-like conversion:
-          idx += sprintf(line + idx, ",%d", measurementData.distance_mm[i]);
-          }
+            line[idx++] = ',';                  // add comma
+            idx += intToStr(measurementData.distance_mm[i], line + idx); // fast int -> string
+        }
 
         line[idx++] = '\n';
-        line[idx] = 0;
+        // line[idx] = 0;
 
         tofFile.write((uint8_t*)line, idx);  // write raw bytes
 
