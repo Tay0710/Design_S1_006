@@ -200,7 +200,7 @@ void setup()
   // Init OF CSV
   SD.remove(ofFileName);
   File of = SD.open(ofFileName, FILE_WRITE);
-  tof.print("time");
+  of.print("time");
   for(int i=0; i<1225; i++) of.print(",P"+String(i));
   of.println();
   of.close();
@@ -291,7 +291,7 @@ void logIMU() {
   Serial.println("");
   // imuFile.flush(); // optional for safety -- check this out?
 }
-
+ char line[512];
 void logToF() {
     unsigned long now = micros();
     if (now - lastTOFtime < tofInterval) return;  
