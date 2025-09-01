@@ -6,11 +6,15 @@
 
 // Use VSPI for both IMU and SD card
 #define IMU_CS   5   // IMU CS pin
-#define SD_CS    15  // SD card CS pin
+#define SD_CS    32  // SD card CS pin
+#define IMU_MOSI 23 // (19)
+#define IMU_CLK 18
+#define IMU_MISO 19 // (23)
 
 ICM456xx IMU(SPI, IMU_CS);
 
-#define TRIGGER_PIN 4
+#define TRIGGER_PIN 25
+
 #define AP_SSID "ESP32_Frames"
 #define AP_PASSWORD "12345678"
 
@@ -19,7 +23,7 @@ bool recording = false;
 // std::array<float, 6> imu_values = {0, 0, 0, 0, 0, 0};
 
 float  G_rating = 2;      // 2/4/8/16/32 g
-float  dps_rating = 62.5; // 15.625/31.25/62.5/125/250/500/1000/2000/4000 dps
+float  dps_rating = 125; // 15.625/31.25/62.5/125/250/500/1000/2000/4000 dps
 
 // Calibration values
 //  -0.015272462	0.009307082	1.006992415	0.754845671	-0.746207889	-0.116757765
@@ -97,7 +101,9 @@ void setup() {
   Serial.printf("AP started. Connect to: %s\nIP: %s\n", AP_SSID, WiFi.softAPIP().toString().c_str());
 
   // Initialize VSPI
-  SPI.begin(18, 19, 23); // SCK=18, MISO=19, MOSI=23
+  // SPI.begin(18, 19, 23); // SCK=18, MISO=19, MOSI=23
+  SPI.begin(IMU_CLK, IMU_MISO, IMU_MOSI);
+
 
   // Initialize IMU
   if (IMU.begin() != 0) {
@@ -151,7 +157,6 @@ void setup() {
 static File file;  // persistent across loop() calls
 
 void loop() {
-    server.handleClient();
 
     recording = (digitalRead(TRIGGER_PIN) == LOW);
 
@@ -188,6 +193,8 @@ void loop() {
         }
     }
     else { // recording stopped
+      server.handleClient();
+
         if (file) {
             file.close();   // close the file
             file = File();  // reset to null so !file is true next time
