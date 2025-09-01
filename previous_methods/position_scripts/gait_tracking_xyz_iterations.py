@@ -5,7 +5,7 @@ import matplotlib.pyplot as pyplot
 import numpy
 
 # === Import sensor data ===
-data = numpy.genfromtxt("../sensor_logs/ICM20948/2025-08-08 19-14-49.csv", delimiter=",", skip_header=1)
+data = numpy.genfromtxt("../optical_flow_method_data/ICM456XX_Rect.csv", delimiter=",", skip_header=1)
 
 timestamp     = data[:, 0]
 gyroscope     = data[:, 1:4]

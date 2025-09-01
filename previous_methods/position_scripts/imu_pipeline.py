@@ -13,7 +13,7 @@ import csv
 # =========================
 # Config / Paths
 # =========================
-CSV_PATH = "../sensor_logs/2025-08-08 19-14-49.csv"   # change to your logger's file
+CSV_PATH = "../optical_flow_method_data/ICM456XX_Rect.csv"   # change to your logger's file
 HAS_HEADER = True
 # Column order if no header: [time, gx, gy, gz, ax, ay, az]
 TIME_COL = 0; GYR_COLS = (1,2,3); ACC_COLS = (4,5,6)
