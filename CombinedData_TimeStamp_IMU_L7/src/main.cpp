@@ -19,12 +19,12 @@
 
 // Optical flow SPI pins (pins for Owen's ESP32)
 #define OF_CS 15 // Optical Flow CS pin
-// #define OF_MOSI 13
-// #define OF_CLK 14
-// #define OF_MISO 33
-#define IMU_MOSI 23 // (19)
-#define IMU_CLK 18
-#define IMU_MISO 19 // (23)
+#define HSPI_MOSI 13
+#define HSPI_CLK 14
+#define HSPI_MISO 33
+#define VSPI_MOSI 23 // (19)
+#define VSPI_CLK 18
+#define VSPI_MISO 19 // (23)
 #define SD_CS 32  // (36) Example CS pin for SD card
 #define IMU_CS 5  // Example CS pin for SD card
 #define TRIGGER_PIN 25 // (4) use GPIO4 as SWITCH to turn on/off when the esp32 is recording data mode. When pulled LOW, RECORDING Starts. 
@@ -34,9 +34,9 @@
 
 SparkFun_VL53L5CX myImager;
 VL53L5CX_ResultsData measurementData; // Result data class structure, 1356 byes of RAM
-ICM456xx IMU(SPI, IMU_CS); 
 
-// SPIClass SPI2(HSPI);
+SPIClass hspi(HSPI);
+ICM456xx IMU(hspi, IMU_CS); 
 Bitcraze_PMW3901 flow(OF_CS);
 
 char frame[35*35]; //array to hold the framebuffer
@@ -68,7 +68,6 @@ unsigned long lastOFtime = 0;
 const unsigned long imuInterval = 625;    // microseconds → ~1600 Hz
 const unsigned long tofInterval = 5000000;   // microseconds → ~15 Hz // Side Tof should be every 0.25s and Roof/ Floor ToF should be every 0.5s. 
 const unsigned long ofInterval = 10000000;   // microseconds → ~120 Hz
-
 
 char imuBuf[128];
 char tofBuf[512];
@@ -138,8 +137,9 @@ void setup()
   Serial.print("IP: ");
   Serial.println(WiFi.softAPIP());
 
-  // VSPI Setup
-  SPI.begin(IMU_CLK, IMU_MISO, IMU_MOSI);
+  // SPI Setup
+  hspi.begin(VSPI_CLK, VSPI_MISO, VSPI_MOSI);
+  SPI.begin(HSPI_CLK, HSPI_MISO, HSPI_MOSI);
 
   // ICM45686 Begin
   if (IMU.begin() != 0) {
@@ -168,7 +168,7 @@ void setup()
   Serial.println("c");
 
   // --- Initialize SD card (on same VSPI but with different CS) ---
-  if (!SD.begin(SD_CS, SPI)) {
+  if (!SD.begin(SD_CS, hspi)) {
     Serial.println("SD init failed!");
     while (1);
   }
@@ -294,8 +294,8 @@ void logIMU() {
   unsigned long now = micros();
   if (now - lastIMUtime < imuInterval) return;  
   lastIMUtime = now;
-  Serial.print("entering_imu:");
-  Serial.printf("%.9f",now/1000000.0);
+  // Serial.print("entering_imu:");
+  // Serial.printf("%.9f",now/1000000.0);
   if (!imuFile) return; // if file is not open; skip!
 
   inv_imu_sensor_data_t imu_data;
@@ -311,10 +311,10 @@ void logIMU() {
   int idx = appendTimestamp(imuBuf, now);
   idx += snprintf(imuBuf + idx, sizeof(imuBuf) - idx, ",%.9f,%.9f,%.9f,%.9f,%.9f,%.9f\n", ax, ay, az, gx, gy, gz);
   imuFile.write((uint8_t*)imuBuf, idx);
-  Serial.print("leaving_imu:");
-  now = micros();
-  Serial.printf("%.9f",now/1000000.0);
-  Serial.println("");
+  // Serial.print("leaving_imu:");
+  // now = micros();
+  // Serial.printf("%.9f",now/1000000.0);
+  // Serial.println("");
   // imuFile.flush(); // optional for safety -- check this out?
 }
 
@@ -341,15 +341,15 @@ void logToF() {
   unsigned long now = micros();
   if (now - lastTOFtime < tofInterval) return;  
   lastTOFtime = now;
-  Serial.print("entering_tof:");
-  Serial.printf("%.9f",now/1000000.0);
+  // Serial.print("entering_tof:");
+  // Serial.printf("%.9f",now/1000000.0);
   if (!tofFile) return;
 
   if(myImager.isDataReady() && myImager.getRangingData(&measurementData)) {
-        Serial.print("      read:");
-        now = micros();
-        Serial.printf("%.9f",now/1000000.0);
-        Serial.println("");
+        // Serial.print("      read:");
+        // now = micros();
+        // Serial.printf("%.9f",now/1000000.0);
+        // Serial.println("");
       int idx = appendTimestamp(tofBuf, now); // write timestamp
       for(int i = 0; i < 64; i++) { //8x8 = 64; 4x4 = 16
           tofBuf[idx++] = ',';                  
@@ -358,10 +358,10 @@ void logToF() {
       tofBuf[idx++] = '\n';
       tofFile.write((uint8_t*)tofBuf, idx);  // write raw bytes
   }
-  Serial.print("       leaving_tof:");
-  now = micros();
-  Serial.printf("%.9f",now/1000000.0);
-  Serial.println("");
+  // Serial.print("       leaving_tof:");
+  // now = micros();
+  // Serial.printf("%.9f",now/1000000.0);
+  // Serial.println("");
 }
 
 void logOF() {
@@ -406,12 +406,8 @@ void logOF() {
   Serial.println("");
 }
 
-
-
-
 // This method opens all the files when trigger is set LOW. The files stay open until trigger is HIGH (or Not Low - it is pulled high internally)
 // This is to eliminate the time it takes to open and close the files each time for each sensor, which can make up few hundreds of us to low ms. 
-
 
 void loop() {
 
