@@ -400,11 +400,10 @@ void logOF() {
 
 // This method opens all the files when trigger is set LOW. The files stay open until trigger is HIGH (or Not Low - it is pulled high internally)
 // This is to eliminate the time it takes to open and close the files each time for each sensor, which can make up few hundreds of us to low ms. 
-bool recording = false;
 
 void loop() {
 
-    (gitalRead(TRIGGER_PIN) == LOW);
+    bool recording = (digitalRead(TRIGGER_PIN) == LOW);
 
     if (recording) {
         // --- Open files once when recording starts ---
