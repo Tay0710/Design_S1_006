@@ -442,12 +442,8 @@ void loop() {
         if (imuFile) {
             imuFile.close();
             imuFile = File(); // reset handle
-        }
-        if (tofFile) {
             tofFile.close();
             tofFile = File();
-        }
-        if (ofFile) {
             ofFile.close();
             ofFile = File();
             Serial.println("Files closed, safe to download.");
