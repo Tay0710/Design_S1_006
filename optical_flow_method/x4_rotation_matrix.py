@@ -10,15 +10,13 @@ Has been adapted from the https://github.com/xioTechnologies/Fusion Github repo
 
 # Import sensor data
 # data = np.genfromtxt("../optical_flow_method_data/sensor_data.csv", delimiter=",", skip_header=1)
-data = np.genfromtxt("../optical_flow_method_data/icm456_still_2_15625.csv", delimiter=",", skip_header=1)
+data = np.genfromtxt("../optical_flow_method_data/ICM456_StillV02_2_15625.csv", delimiter=",", skip_header=1)
 
 timestamp = data[:, 0]
 gyroscope = data[:, 1:4]       # [deg/s]
 accelerometer = data[:, 4:7]   # [g]
-magnetometer = data[:, 7:10]   # [uT] (can leave zeros if no mag)
 
-sample_time_s = np.mean(np.diff(timestamp))/1000000
-sample_rate = int(round(1.0 / sample_time_s))
+sample_rate = np.mean(np.diff(timestamp))
 print("Sample Rate: ", sample_rate)
 
 delta_time = np.diff(timestamp, prepend=timestamp[0])
