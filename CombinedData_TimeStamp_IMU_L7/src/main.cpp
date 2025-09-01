@@ -150,11 +150,11 @@ void setup()
     while (1);
   }
   
-
   // Configure accelerometer and gyro
   IMU.startAccel(1600, G_rating);     // Max 6400Hz; 100 Hz, ±2/4/8/16/32 g
   IMU.startGyro(1600, dps_rating);    // 100 Hz, ±15.625/31.25/62.5/125/250/500/1000/2000/4000 dps
   // Data comes out of the IMU as steps from -32768 to +32768 representing the full scale range
+  delay(100); // Delay needed to ensure proper calibration
 
   Serial.println("Do not move drone while calibrating the ICM.");
   calibrateIMU(1000);
@@ -164,11 +164,9 @@ void setup()
       Serial.println("PMW3901 initialization failed. Check wiring!");
       while (1);  // stop if not found
   }
-  Serial.println("b");
   delay(100);
 
   flow.enableFrameBuffer(); 
-  Serial.println("c");
 
   // --- Initialize SD card (on same VSPI but with different CS) ---
   if (!SD.begin(SD_CS, hspi)) {
@@ -205,7 +203,6 @@ void setup()
       "<a href='/download_tof'><button>Download ToF CSV</button></a><br>"
     "<a href='/download_of'><button>Download OF CSV</button></a>");
   });
-  Serial.println("d");
 
   server.on("/download_imu", HTTP_GET, []() {
     File f = SD.open(imuFileName);
@@ -226,7 +223,6 @@ void setup()
   });
 
   server.begin();
-  Serial.println("e");
 
   Wire.begin(); // This resets I2C bus to 100kHz
   Wire.setClock(1000000); //Sensor has max I2C freq of 1MHz
@@ -242,7 +238,6 @@ void setup()
     while (1)
       ;
   }
-  Serial.println("f");
 
   myImager.setResolution(8*8); // Enable all 64 pads or 16 pads for 4x4 resolution
 
@@ -292,13 +287,12 @@ int appendTimestamp(char* buf, unsigned long micros_val) {
     return idx;
 }
 
-
 void logIMU() {
   unsigned long now = micros();
   if (now - lastIMUtime < imuInterval) return;  
   lastIMUtime = now;
-  // Serial.print("entering_imu:");
-  // Serial.printf("%.9f",now/1000000.0);
+  Serial.print("entering_imu:");
+  Serial.printf("%.9f",now/1000000.0);
   if (!imuFile) return; // if file is not open; skip!
 
   inv_imu_sensor_data_t imu_data;
@@ -314,10 +308,10 @@ void logIMU() {
   int idx = appendTimestamp(imuBuf, now);
   idx += snprintf(imuBuf + idx, sizeof(imuBuf) - idx, ",%.9f,%.9f,%.9f,%.9f,%.9f,%.9f\n", ax, ay, az, gx, gy, gz);
   imuFile.write((uint8_t*)imuBuf, idx);
-  // Serial.print("leaving_imu:");
-  // now = micros();
-  // Serial.printf("%.9f",now/1000000.0);
-  // Serial.println("");
+  Serial.print("leaving_imu:");
+  now = micros();
+  Serial.printf("%.9f",now/1000000.0);
+  Serial.println("");
   // imuFile.flush(); // optional for safety -- check this out?
 }
 
@@ -344,8 +338,8 @@ void logToF() {
   unsigned long now = micros();
   if (now - lastTOFtime < tofInterval) return;  
   lastTOFtime = now;
-  // Serial.print("entering_tof:");
-  // Serial.printf("%.9f",now/1000000.0);
+  Serial.print("entering_tof:");
+  Serial.printf("%.9f",now/1000000.0);
   if (!tofFile) return;
 
   if(myImager.isDataReady() && myImager.getRangingData(&measurementData)) {
@@ -361,10 +355,10 @@ void logToF() {
       tofBuf[idx++] = '\n';
       tofFile.write((uint8_t*)tofBuf, idx);  // write raw bytes
   }
-  // Serial.print("       leaving_tof:");
-  // now = micros();
-  // Serial.printf("%.9f",now/1000000.0);
-  // Serial.println("");
+  Serial.print("       leaving_tof:");
+  now = micros();
+  Serial.printf("%.9f",now/1000000.0);
+  Serial.println("");
 }
 
 void logOF() {
@@ -372,8 +366,8 @@ void logOF() {
   if (now - lastOFtime < ofInterval) return;  
   lastOFtime = now;
 
-  // Serial.print("entering_of:");
-  // Serial.printf("%.9f", now / 1000000.0);
+  Serial.print("entering_of:");
+  Serial.printf("%.9f", now / 1000000.0);
 
   if (!ofFile) return;
 
@@ -399,10 +393,10 @@ void logOF() {
   // Write raw bytes to SD
   ofFile.write((uint8_t*)ofBuf, idx);
 
-  // Serial.print("      leaving_of:");
-  // now = micros();
-  // Serial.printf("%.9f", now / 1000000.0);
-  // Serial.println("");
+  Serial.print("      leaving_of:");
+  now = micros();
+  Serial.printf("%.9f", now / 1000000.0);
+  Serial.println("");
 }
 
 // This method opens all the files when trigger is set LOW. The files stay open until trigger is HIGH (or Not Low - it is pulled high internally)
