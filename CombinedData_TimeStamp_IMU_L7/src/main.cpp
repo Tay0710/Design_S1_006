@@ -291,8 +291,8 @@ void logIMU() {
   unsigned long now = micros();
   if (now - lastIMUtime < imuInterval) return;  
   lastIMUtime = now;
-  Serial.print("entering_imu:");
-  Serial.printf("%.9f",now/1000000.0);
+  // Serial.print("entering_imu:");
+  // Serial.printf("%.9f",now/1000000.0);
   if (!imuFile) return; // if file is not open; skip!
 
   inv_imu_sensor_data_t imu_data;
@@ -308,10 +308,10 @@ void logIMU() {
   int idx = appendTimestamp(imuBuf, now);
   idx += snprintf(imuBuf + idx, sizeof(imuBuf) - idx, ",%.9f,%.9f,%.9f,%.9f,%.9f,%.9f\n", ax, ay, az, gx, gy, gz);
   imuFile.write((uint8_t*)imuBuf, idx);
-  Serial.print("leaving_imu:");
-  now = micros();
-  Serial.printf("%.9f",now/1000000.0);
-  Serial.println("");
+  // Serial.print("leaving_imu:");
+  // now = micros();
+  // Serial.printf("%.9f",now/1000000.0);
+  // Serial.println("");
   // imuFile.flush(); // optional for safety -- check this out?
 }
 
@@ -338,8 +338,8 @@ void logToF() {
   unsigned long now = micros();
   if (now - lastTOFtime < tofInterval) return;  
   lastTOFtime = now;
-  Serial.print("entering_tof:");
-  Serial.printf("%.9f",now/1000000.0);
+  // Serial.print("entering_tof:");
+  // Serial.printf("%.9f",now/1000000.0);
   if (!tofFile) return;
 
   if(myImager.isDataReady() && myImager.getRangingData(&measurementData)) {
@@ -355,19 +355,18 @@ void logToF() {
       tofBuf[idx++] = '\n';
       tofFile.write((uint8_t*)tofBuf, idx);  // write raw bytes
   }
-  Serial.print("       leaving_tof:");
-  now = micros();
-  Serial.printf("%.9f",now/1000000.0);
-  Serial.println("");
+  // Serial.print("       leaving_tof:");
+  // now = micros();
+  // Serial.printf("%.9f",now/1000000.0);
+  // Serial.println("");
 }
 
 void logOF() {
   unsigned long now = micros();
   if (now - lastOFtime < ofInterval) return;  
   lastOFtime = now;
-
-  Serial.print("entering_of:");
-  Serial.printf("%.9f", now / 1000000.0);
+  // Serial.print("entering_of:");
+  // Serial.printf("%.9f", now / 1000000.0);
 
   if (!ofFile) return;
 
@@ -393,18 +392,19 @@ void logOF() {
   // Write raw bytes to SD
   ofFile.write((uint8_t*)ofBuf, idx);
 
-  Serial.print("      leaving_of:");
-  now = micros();
-  Serial.printf("%.9f", now / 1000000.0);
-  Serial.println("");
+  // Serial.print("      leaving_of:");
+  // now = micros();
+  // Serial.printf("%.9f", now / 1000000.0);
+  // Serial.println("");
 }
 
 // This method opens all the files when trigger is set LOW. The files stay open until trigger is HIGH (or Not Low - it is pulled high internally)
 // This is to eliminate the time it takes to open and close the files each time for each sensor, which can make up few hundreds of us to low ms. 
+bool recording = false;
 
 void loop() {
 
-    bool recording = (digitalRead(TRIGGER_PIN) == LOW);
+    (gitalRead(TRIGGER_PIN) == LOW);
 
     if (recording) {
         // --- Open files once when recording starts ---
