@@ -1,12 +1,4 @@
-// Changes that can be made:
-// 1. Add timestamps to Optical Flow data (currently commented out)???
-// 2. Add Flush to force code out of buffer to SD Card, to prevent data loss. 
-// 3. Move OF onto VSPI, instead of HSPI
-// 4. Add Code for additional ToF L7 sensor on the same I2C bus (different address) - make one L7 4x4 (roof or floor) and one L7 8x8 (side wall).
-
-
-// Side Notes:
-// I think 2gs is enough for the accelerometer range (image the speed of you falling is only 1 g, drone while mapping wouldn't be accelerating that quick) - Owen. 
+// FreeRTOS
 
 #include <Wire.h>
 #include <WiFi.h>
@@ -38,6 +30,16 @@ ICM456xx IMU(SPI, IMU_CS);
 
 // SPIClass SPI2(HSPI);
 Bitcraze_PMW3901 flow(OF_CS);
+
+// Task handles
+TaskHandle_t imuTaskHandle;
+TaskHandle_t tofTaskHandle;
+TaskHandle_t ofTaskHandle;
+TaskHandle_t wifiTaskHandle;
+
+// Global flag
+volatile bool recording = false;
+
 
 char frame[35*35]; //array to hold the framebuffer
 
@@ -249,10 +251,60 @@ void setup()
   myImager.setRangingFrequency(15);
   myImager.startRanging();
 
+    // Create tasks
+  // xTaskCreatePinnedToCore(Task Name, "Name", Stack Size, Parameters, Priority, Task Handle, Core ID);  
+  xTaskCreatePinnedToCore(imuTask, "IMU", 4096, NULL, 2, &imuTaskHandle, 0);
+  xTaskCreatePinnedToCore(tofTask, "ToF", 4096, NULL, 2, &tofTaskHandle, 0);
+  xTaskCreatePinnedToCore(ofTask,  "OF",  4096, NULL, 2, &ofTaskHandle, 1);
+  xTaskCreatePinnedToCore(wifiTask,"WiFi",4096, NULL, 1, &wifiTaskHandle, 0);
+
+
   Serial.println("Trigger LOW to Record data. Trigger HIGH to Stop and Download files.");
 
 
 }
+
+// 
+// === IMU Task ===
+void imuTask(void *pvParameters) {
+  for (;;) {
+    if (recording) {
+      logIMU();
+    }
+    vTaskDelay(1); // yield
+  }
+}
+
+// === ToF Task ===
+void tofTask(void *pvParameters) {
+  for (;;) {
+    if (recording) {
+      logToF();  // already checks 0.25s interval inside
+    }
+    vTaskDelay(1);
+  }
+}
+
+// === Optical Flow Task ===
+void ofTask(void *pvParameters) {
+  for (;;) {
+    if (recording) {
+      logOF();
+    }
+    vTaskDelay(1);
+  }
+}
+
+// === Wi-Fi / Server Task ===
+void wifiTask(void *pvParameters) {
+  for (;;) {
+    if (!recording) {
+      server.handleClient();  // only runs when not recording
+    }
+    vTaskDelay(10); // yield
+  }
+}
+
 
 // Helper: append unsigned long to buffer, returns number of chars
 int appendULong(char* buf, unsigned long val) {
@@ -413,45 +465,25 @@ void logOF() {
 
 
 void loop() {
+  bool trig = (digitalRead(TRIGGER_PIN) == LOW);
 
-    bool recording = (digitalRead(TRIGGER_PIN) == LOW);
+  if (trig && !recording) {
+    // Start recording
+    recording = true;
+    imuFile = SD.open(imuFileName, FILE_APPEND);
+    tofFile = SD.open(tofFileName, FILE_APPEND);
+    ofFile  = SD.open(ofFileName,  FILE_APPEND);
+    Serial.println("Recording started");
+  } 
+  else if (!trig && recording) {
+    // Stop recording
+    recording = false;
+    if (imuFile) imuFile.close();
+    if (tofFile) tofFile.close();
+    if (ofFile)  ofFile.close();
+    Serial.println("Recording stopped, files closed");
+  }
 
-    if (recording) {
-        // --- Open files once when recording starts ---
-        if (!imuFile) {
-          imuFile = SD.open(imuFileName, FILE_APPEND);
-          tofFile = SD.open(tofFileName, FILE_APPEND);
-          ofFile = SD.open(ofFileName, FILE_APPEND);
-
-
-            Serial.println("Opening files for logging...");
-            if (!imuFile || !tofFile || !ofFile) {
-                Serial.println("Failed to open one or more files!");
-            }
-        }
-
-        // --- Write data ---
-        logIMU();   // writes to imuFile
-        logToF();   // writes to tofFile
-        logOF();    // writes to ofFile
-    } 
-    else {
-         server.handleClient(); // Handle web server clients only when not recording, to save time
-
-        // --- Close files once when recording stops ---
-        if (imuFile) {
-            imuFile.close();
-            imuFile = File(); // reset handle
-            tofFile.close();
-            tofFile = File();
-            ofFile.close();
-            ofFile = File();
-            Serial.println("Files closed, safe to download.");
-        }
-    }
-
-// Data is stored in RAM buffer temporarily before being written to SD card. Flushing forces the data being stored in the RAM buffer to be written to the SD card immediately.
-// Frequent flushing can reduce data logging rate as it takes time to write to SD card, but flushing prevents data loss in case of power failure or unexpected reset.
-// Investigate this. 
-
+  vTaskDelay(100 / portTICK_PERIOD_MS); // loop idle
 }
+
