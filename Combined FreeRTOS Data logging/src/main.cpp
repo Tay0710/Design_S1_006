@@ -1,5 +1,11 @@
 // FreeRTOS
 
+// Changes to Add:
+// Add ToF for Roof/Floor measure every 0.5s (added to core 0)
+// Sdie wall ToF every 0.25s
+// Ultrasonics to be added to core 1
+// Ultrasonics same measuring pattern as ToF
+
 #include <Wire.h>
 #include <WiFi.h>
 #include <WebServer.h>
@@ -120,189 +126,6 @@ void calibrateIMU(int samples) {
   Serial.printf("Gyro  offsets: %.6f, %.6f, %.6f\n", calibGyroX, calibGyroY, calibGyroZ);
   Serial.printf("Calibration took %lu ms (%lu samples at ~%lu Hz)\n",
                 duration, samples, (samples * 1000UL) / duration);
-}
-
-
-void setup()
-{
-  int ret;
-
-  Serial.begin(115200);
-  delay(1000);
-
-  pinMode(TRIGGER_PIN, INPUT_PULLUP); // pull HIGH internally
-
-  // Start Wi-Fi AP
-  WiFi.softAP(AP_SSID, AP_PASSWORD);
-  Serial.print("AP started. Connect to: ");
-  Serial.println(AP_SSID);
-  Serial.print("IP: ");
-  Serial.println(WiFi.softAPIP());
-
-  // VSPI Setup
-  SPI.begin(IMU_CLK, IMU_MISO, IMU_MOSI);
-
-  // ICM45686 Begin
-  if (IMU.begin() != 0) {
-    Serial.println("ICM456xx initialization failed");
-    while (1);
-  }
-  
-
-  // Configure accelerometer and gyro
-  IMU.startAccel(1600, G_rating);     // Max 6400Hz; 100 Hz, ±2/4/8/16/32 g
-  IMU.startGyro(1600, dps_rating);    // 100 Hz, ±15.625/31.25/62.5/125/250/500/1000/2000/4000 dps
-  // Data comes out of the IMU as steps from -32768 to +32768 representing the full scale range
-
-  Serial.println("Do not move drone while calibrating the ICM.");
-  calibrateIMU(1000);
-
-  // PMW3901 begin
-  if (!flow.begin()) {
-      Serial.println("PMW3901 initialization failed. Check wiring!");
-      while (1);  // stop if not found
-  }
-  Serial.println("b");
-  delay(100);
-
-  flow.enableFrameBuffer(); 
-  Serial.println("c");
-
-  // --- Initialize SD card (on same VSPI but with different CS) ---
-  if (!SD.begin(SD_CS, SPI)) {
-    Serial.println("SD init failed!");
-    while (1);
-  }
-
-  // Init IMU CSV
-  SD.remove(imuFileName);
-  File imu = SD.open(imuFileName, FILE_WRITE);
-  imu.println("time,gyro x,gyro y,gyro z,accel x,accel y,accel z");
-  imu.close();
-
-  // Init ToF CSV
-  SD.remove(tofFileName);
-  File tof = SD.open(tofFileName, FILE_WRITE);
-  tof.print("time");
-  for(int i=0; i<16; i++) tof.print(",D"+String(i));
-  tof.println();
-  tof.close();
-
-  // Init OF CSV
-  SD.remove(ofFileName);
-  File of = SD.open(ofFileName, FILE_WRITE);
-  of.print("time");
-  for(int i=0; i<1225; i++) of.print(",P"+String(i));
-  of.println();
-  of.close();
-
-  // Serve web page with button
-  server.on("/", HTTP_GET, []() {
-    server.send(200, "text/html",       "<h1>ESP32 Data Logger</h1>"
-      "<a href='/download_imu'><button>Download IMU CSV</button></a><br>"
-      "<a href='/download_tof'><button>Download ToF CSV</button></a><br>"
-    "<a href='/download_of'><button>Download OF CSV</button></a>");
-  });
-  Serial.println("d");
-
-  server.on("/download_imu", HTTP_GET, []() {
-    File f = SD.open(imuFileName);
-    if(f) { server.streamFile(f, "text/csv"); f.close(); }
-    else server.send(404, "text/plain", "IMU file not found");
-  });
-
-  server.on("/download_tof", HTTP_GET, []() {
-    File f = SD.open(tofFileName);
-    if(f) { server.streamFile(f, "text/csv"); f.close(); }
-    else server.send(404, "text/plain", "ToF file not found");
-  });
-
-  server.on("/download_of", HTTP_GET, []() {
-    File f = SD.open(ofFileName);
-    if(f) { server.streamFile(f, "text/csv"); f.close(); }
-    else server.send(404, "text/plain", "OF file not found");
-  });
-
-  server.begin();
-  Serial.println("e");
-
-  Wire.begin(); // This resets I2C bus to 100kHz
-  Wire.setClock(1000000); //Sensor has max I2C freq of 1MHz
-
-  Serial.println("Clock Has been Set for I2C!");
-
- // myImager.setWireMaxPacketSize(128); // Increase default from 32 bytes to 128 - not supported on all platforms. Default is 32 bytes. 
-
-  Serial.println("Initializing sensor board. This can take up to 10s. Please wait.");
-  if (myImager.begin() == false)
-  {
-    Serial.println(F("ToF Sensor not found - check your wiring. Freezing"));
-    while (1)
-      ;
-  }
-  Serial.println("f");
-
-  myImager.setResolution(8*8); // Enable all 64 pads or 16 pads for 4x4 resolution
-
-  imageResolution = myImager.getResolution(); // Query sensor for current resolution - either 4x4 or 8x8
-
-  // Using 4x4, min frequency is 1Hz and max is 60Hz
-  // Using 8x8, min frequency is 1Hz and max is 15Hz
-  myImager.setRangingFrequency(15);
-  myImager.startRanging();
-
-    // Create tasks
-  // xTaskCreatePinnedToCore(Task Name, "Name", Stack Size, Parameters, Priority, Task Handle, Core ID);  
-  xTaskCreatePinnedToCore(imuTask, "IMU", 4096, NULL, 2, &imuTaskHandle, 0);
-  xTaskCreatePinnedToCore(tofTask, "ToF", 4096, NULL, 2, &tofTaskHandle, 0);
-  xTaskCreatePinnedToCore(ofTask,  "OF",  4096, NULL, 2, &ofTaskHandle, 1);
-  xTaskCreatePinnedToCore(wifiTask,"WiFi",4096, NULL, 1, &wifiTaskHandle, 0);
-
-
-  Serial.println("Trigger LOW to Record data. Trigger HIGH to Stop and Download files.");
-
-
-}
-
-// 
-// === IMU Task ===
-void imuTask(void *pvParameters) {
-  for (;;) {
-    if (recording) {
-      logIMU();
-    }
-    vTaskDelay(1); // yield
-  }
-}
-
-// === ToF Task ===
-void tofTask(void *pvParameters) {
-  for (;;) {
-    if (recording) {
-      logToF();  // already checks 0.25s interval inside
-    }
-    vTaskDelay(1);
-  }
-}
-
-// === Optical Flow Task ===
-void ofTask(void *pvParameters) {
-  for (;;) {
-    if (recording) {
-      logOF();
-    }
-    vTaskDelay(1);
-  }
-}
-
-// === Wi-Fi / Server Task ===
-void wifiTask(void *pvParameters) {
-  for (;;) {
-    if (!recording) {
-      server.handleClient();  // only runs when not recording
-    }
-    vTaskDelay(10); // yield
-  }
 }
 
 
@@ -458,6 +281,190 @@ void logOF() {
 }
 
 
+// 
+// === IMU Task ===
+void imuTask(void *pvParameters) {
+  for (;;) {
+    if (recording) {
+      logIMU();
+    }
+    vTaskDelay(1); // yield
+  }
+}
+
+// === ToF Task ===
+void tofTask(void *pvParameters) {
+  for (;;) {
+    if (recording) {
+      logToF();  // already checks 0.25s interval inside
+    }
+    vTaskDelay(1);
+  }
+}
+
+// === Optical Flow Task ===
+void ofTask(void *pvParameters) {
+  for (;;) {
+    if (recording) {
+      logOF();
+    }
+    vTaskDelay(1);
+  }
+}
+
+// === Wi-Fi / Server Task ===
+void wifiTask(void *pvParameters) {
+  for (;;) {
+    if (!recording) {
+      server.handleClient();  // only runs when not recording
+    }
+    vTaskDelay(10); // yield
+  }
+}
+
+
+
+void setup()
+{
+  int ret;
+
+  Serial.begin(115200);
+  delay(1000);
+
+  pinMode(TRIGGER_PIN, INPUT_PULLUP); // pull HIGH internally
+
+  // Start Wi-Fi AP
+  WiFi.softAP(AP_SSID, AP_PASSWORD);
+  Serial.print("AP started. Connect to: ");
+  Serial.println(AP_SSID);
+  Serial.print("IP: ");
+  Serial.println(WiFi.softAPIP());
+
+  // VSPI Setup
+  SPI.begin(IMU_CLK, IMU_MISO, IMU_MOSI);
+
+  // ICM45686 Begin
+  if (IMU.begin() != 0) {
+    Serial.println("ICM456xx initialization failed");
+    while (1);
+  }
+  
+
+  // Configure accelerometer and gyro
+  IMU.startAccel(1600, G_rating);     // Max 6400Hz; 100 Hz, ±2/4/8/16/32 g
+  IMU.startGyro(1600, dps_rating);    // 100 Hz, ±15.625/31.25/62.5/125/250/500/1000/2000/4000 dps
+  // Data comes out of the IMU as steps from -32768 to +32768 representing the full scale range
+
+  Serial.println("Do not move drone while calibrating the ICM.");
+  calibrateIMU(1000);
+
+  // PMW3901 begin
+  if (!flow.begin()) {
+      Serial.println("PMW3901 initialization failed. Check wiring!");
+      while (1);  // stop if not found
+  }
+  Serial.println("b");
+  delay(100);
+
+  flow.enableFrameBuffer(); 
+  Serial.println("c");
+
+  // --- Initialize SD card (on same VSPI but with different CS) ---
+  if (!SD.begin(SD_CS, SPI)) {
+    Serial.println("SD init failed!");
+    while (1);
+  }
+
+  // Init IMU CSV
+  SD.remove(imuFileName);
+  File imu = SD.open(imuFileName, FILE_WRITE);
+  imu.println("time,gyro x,gyro y,gyro z,accel x,accel y,accel z");
+  imu.close();
+
+  // Init ToF CSV
+  SD.remove(tofFileName);
+  File tof = SD.open(tofFileName, FILE_WRITE);
+  tof.print("time");
+  for(int i=0; i<16; i++) tof.print(",D"+String(i));
+  tof.println();
+  tof.close();
+
+  // Init OF CSV
+  SD.remove(ofFileName);
+  File of = SD.open(ofFileName, FILE_WRITE);
+  of.print("time");
+  for(int i=0; i<1225; i++) of.print(",P"+String(i));
+  of.println();
+  of.close();
+
+  // Serve web page with button
+  server.on("/", HTTP_GET, []() {
+    server.send(200, "text/html",       "<h1>ESP32 Data Logger</h1>"
+      "<a href='/download_imu'><button>Download IMU CSV</button></a><br>"
+      "<a href='/download_tof'><button>Download ToF CSV</button></a><br>"
+    "<a href='/download_of'><button>Download OF CSV</button></a>");
+  });
+  Serial.println("d");
+
+  server.on("/download_imu", HTTP_GET, []() {
+    File f = SD.open(imuFileName);
+    if(f) { server.streamFile(f, "text/csv"); f.close(); }
+    else server.send(404, "text/plain", "IMU file not found");
+  });
+
+  server.on("/download_tof", HTTP_GET, []() {
+    File f = SD.open(tofFileName);
+    if(f) { server.streamFile(f, "text/csv"); f.close(); }
+    else server.send(404, "text/plain", "ToF file not found");
+  });
+
+  server.on("/download_of", HTTP_GET, []() {
+    File f = SD.open(ofFileName);
+    if(f) { server.streamFile(f, "text/csv"); f.close(); }
+    else server.send(404, "text/plain", "OF file not found");
+  });
+
+  server.begin();
+  Serial.println("e");
+
+  Wire.begin(); // This resets I2C bus to 100kHz
+  Wire.setClock(1000000); //Sensor has max I2C freq of 1MHz
+
+  Serial.println("Clock Has been Set for I2C!");
+
+ // myImager.setWireMaxPacketSize(128); // Increase default from 32 bytes to 128 - not supported on all platforms. Default is 32 bytes. 
+
+  Serial.println("Initializing sensor board. This can take up to 10s. Please wait.");
+  if (myImager.begin() == false)
+  {
+    Serial.println(F("ToF Sensor not found - check your wiring. Freezing"));
+    while (1)
+      ;
+  }
+  Serial.println("f");
+
+  myImager.setResolution(8*8); // Enable all 64 pads or 16 pads for 4x4 resolution
+
+  imageResolution = myImager.getResolution(); // Query sensor for current resolution - either 4x4 or 8x8
+
+  // Using 4x4, min frequency is 1Hz and max is 60Hz
+  // Using 8x8, min frequency is 1Hz and max is 15Hz
+  myImager.setRangingFrequency(15);
+  myImager.startRanging();
+
+    // Create tasks
+  // xTaskCreatePinnedToCore(Task Name, "Name", Stack Size, Parameters, Priority, Task Handle, Core ID);  
+  xTaskCreatePinnedToCore(imuTask, "IMU", 4096, NULL, 2, &imuTaskHandle, 0);
+  xTaskCreatePinnedToCore(tofTask, "ToF", 4096, NULL, 2, &tofTaskHandle, 0);
+  xTaskCreatePinnedToCore(ofTask,  "OF",  4096, NULL, 2, &ofTaskHandle, 1);
+  xTaskCreatePinnedToCore(wifiTask,"WiFi",4096, NULL, 1, &wifiTaskHandle, 0);
+
+
+  Serial.println("Trigger LOW to Record data. Trigger HIGH to Stop and Download files.");
+
+
+}
+
 
 
 // This method opens all the files when trigger is set LOW. The files stay open until trigger is HIGH (or Not Low - it is pulled high internally)
@@ -469,10 +476,10 @@ void loop() {
 
   if (trig && !recording) {
     // Start recording
-    recording = true;
     imuFile = SD.open(imuFileName, FILE_APPEND);
     tofFile = SD.open(tofFileName, FILE_APPEND);
     ofFile  = SD.open(ofFileName,  FILE_APPEND);
+    recording = true;
     Serial.println("Recording started");
   } 
   else if (!trig && recording) {

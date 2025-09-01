@@ -66,8 +66,9 @@ unsigned long lastIMUtime = 0;
 unsigned long lastTOFtime = 0;
 unsigned long lastOFtime = 0;
 const unsigned long imuInterval = 625;    // microseconds → ~1600 Hz
-const unsigned long tofInterval = 5000000;   // microseconds → ~15 Hz
+const unsigned long tofInterval = 5000000;   // microseconds → ~15 Hz // Side Tof should be every 0.25s and Roof/ Floor ToF should be every 0.5s. 
 const unsigned long ofInterval = 10000000;   // microseconds → ~120 Hz
+
 
 char imuBuf[128];
 char tofBuf[512];
