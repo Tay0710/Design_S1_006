@@ -7,11 +7,12 @@
 // Use VSPI for both IMU and SD card
 #define IMU_CS   5   // IMU CS pin
 #define SD_CS    32  // SD card CS pin
-#define IMU_MOSI 23 // (19)
-#define IMU_CLK 18
-#define IMU_MISO 19 // (23)
+#define HSPI_MOSI 23 // (19)
+#define HSPI_CLK 18
+#define HSPI_MISO 19 // (23)
 
-ICM456xx IMU(SPI, IMU_CS);
+SPIClass hspi(HSPI);
+ICM456xx IMU(hspi, IMU_CS);
 
 #define TRIGGER_PIN 25
 
@@ -102,7 +103,7 @@ void setup() {
 
   // Initialize VSPI
   // SPI.begin(18, 19, 23); // SCK=18, MISO=19, MOSI=23
-  SPI.begin(IMU_CLK, IMU_MISO, IMU_MOSI);
+  hspi.begin(HSPI_CLK, HSPI_MISO, HSPI_MOSI);
 
 
   // Initialize IMU
@@ -115,7 +116,7 @@ void setup() {
 
   
   // Initialize SD card on same SPI bus but different CS
-  if (!SD.begin(SD_CS, SPI)) {
+  if (!SD.begin(SD_CS, hspi)) {
     Serial.println("SD init failed!");
     while (1);
   }
