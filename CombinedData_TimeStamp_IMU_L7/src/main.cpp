@@ -249,9 +249,9 @@ void setup()
   myImager.setRangingFrequency(15);
   myImager.startRanging();
 
-  Serial.println("Make sure the Trigger Pin is set to LOW, to initate recording of data. Or High to pause / prevent recording. This pin does not act as a reset of the files!");
+  Serial.println("Trigger LOW to Record data. Trigger HIGH to Stop and Download files.");
 
-  Serial.println("Wi-Fi Serving takes time. Record the data first, then stop the recording, then connect to the ESP32 AP and download the files. Otherwise will risk reducing data recording rate as the loop has to constantly check Wi-Fi client (Having No client - means it just checks which takes ~ tens of us)");
+
 }
 
 // Helper: append unsigned long to buffer, returns number of chars
@@ -413,7 +413,6 @@ void logOF() {
 
 
 void loop() {
-    server.handleClient();
 
     bool recording = (digitalRead(TRIGGER_PIN) == LOW);
 
@@ -437,6 +436,8 @@ void loop() {
         logOF();    // writes to ofFile
     } 
     else {
+         server.handleClient(); // Handle web server clients only when not recording, to save time
+
         // --- Close files once when recording stops ---
         if (imuFile) {
             imuFile.close();
