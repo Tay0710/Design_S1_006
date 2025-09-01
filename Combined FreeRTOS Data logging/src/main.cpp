@@ -1,10 +1,14 @@
 // FreeRTOS
+// Using Core 0 for main sensors IMU, ToF, Wi-Fi (when trigger is HIGH)
+// Using Core 1 for Optical Flow, Ultrasonics Mapping (to be added)
+// Is optical flow Higher priority than Ultrasonics Mapping?
 
 // Changes to Add:
 // Add ToF for Roof/Floor measure every 0.5s (added to core 0)
 // Sdie wall ToF every 0.25s
 // Ultrasonics to be added to core 1
 // Ultrasonics same measuring pattern as ToF
+// Object avoidance Ultrasonic to be added ? Which Core? What priority? (depends on drone speed and rate of change of direction? e.g. risk of hitting an object. )
 
 #include <Wire.h>
 #include <WiFi.h>
