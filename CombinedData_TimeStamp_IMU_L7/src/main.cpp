@@ -35,11 +35,14 @@
 SparkFun_VL53L5CX myImager;
 VL53L5CX_ResultsData measurementData; // Result data class structure, 1356 byes of RAM
 
+// Chip select assignment
 SPIClass hspi(HSPI);
 ICM456xx IMU(hspi, IMU_CS); 
 Bitcraze_PMW3901 flow(OF_CS);
 
+// Variables for PMW3901
 char frame[35*35]; //array to hold the framebuffer
+int16_t deltaX,deltaY;
 
 int imageResolution = 0; // Used to pretty print output
 
@@ -66,12 +69,12 @@ unsigned long lastIMUtime = 0;
 unsigned long lastTOFtime = 0;
 unsigned long lastOFtime = 0;
 const unsigned long imuInterval = 625;    // microseconds → ~1600 Hz
-const unsigned long tofInterval = 5000000;   // microseconds → ~15 Hz // Side Tof should be every 0.25s and Roof/ Floor ToF should be every 0.5s. 
-const unsigned long ofInterval = 10000000;   // microseconds → ~120 Hz
+const unsigned long tofInterval = 250000;   // microseconds → ~4 Hz // Side Tof should be every 0.25s and Roof/ Floor ToF should be every 0.5s. 
+const unsigned long ofInterval = 100000;   // microseconds → ~100 Hz
 
 char imuBuf[128];
 char tofBuf[512];
-char ofBuf[4096];
+char ofBuf[64];
 
 // ---- Calibration function ----
 void calibrateIMU(int samples) {
@@ -108,7 +111,7 @@ void calibrateIMU(int samples) {
 
   calibAccelX = avgAx * G_rating / 32768.0;
   calibAccelY = avgAy * G_rating / 32768.0;
-  calibAccelZ = avgAz * G_rating / 32768.0;
+  calibAccelZ = avgAz * G_rating / 32768.0 - 1;
   calibGyroX  = avgGx * dps_rating / 32768.0;
   calibGyroY  = avgGy * dps_rating / 32768.0;
   calibGyroZ  = avgGz * dps_rating / 32768.0;
@@ -191,7 +194,7 @@ void setup()
   SD.remove(ofFileName);
   File of = SD.open(ofFileName, FILE_WRITE);
   of.print("time");
-  for(int i=0; i<1225; i++) of.print(",P"+String(i));
+  of.print(",deltaX,deltaY");
   of.println();
   of.close();
 
@@ -369,41 +372,37 @@ void logOF() {
   if (now - lastOFtime < ofInterval) return;  
   lastOFtime = now;
 
-  Serial.print("entering_of:");
-  Serial.printf("%.9f", now / 1000000.0);
+  // Serial.print("entering_of:");
+  // Serial.printf("%.9f", now / 1000000.0);
 
   if (!ofFile) return;
 
-  flow.readFrameBuffer(frame);
+  // flow.readFrameBuffer(frame);
+  flow.readMotionCount(&deltaX, &deltaY);
 
-  Serial.print("      read:");
-  now = micros();
-  Serial.printf("%.9f", now / 1000000.0);
-  Serial.println("");
-
-  char line[4096];  // buffer for one frame
-  int idx = 0;
+  // Serial.print("      read:");
+  // now = micros();
+  // Serial.printf("%.9f", now / 1000000.0);
+  // Serial.println("");
 
   // Add timestamp
-  idx = snprintf(line, sizeof(line), "%.9f", now / 1000000.0);
+  int idx = appendTimestamp(ofBuf, now);
 
-  // Add each pixel value
-  for (int i = 0; i < 1225; i++) {
-      idx += sprintf(line + idx, ",%d", frame[i]);
-      if (idx >= sizeof(line) - 10) break; // safeguard
-  }
-
-  // Add newline
-  line[idx++] = '\n';
-  line[idx] = 0;
+  // Add DeltaX and DeltaY values
+  idx += snprintf(ofBuf + idx, sizeof(ofBuf) - idx, ",%d,%d\n", deltaX, deltaY);
+  // // Add each pixel value
+  // for (int i = 0; i < 1225; i++) {
+  //     idx += sprintf(line + idx, ",%d", frame[i]);
+  //     if (idx >= sizeof(line) - 10) break; // safeguard
+  // }
 
   // Write raw bytes to SD
-  ofFile.write((uint8_t*)line, idx);
+  ofFile.write((uint8_t*)ofBuf, idx);
 
-  Serial.print("      leaving_of:");
-  now = micros();
-  Serial.printf("%.9f", now / 1000000.0);
-  Serial.println("");
+  // Serial.print("      leaving_of:");
+  // now = micros();
+  // Serial.printf("%.9f", now / 1000000.0);
+  // Serial.println("");
 }
 
 // This method opens all the files when trigger is set LOW. The files stay open until trigger is HIGH (or Not Low - it is pulled high internally)
