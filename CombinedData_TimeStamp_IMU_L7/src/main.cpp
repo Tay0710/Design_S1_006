@@ -19,12 +19,12 @@
 
 // Optical flow SPI pins (pins for Owen's ESP32)
 #define OF_CS 15 // Optical Flow CS pin
-#define HSPI_MOSI 13
-#define HSPI_CLK 14
-#define HSPI_MISO 33
-#define VSPI_MOSI 23 // (19)
-#define VSPI_CLK 18
-#define VSPI_MISO 19 // (23)
+#define VSPI_MOSI 13
+#define VSPI_CLK 14
+#define VSPI_MISO 33
+#define HSPI_MOSI 23 // (19)
+#define HSPI_CLK 18
+#define HSPI_MISO 19 // (23)
 #define SD_CS 32  // (36) Example CS pin for SD card
 #define IMU_CS 5  // Example CS pin for SD card
 #define TRIGGER_PIN 25 // (4) use GPIO4 as SWITCH to turn on/off when the esp32 is recording data mode. When pulled LOW, RECORDING Starts. 
@@ -138,8 +138,8 @@ void setup()
   Serial.println(WiFi.softAPIP());
 
   // SPI Setup
-  hspi.begin(VSPI_CLK, VSPI_MISO, VSPI_MOSI);
-  SPI.begin(HSPI_CLK, HSPI_MISO, HSPI_MOSI);
+  hspi.begin(HSPI_CLK, HSPI_MISO, HSPI_MOSI);
+  SPI.begin(VSPI_CLK, VSPI_MISO, VSPI_MOSI);
 
   // ICM45686 Begin
   if (IMU.begin() != 0) {
