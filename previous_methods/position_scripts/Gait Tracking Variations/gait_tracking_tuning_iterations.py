@@ -7,7 +7,7 @@ import numpy as np
 import json, csv, os, time, itertools
 
 # === Load sensor data ===
-data = np.genfromtxt("../optical_flow_method_data/ICM456XX_Rect.csv", delimiter=",", skip_header=1)
+data = np.genfromtxt("../optical_flow_method_data/ICM456XX_Walk.csv", delimiter=",", skip_header=1)
 timestamp     = data[:, 0]
 gyroscope_raw = data[:, 1:4]
 accelerometer = data[:, 4:7]
