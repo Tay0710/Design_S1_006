@@ -298,12 +298,12 @@ void logIMU() {
   inv_imu_sensor_data_t imu_data;
   IMU.getDataFromRegisters(imu_data);
 
-  float ax = imu_data.accel_data[0]*G_rating/32768.0 - calibAccelX;
-  float ay = imu_data.accel_data[1]*G_rating/32768.0 - calibAccelY;
-  float az = imu_data.accel_data[2]*G_rating/32768.0 - calibAccelZ;
   float gx = imu_data.gyro_data[0]*dps_rating/32768.0 - calibGyroX;
   float gy = imu_data.gyro_data[1]*dps_rating/32768.0 - calibGyroY;
   float gz = imu_data.gyro_data[2]*dps_rating/32768.0 - calibGyroZ;
+  float ax = imu_data.accel_data[0]*G_rating/32768.0 - calibAccelX;
+  float ay = imu_data.accel_data[1]*G_rating/32768.0 - calibAccelY;
+  float az = imu_data.accel_data[2]*G_rating/32768.0 - calibAccelZ;
 
   int idx = appendTimestamp(imuBuf, now);
   idx += snprintf(imuBuf + idx, sizeof(imuBuf) - idx, ",%.9f,%.9f,%.9f,%.9f,%.9f,%.9f\n", ax, ay, az, gx, gy, gz);
@@ -403,40 +403,38 @@ void logOF() {
 
 void loop() {
 
-    bool recording = (digitalRead(TRIGGER_PIN) == LOW);
-
-    if (recording) {
-        // --- Open files once when recording starts ---
-        if (!imuFile) {
-          imuFile = SD.open(imuFileName, FILE_APPEND);
-          tofFile = SD.open(tofFileName, FILE_APPEND);
-          ofFile = SD.open(ofFileName, FILE_APPEND);
+  if (digitalRead(TRIGGER_PIN) == LOW) {
+      // --- Open files once when recording starts ---
+      if (!imuFile) {
+        imuFile = SD.open(imuFileName, FILE_APPEND);
+        tofFile = SD.open(tofFileName, FILE_APPEND);
+        ofFile = SD.open(ofFileName, FILE_APPEND);
 
 
-            Serial.println("Opening files for logging...");
-            if (!imuFile || !tofFile || !ofFile) {
-                Serial.println("Failed to open one or more files!");
-            }
-        }
+          Serial.println("Opening files for logging...");
+          if (!imuFile || !tofFile || !ofFile) {
+              Serial.println("Failed to open one or more files!");
+          }
+      }
 
-        // --- Write data ---
-        logIMU();   // writes to imuFile
-        logToF();   // writes to tofFile
-        logOF();    // writes to ofFile
-    } 
-    else {
-         server.handleClient(); // Handle web server clients only when not recording, to save time
+      // --- Write data ---
+      logIMU();   // writes to imuFile
+      logToF();   // writes to tofFile
+      logOF();    // writes to ofFile
+  } 
+  else {
+        server.handleClient(); // Handle web server clients only when not recording, to save time
 
-        // --- Close files once when recording stops ---
-        if (imuFile) {
-            imuFile.close();
-            imuFile = File(); // reset handle
-            tofFile.close();
-            tofFile = File();
-            ofFile.close();
-            ofFile = File();
-            Serial.println("Files closed, safe to download.");
-        }
+      // --- Close files once when recording stops ---
+      if (imuFile) {
+          imuFile.close();
+          imuFile = File(); // reset handle
+          tofFile.close();
+          tofFile = File();
+          ofFile.close();
+          ofFile = File();
+          Serial.println("Files closed, safe to download.");
+      }
     }
 
 // Data is stored in RAM buffer temporarily before being written to SD card. Flushing forces the data being stored in the RAM buffer to be written to the SD card immediately.
