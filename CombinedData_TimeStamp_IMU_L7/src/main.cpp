@@ -62,7 +62,7 @@ float calibAccelX = 0, calibAccelY = 0, calibAccelZ = 0;
 float calibGyroX  = 0, calibGyroY  = 0, calibGyroZ  = 0;
 
 float  G_rating = 4;      // 2/4/8/16/32 g
-float  dps_rating = 125; // 15.625/31.25/62.5/125/250/500/1000/2000/4000 dps
+float  dps_rating = 250; // 15.625/31.25/62.5/125/250/500/1000/2000/4000 dps
 
 // Timing control
 unsigned long lastIMUtime = 0;
