@@ -52,8 +52,8 @@ acceleration = numpy.empty((len(timestamp), 3))
 for index in range(len(timestamp)):
     gyroscope[index] = offset.update(gyroscope[index])
 
-    # Convert accel to g for imufusion
-    accel_g = accelerometer[index] / G
+    # Convert accel to g for imufusion (accel is already in g)
+    accel_g = accelerometer[index]
     ahrs.update_no_magnetometer(gyroscope[index], accel_g, delta_time[index])
 
     euler[index] = ahrs.quaternion.to_euler()
