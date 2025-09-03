@@ -5,7 +5,7 @@ Samples without OF lens:
 
 Samples with OF lens:
 - square2 = 1.6m x 1.6m rectangle turning 90 degrees to the right at each vertex. Started and finished at a table outside the square. Refer to the image below.
-![square2](square2.jpg){width=2}
+![square2](square2.jpg){: width="50%"}
 - rectangle = 9m x 1.6m rectangle turning 90 degrees to the right at each vertex. Started and finished at a table outside the square. Refer to the image below.
 ![rectangle](rectangle.jpg)
 
