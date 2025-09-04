@@ -53,5 +53,8 @@ def main():
             # Write to CSV
             writer.writerow([f"{t:.6f}", f"{wx:.6f}", f"{wy:.6f}"])
             
+            # ✅ Update previous time
+            t_prev = t
+            
 if __name__ == "__main__":
     main()
