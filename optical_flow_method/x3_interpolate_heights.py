@@ -8,8 +8,8 @@ def load_heights(height_path):
     with open(height_path, "r") as f_height:
         reader = csv.DictReader(f_height)
         for row in reader:
-            t = float(row["time (s)"])
-            h = float(row["height (mm)"])
+            t = float(row["time"])
+            h = float(row["height"])
             times.append(t)
             heights.append(h)
     return np.array(times), np.array(heights)
@@ -28,7 +28,7 @@ def interpolate_heights(height_times, heights, of_times, output_path):
 
     with open(output_path, "w", newline="") as f_out:
         writer = csv.writer(f_out)
-        writer.writerow(["time (s)", "height (mm)"])
+        writer.writerow(["time", "height"])
         for t, h in zip(of_times, h_interp):
             writer.writerow([f"{t:.6f}", f"{h:.6f}"])
 
