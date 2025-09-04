@@ -5,12 +5,12 @@ import imufusion
 from scipy.signal import detrend
 
 # === Load sensor data ===
-data = np.genfromtxt("../optical_flow_method_data/combined_samples/square/IMU_combined_square.csv",
+data = np.genfromtxt("../optical_flow_method_data/combined_samples/square2/IMU_combined_square2.csv",
                      delimiter=",", skip_header=1)
 
 timestamp = data[:, 0]
-gyroscope = data[:, 4:7]
-accelerometer = data[:, 1:4]
+gyroscope = data[:, 1:4]
+accelerometer = data[:, 4:7]
 
 sample_rate = 1.0 / np.mean(np.diff(timestamp))
 print("Sample Rate: ", sample_rate)
@@ -52,7 +52,7 @@ def run_pipeline(gain, gyro_range, accel_rej, mag_rej, rej_timeout_mult, motion_
         accel_g = accelerometer[index]  # convert m/s² → g
         ahrs.update_no_magnetometer(gyroscope[index], accel_g, delta_time[index])
         earth_accel_g = ahrs.earth_acceleration
-        linear_accel_mps2 = (earth_accel_g - GRAVITY_G_NWU) * G
+        linear_accel_mps2 = (earth_accel_g) * G
         acceleration[index] = linear_accel_mps2
 
     # Motion detection
