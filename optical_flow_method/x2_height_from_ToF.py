@@ -5,21 +5,21 @@ import ast
 # Maybe an outlier fn - but how can you make sure this doesn't include the dodgy one
 # 163.28125 is average - maybe twice this as outlier cancel
 
-def calculate_height(arr):
+def calculate_height(D28, D27, D36, D35):
     """
     The field of view (fov) of the VL53L7CX_2 is 90 degrees
     The angle between each data point is 90/7 = 12.857
     The angle from the central measurements to the middle of the fov is 12.857/2 = 6.429
     """
-    h1 = arr[3,3] * math.cos(6.429)
-    h2 = arr[3,4] * math.cos(6.429)
-    h3 = arr[4,3] * math.cos(6.429)
-    h4 = arr[4,4] * math.cos(6.429)    
+    h1 = D28 * math.cos(6.429)
+    h2 = D27 * math.cos(6.429)
+    h3 = D36 * math.cos(6.429)
+    h4 = D35 * math.cos(6.429)    
     
-    print(f"[calculate_height] arr1 = {arr[3,3]}")
-    print(f"[calculate_height] arr2 = {arr[3,4]}")
-    print(f"[calculate_height] arr3 = {arr[4,3]}")
-    print(f"[calculate_height] arr4 = {arr[4,4]}")
+    print(f"[calculate_height] arr1 = {D28}")
+    print(f"[calculate_height] arr2 = {D27}")
+    print(f"[calculate_height] arr3 = {D36}")
+    print(f"[calculate_height] arr4 = {D35}")
           
     h_ave = (h1 + h2 + h3 + h4) / 4
     h_rounded = round(h_ave, 3)
@@ -27,42 +27,28 @@ def calculate_height(arr):
     
     return h_rounded
 
-def read_file(fp):
-    times = []
-    arrays = []
-    
-    with open(fp, "r") as f:
-        reader = csv.DictReader(f)
-        for row in reader:
-            t = float(row["time (s)"])
-            times.append(t)
-            
-            arr = np.array(ast.literal_eval(row["array"]), dtype=float)
-            
-            if arr.shape != (8, 8):
-                raise ValueError(f"Row at time {t} did not contain an 8x8 array")
-            
-            arrays.append(arr)
-            
-    return np.array(times), np.array(arrays)
-
 def main():
-    input_path = "../optical_flow_method_data/ToF_test_log.csv"
+    input_path = "../optical_flow_method_data/combined_samples/square2/ToF_combined_square2.csv"
     output_path = "../optical_flow_method_data/ToF_heights.csv"
-    
-    times, arrays = read_file(input_path)
-    print("Times shape:", times.shape)       # (N,)
-    print("Arrays shape:", arrays.shape)     # (N, 8, 8)
-    
-    with open(output_path, "w", newline="") as f_out:
-        writer = csv.writer(f_out)  # ✅ pass file handle, not path
-        writer.writerow(["time (s)", "height (mm)"])
-    
-        for i, (t, frame) in enumerate(zip(times, arrays)):
-            print(f"\n[frame {i}] t={t}")
-            h = calculate_height(frame)  
 
+    # Load CSV (skip header)
+    data = np.genfromtxt(input_path, delimiter=",", skip_header=1)
+
+    # First column is time
+    times = data[:, 0]
+
+    # Grab only the requested columns
+    d28 = data[:, 29]  # D28 is the 29th column (0-based index)
+    d27 = data[:, 28]
+    d36 = data[:, 37]
+    d35 = data[:, 36]
+
+    with open(output_path, "w", newline="") as f_out:
+        writer = csv.writer(f_out)
+        writer.writerow(["time (s)", "D28", "D27", "D36", "D35"])
+
+        for t, v28, v27, v36, v35 in zip(times, d28, d27, d36, d35):
+            h = calculate_height(v28, v27, v36, v35)
             writer.writerow([f"{t:.6f}", f"{h:.6f}"])
-        
 if __name__ == "__main__":
     main()
