@@ -10,7 +10,7 @@ Repositories used for testing:
                                    1 * sample_rate)  # rejection timeout = 1 second
     - Accuracy was very poor
     - Original application of the code did used a different IMU (i.e. not the MPU-6050)
-2. https://github.com/Edubgr/MPU6050-MotionTracking/tree/master
+2. https://github.com/Edubgr/MPU6050-MotionTracking/tree/master](https://github.com/xioTechnologies/Oscillatory-Motion-Tracking-With-x-IMU
     - Uses a Mahony filter algorithm
     - Original application used the MPU-6050 and BNO055 IMUs
     - Performance was better
