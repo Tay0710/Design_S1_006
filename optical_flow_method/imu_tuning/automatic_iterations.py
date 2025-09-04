@@ -7,7 +7,7 @@ import numpy as np
 import itertools, json, csv, time
 
 # === Load sensor data ===
-data = np.genfromtxt("../optical_flow_method_data/combined_samples/square2/IMU_combined_square2.csv",
+data = np.genfromtxt("../../optical_flow_method_data/combined_samples/square2/IMU_combined_square2.csv",
                      delimiter=",", skip_header=1)
 timestamp     = data[:, 0]
 gyroscope_raw = data[:, 1:4]
@@ -22,8 +22,8 @@ print("Sample Rate:", fs)
 # === Defaults ===
 defaults = {
     "gain": 5.0,
-    "gyro_range": 2000,
-    "accel_rej": 4,
+    "gyro_range": 250,
+    "accel_rej": 2,
     "mag_rej": 0,
     "rej_timeout_mult": 1,
     "motion_threshold": 0.01,
@@ -33,8 +33,8 @@ defaults = {
 # === Parameter sweep definitions (full ranges) ===
 param_defs = {
     "gain": np.round(np.arange(0.5, 5.0, 0.1), 2),
-    "gyro_range": [500, 1000, 1500, 2000]   ,
-    "accel_rej": list(range(0, 20, 2)),  
+    "gyro_range": [250],
+    "accel_rej": [2],  
     "mag_rej": [0],
     "rej_timeout_mult": [1, 2, 3, 4, 5] ,
     "motion_threshold": np.round(np.arange(0.05, 0.2, 0.05), 2),

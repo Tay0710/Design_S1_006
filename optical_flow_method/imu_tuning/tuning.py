@@ -5,7 +5,7 @@ import imufusion
 from scipy.signal import detrend
 
 # === Load sensor data ===
-data = np.genfromtxt("../optical_flow_method_data/combined_samples/square2/IMU_combined_square2.csv",
+data = np.genfromtxt("../../optical_flow_method_data/combined_samples/square2/IMU_combined_square2.csv",
                      delimiter=",", skip_header=1)
 
 timestamp = data[:, 0]

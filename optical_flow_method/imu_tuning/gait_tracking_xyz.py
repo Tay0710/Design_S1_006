@@ -8,8 +8,8 @@ from mpl_toolkits.mplot3d import Axes3D
 import numpy
 
 # === Import sensor data ===
-data = numpy.genfromtxt("../optical_flow_method_data/combined_samples/square2/IMU_combined_square2.csv", delimiter=",", skip_header=1)
-
+data = numpy.genfromtxt("../../optical_flow_method_data/combined_samples/square2/IMU_combined_square2.csv",
+                     delimiter=",", skip_header=1)
 timestamp = data[:, 0]
 gyroscope = data[:, 1:4]
 accelerometer = data[:, 4:7]
