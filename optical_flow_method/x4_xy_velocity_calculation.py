@@ -17,7 +17,7 @@ def main():
         reader_angular = csv.DictReader(f_angular)
         reader_height = csv.DictReader(f_height)
         writer = csv.writer(f_out)
-        writer.writerow(["time (s)", "v_x (mm/s)", "v_y (mm/s)"])
+        writer.writerow(["time (s)", "v_x (m/s)", "v_y (m/s)"])
         
         for i, (row_a, row_h) in enumerate(zip(reader_angular, reader_height), start=1):
             
@@ -35,6 +35,11 @@ def main():
             h  = float(row_h["height"])
             
             v_x, v_y = velocity_calc(wx, wy, h)
+            
+            # convert mm/s → m/s
+            v_x /= 1000.0
+            v_y /= 1000.0
+
             writer.writerow([f"{t:.6f}", f"{v_x:.6f}", f"{v_y:.6f}"])
         
         print(f"Wrote {i} rows to {output_path}")            
