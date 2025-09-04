@@ -18,7 +18,7 @@ def pixels_to_angular_rates(dx, dy, dt):
 
 # Calculate dt and variable validation
 def compute_dt(t_curr, t_prev):
-    if t_prev or t_curr is None:
+    if t_prev is None or t_curr is None:
         return None
     if t_curr > t_prev:
         dt = t_curr - t_prev
