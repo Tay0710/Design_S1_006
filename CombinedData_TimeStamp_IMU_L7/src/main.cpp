@@ -348,9 +348,15 @@ void logToF() {
         // Serial.printf("%.9f",now/1000000.0);
         // Serial.println("");
       int idx = appendTimestamp(tofBuf, now); // write timestamp
-      for(int i = 0; i < 64; i++) { //8x8 = 64; 4x4 = 16
-          tofBuf[idx++] = ',';                  
+      for(int i = 0; i < imageResolution; i++) { //8x8 = 64; 4x4 = 16
+          tofBuf[idx++] = ',';      
+          const uint8_t stat  = measurementData.target_status[i];
+          if (stat == 5){         
           idx += intToStr(measurementData.distance_mm[i], tofBuf + idx); // fast int -> string
+          }
+          else{
+            tofBuf[idx++] = 'X';
+          }
       }
       tofBuf[idx++] = '\n';
       tofFile.write((uint8_t*)tofBuf, idx);  // write raw bytes

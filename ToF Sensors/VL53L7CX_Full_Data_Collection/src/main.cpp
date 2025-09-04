@@ -20,7 +20,7 @@ void setup() {
   delay(400);
   Serial.println(F("\nVL53L5CX: full results (per-zone and per-target)"));
 
-  Wire.begin();                 // default SDA/SCL (ESP32: 21/22 unless changed)
+  Wire.begin();       // esp32s3 SDA=GPIO8, SCL=GPIO9           // default SDA/SCL (ESP32: 21/22 unless changed)
   Wire.setClock(400000);        // VL53L5CX supports up to 400 kHz
 
   Serial.println(F("Initializing sensor (can take ~10s)..."));
