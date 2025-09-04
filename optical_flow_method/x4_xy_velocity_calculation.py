@@ -7,7 +7,7 @@ def velocity_calc(wx, wy, h):
 
 def main():
     angular_rate_path = "../optical_flow_method_data/optical_flow_angular_rates.csv"
-    height_path = "../optical_flow_method_data/ToF_heights.csv"
+    height_path = "../optical_flow_method_data/ToF_heights_interp.csv"
     output_path = "../optical_flow_method_data/xy_velocities.csv"
     
     with open(angular_rate_path, "r") as f_angular, \
@@ -23,7 +23,7 @@ def main():
             
             # read in both timestamps
             t_a = float(row_a["time (s)"])
-            t_h = float(row_h["time (s)"])
+            t_h = float(row_h["time"])
 
             # only proceed if timestamps match (allow noise for now)
             if round(t_a, 6) != round(t_h, 6):
@@ -32,7 +32,7 @@ def main():
             t = t_a
             wx = float(row_a["wx (rad/s)"])
             wy = float(row_a["wy (rad/s)"])
-            h  = float(row_h["height (mm)"])
+            h  = float(row_h["height"])
             
             v_x, v_y = velocity_calc(wx, wy, h)
             writer.writerow([f"{t:.6f}", f"{v_x:.6f}", f"{v_y:.6f}"])
