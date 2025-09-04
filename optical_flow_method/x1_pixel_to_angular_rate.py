@@ -5,26 +5,17 @@ import csv
 def pixels_to_angular_rates(dx, dy, dt):
     res = 35.0
     fov_deg = 42.0
-    if dt is None:
+    if dt is None or dt <= 0:
         return 0.0, 0.0
     
     # rad per pixel
-    s = math.radians(fov_deg)/ res
+    s = math.radians(fov_deg) / res
     
     wx = (dx * s) / dt
     wy = (dy * s) / dt
     
     return wx, wy
 
-# Calculate dt and variable validation
-def compute_dt(t_curr, t_prev):
-    if t_prev is None or t_curr is None:
-        return None
-    if t_curr > t_prev:
-        dt = t_curr - t_prev
-        return dt
-    else:
-        return None
 
 def main():
     input_path = "../optical_flow_method_data/combined_samples/square2/OF_combined_square2.csv"
@@ -35,26 +26,39 @@ def main():
         writer = csv.writer(f_out)
         writer.writerow(["time (s)", "wx (rad/s)", "wy (rad/s)"])
         
-        t_prev = 0.0
-        
-        print(f"{'time':>6}  {'dx':>4}  {'dy':>4}  {'wx(rad/s)':>12}  {'wy(rad/s)':>12}")
-        print("-" * 50)
-        
+        print(f"{'time':>12}  {'dx_sum':>7}  {'dy_sum':>7}  {'wx(rad/s)':>12}  {'wy(rad/s)':>12}")
+        print("-" * 60)
+
+        # Buffers for 10-sample batching
+        batch_times = []
+        batch_dx = []
+        batch_dy = []
+
         for row in reader:
             t = float(row["time"])
             dx = int(row["deltaX"])
             dy = int(row["deltaY"])
-            
-            dt = compute_dt(t, t_prev)
-            
-            wx, wy = pixels_to_angular_rates(dx, dy, dt)
-            print(f"{t:6.2f}  {dx:4d}  {dy:4d}  {wx:12.6f}  {wy:12.6f}")
-            
-            # Write to CSV
-            writer.writerow([f"{t:.6f}", f"{wx:.6f}", f"{wy:.6f}"])
-            
-            # ✅ Update previous time
-            t_prev = t
-            
+
+            batch_times.append(t)
+            batch_dx.append(dx)
+            batch_dy.append(dy)
+
+            # Process batch every 10 samples
+            if len(batch_times) == 10:
+                dt = batch_times[-1] - batch_times[0]
+                dx_total = sum(batch_dx)
+                dy_total = sum(batch_dy)
+
+                wx, wy = pixels_to_angular_rates(dx_total, dy_total, dt)
+
+                # Use the last time in the batch as the timestamp
+                print(f"{batch_times[-1]:12.6f}  {dx_total:7d}  {dy_total:7d}  {wx:12.6f}  {wy:12.6f}")
+                writer.writerow([f"{batch_times[-1]:.6f}", f"{wx:.6f}", f"{wy:.6f}"])
+
+                # Reset for next batch
+                batch_times.clear()
+                batch_dx.clear()
+                batch_dy.clear()
+
 if __name__ == "__main__":
     main()
