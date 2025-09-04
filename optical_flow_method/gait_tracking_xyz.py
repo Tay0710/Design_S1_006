@@ -24,8 +24,8 @@ ahrs = imufusion.Ahrs()
 
 # === Tuning Variables ===
 gain = 1.9
-gyro_range = 500
-accel_rej = 12
+gyro_range = 250 # Set range of the gyro
+accel_rej = 2 # Set max of the accel
 mag_rej = 0
 rej_timeout = 1 * int(sample_rate)
 motion_threshold = 0.1
