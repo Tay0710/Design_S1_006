@@ -62,7 +62,7 @@ float calibAccelX = 0, calibAccelY = 0, calibAccelZ = 0;
 float calibGyroX  = 0, calibGyroY  = 0, calibGyroZ  = 0;
 
 float  G_rating = 4;      // 2/4/8/16/32 g
-float  dps_rating = 125; // 15.625/31.25/62.5/125/250/500/1000/2000/4000 dps
+float  dps_rating = 250; // 15.625/31.25/62.5/125/250/500/1000/2000/4000 dps
 
 // Timing control
 unsigned long lastIMUtime = 0;
@@ -150,11 +150,11 @@ void setup()
     while (1);
   }
   
-
   // Configure accelerometer and gyro
   IMU.startAccel(1600, G_rating);     // Max 6400Hz; 100 Hz, ±2/4/8/16/32 g
   IMU.startGyro(1600, dps_rating);    // 100 Hz, ±15.625/31.25/62.5/125/250/500/1000/2000/4000 dps
   // Data comes out of the IMU as steps from -32768 to +32768 representing the full scale range
+  delay(100); // Delay needed to ensure proper calibration
 
   Serial.println("Do not move drone while calibrating the ICM.");
   calibrateIMU(1000);
@@ -164,11 +164,9 @@ void setup()
       Serial.println("PMW3901 initialization failed. Check wiring!");
       while (1);  // stop if not found
   }
-  Serial.println("b");
   delay(100);
 
   flow.enableFrameBuffer(); 
-  Serial.println("c");
 
   // --- Initialize SD card (on same VSPI but with different CS) ---
   if (!SD.begin(SD_CS, hspi)) {
@@ -205,7 +203,6 @@ void setup()
       "<a href='/download_tof'><button>Download ToF CSV</button></a><br>"
     "<a href='/download_of'><button>Download OF CSV</button></a>");
   });
-  Serial.println("d");
 
   server.on("/download_imu", HTTP_GET, []() {
     File f = SD.open(imuFileName);
@@ -226,7 +223,6 @@ void setup()
   });
 
   server.begin();
-  Serial.println("e");
 
   Wire.begin(); // This resets I2C bus to 100kHz
   Wire.setClock(1000000); //Sensor has max I2C freq of 1MHz
@@ -242,7 +238,6 @@ void setup()
     while (1)
       ;
   }
-  Serial.println("f");
 
   myImager.setResolution(8*8); // Enable all 64 pads or 16 pads for 4x4 resolution
 
@@ -292,7 +287,6 @@ int appendTimestamp(char* buf, unsigned long micros_val) {
     return idx;
 }
 
-
 void logIMU() {
   unsigned long now = micros();
   if (now - lastIMUtime < imuInterval) return;  
@@ -304,12 +298,12 @@ void logIMU() {
   inv_imu_sensor_data_t imu_data;
   IMU.getDataFromRegisters(imu_data);
 
-  float ax = imu_data.accel_data[0]*G_rating/32768.0 - calibAccelX;
-  float ay = imu_data.accel_data[1]*G_rating/32768.0 - calibAccelY;
-  float az = imu_data.accel_data[2]*G_rating/32768.0 - calibAccelZ;
   float gx = imu_data.gyro_data[0]*dps_rating/32768.0 - calibGyroX;
   float gy = imu_data.gyro_data[1]*dps_rating/32768.0 - calibGyroY;
   float gz = imu_data.gyro_data[2]*dps_rating/32768.0 - calibGyroZ;
+  float ax = imu_data.accel_data[0]*G_rating/32768.0 - calibAccelX;
+  float ay = imu_data.accel_data[1]*G_rating/32768.0 - calibAccelY;
+  float az = imu_data.accel_data[2]*G_rating/32768.0 - calibAccelZ;
 
   int idx = appendTimestamp(imuBuf, now);
   idx += snprintf(imuBuf + idx, sizeof(imuBuf) - idx, ",%.9f,%.9f,%.9f,%.9f,%.9f,%.9f\n", ax, ay, az, gx, gy, gz);
@@ -377,7 +371,6 @@ void logOF() {
   unsigned long now = micros();
   if (now - lastOFtime < ofInterval) return;  
   lastOFtime = now;
-
   // Serial.print("entering_of:");
   // Serial.printf("%.9f", now / 1000000.0);
 
@@ -416,40 +409,38 @@ void logOF() {
 
 void loop() {
 
-    bool recording = (digitalRead(TRIGGER_PIN) == LOW);
-
-    if (recording) {
-        // --- Open files once when recording starts ---
-        if (!imuFile) {
-          imuFile = SD.open(imuFileName, FILE_APPEND);
-          tofFile = SD.open(tofFileName, FILE_APPEND);
-          ofFile = SD.open(ofFileName, FILE_APPEND);
+  if (digitalRead(TRIGGER_PIN) == LOW) {
+      // --- Open files once when recording starts ---
+      if (!imuFile) {
+        imuFile = SD.open(imuFileName, FILE_APPEND);
+        tofFile = SD.open(tofFileName, FILE_APPEND);
+        ofFile = SD.open(ofFileName, FILE_APPEND);
 
 
-            Serial.println("Opening files for logging...");
-            if (!imuFile || !tofFile || !ofFile) {
-                Serial.println("Failed to open one or more files!");
-            }
-        }
+          Serial.println("Opening files for logging...");
+          if (!imuFile || !tofFile || !ofFile) {
+              Serial.println("Failed to open one or more files!");
+          }
+      }
 
-        // --- Write data ---
-        logIMU();   // writes to imuFile
-        logToF();   // writes to tofFile
-        logOF();    // writes to ofFile
-    } 
-    else {
-         server.handleClient(); // Handle web server clients only when not recording, to save time
+      // --- Write data ---
+      logIMU();   // writes to imuFile
+      logToF();   // writes to tofFile
+      logOF();    // writes to ofFile
+  } 
+  else {
+        server.handleClient(); // Handle web server clients only when not recording, to save time
 
-        // --- Close files once when recording stops ---
-        if (imuFile) {
-            imuFile.close();
-            imuFile = File(); // reset handle
-            tofFile.close();
-            tofFile = File();
-            ofFile.close();
-            ofFile = File();
-            Serial.println("Files closed, safe to download.");
-        }
+      // --- Close files once when recording stops ---
+      if (imuFile) {
+          imuFile.close();
+          imuFile = File(); // reset handle
+          tofFile.close();
+          tofFile = File();
+          ofFile.close();
+          ofFile = File();
+          Serial.println("Files closed, safe to download.");
+      }
     }
 
 // Data is stored in RAM buffer temporarily before being written to SD card. Flushing forces the data being stored in the RAM buffer to be written to the SD card immediately.
