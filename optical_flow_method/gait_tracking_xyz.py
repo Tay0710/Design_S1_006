@@ -8,11 +8,11 @@ from mpl_toolkits.mplot3d import Axes3D
 import numpy
 
 # === Import sensor data ===
-data = numpy.genfromtxt("../optical_flow_method_data/combined_samples/square/IMU_combined_square.csv", delimiter=",", skip_header=1)
+data = numpy.genfromtxt("../optical_flow_method_data/combined_samples/square2/IMU_combined_square2.csv", delimiter=",", skip_header=1)
 
 timestamp = data[:, 0]
-gyroscope = data[:, 4:7]
-accelerometer = data[:, 1:4]
+gyroscope = data[:, 1:4]
+accelerometer = data[:, 4:7]
 
 # === Calculate sample rate ===
 sample_rate = 1.0 / numpy.mean(numpy.diff(timestamp))
@@ -23,11 +23,11 @@ offset = imufusion.Offset(int(sample_rate))
 ahrs = imufusion.Ahrs()
 
 # === Tuning Variables ===
-gain = 3.5
-gyro_range = 2000
-accel_rej = 10
+gain = 1.9
+gyro_range = 500
+accel_rej = 12
 mag_rej = 0
-rej_timeout = 3 * int(sample_rate)
+rej_timeout = 1 * int(sample_rate)
 motion_threshold = 0.1
 smoothing_margin = int(1 * sample_rate)
                        
@@ -66,7 +66,8 @@ for index in range(len(timestamp)):
 
     # Gravity removal: earth_acceleration is in g → subtract gravity vector → m/s²
     earth_accel_g = ahrs.earth_acceleration
-    linear_accel_mps2 = (earth_accel_g - GRAVITY_G_NWU) * G
+    linear_accel_mps2 = (earth_accel_g) * G
+    # linear_accel_mps2 = (earth_accel_g - GRAVITY_G_NWU) * G # IDK IF I SHOULD BE REMOVING THIS SUBTRACTION
     acceleration[index] = linear_accel_mps2
 
     if index % 500 == 0:
@@ -169,31 +170,31 @@ ax_xy.set_ylim(y_mid - max_range, y_mid + max_range)
 
 ax_xy.grid(True)
 
-# # === Figure 2: Velocities + Accelerations ===
-# fig = pyplot.figure(figsize=(12, 16))
+# === Figure 2: Velocities + Accelerations ===
+fig = pyplot.figure(figsize=(12, 16))
 
-# # Subplot 2: Velocities
-# ax_vel = fig.add_subplot(311)
-# ax_vel.plot(timestamp, velocity[:, 0], label="Velocity X", linewidth=1)
-# ax_vel.plot(timestamp, velocity[:, 1], label="Velocity Y", linewidth=1)
-# ax_vel.plot(timestamp, velocity[:, 2], label="Velocity Z", linewidth=1)
-# ax_vel.fill_between(timestamp, -5, 5, where=is_moving, color='orange', alpha=0.2, label='Motion Detected')
-# ax_vel.set_xlabel("Time (s)")
-# ax_vel.set_ylabel("Velocity (m/s)")
-# ax_vel.set_title("Velocity Components Over Time")
-# ax_vel.legend()
-# ax_vel.grid(True)
+# Subplot 2: Velocities
+ax_vel = fig.add_subplot(311)
+ax_vel.plot(timestamp, velocity[:, 0], label="Velocity X", linewidth=1)
+ax_vel.plot(timestamp, velocity[:, 1], label="Velocity Y", linewidth=1)
+ax_vel.plot(timestamp, velocity[:, 2], label="Velocity Z", linewidth=1)
+ax_vel.fill_between(timestamp, -5, 5, where=is_moving, color='orange', alpha=0.2, label='Motion Detected')
+ax_vel.set_xlabel("Time (s)")
+ax_vel.set_ylabel("Velocity (m/s)")
+ax_vel.set_title("Velocity Components Over Time")
+ax_vel.legend()
+ax_vel.grid(True)
 
-# # Subplot 3: Accelerations
-# ax_acc = fig.add_subplot(312)
-# ax_acc.plot(timestamp, acceleration[:, 0], label="Acceleration X", linewidth=1)
-# ax_acc.plot(timestamp, acceleration[:, 1], label="Acceleration Y", linewidth=1)
-# ax_acc.plot(timestamp, acceleration[:, 2], label="Acceleration Z", linewidth=1)
-# ax_acc.set_xlabel("Time (s)")
-# ax_acc.set_ylabel("Acceleration (m/s²)")
-# ax_acc.set_title("Acceleration Components Over Time")
-# ax_acc.legend()
-# ax_acc.grid(True)
+# Subplot 3: Accelerations
+ax_acc = fig.add_subplot(312)
+ax_acc.plot(timestamp, acceleration[:, 0], label="Acceleration X", linewidth=1)
+ax_acc.plot(timestamp, acceleration[:, 1], label="Acceleration Y", linewidth=1)
+ax_acc.plot(timestamp, acceleration[:, 2], label="Acceleration Z", linewidth=1)
+ax_acc.set_xlabel("Time (s)")
+ax_acc.set_ylabel("Acceleration (m/s²)")
+ax_acc.set_title("Acceleration Components Over Time")
+ax_acc.legend()
+ax_acc.grid(True)
 
 pyplot.tight_layout(pad=4.0)
 pyplot.show()
