@@ -1,9 +1,10 @@
 # LORA_TEST_2
 
 - Currently working when connected to a normal ESP32 Dev module
+- Currently working when connected to ESP32-S3 (Lilygo-T-Display-S3)
+
 
 TODO:
-- get working on ESP32-S3 (Lilygo-T-Display-S3)
 - test range in Lv4 EECE
 
 

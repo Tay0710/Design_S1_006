@@ -3,26 +3,21 @@
 #include <SX126x-Arduino.h>
 #include <SPI.h>
 
-/*
-
-So this code is initialising with LoRa module connected to ESP32 Dev Module
-- With and without RXEn and TXEn connected
-- 
-
-*/
 
 hw_config hwConfig;
 
 // ESP32 - SX126x pin configuration
-int PIN_LORA_RESET = 4;	 // LORA RESET
-int PIN_LORA_DIO_1 = 21; // LORA DIO_1
-int PIN_LORA_BUSY = 22;	 // LORA SPI BUSY
-int PIN_LORA_NSS = 5;	 // LORA SPI CS
-int PIN_LORA_SCLK = 18;	 // LORA SPI CLK
-int PIN_LORA_MISO = 19;	 // LORA SPI MISO
-int PIN_LORA_MOSI = 23;	 // LORA SPI MOSI
-int RADIO_TXEN = 26;	 // LORA ANTENNA TX ENABLE
-int RADIO_RXEN = 27;	 // LORA ANTENNA RX ENABLE
+int PIN_LORA_RESET = 1;	 // LORA RESET
+int PIN_LORA_DIO_1 = 2; // LORA DIO_1
+int PIN_LORA_BUSY = 3;	 // LORA SPI BUSY
+int PIN_LORA_NSS = 10;	 // LORA SPI CS
+int PIN_LORA_SCLK = 12;	 // LORA SPI CLK
+int PIN_LORA_MISO = 11;	 // LORA SPI MISO
+int PIN_LORA_MOSI = 13;	 // LORA SPI MOSI
+
+// Not actually connected
+int RADIO_TXEN = 43;	 // LORA ANTENNA TX ENABLE
+int RADIO_RXEN = 44;	 // LORA ANTENNA RX ENABLE
 
 
 // Function declarations
@@ -36,7 +31,7 @@ void OnCadDone(bool cadResult); // Cad = Channel Activity Detection
 #define LED_BUILTIN 2
 
 // Define LoRa parameters
-#define RF_FREQUENCY 916100000	// Hz (Note: should I change this to 915 MHz)
+#define RF_FREQUENCY 915000000	// Hz (Note: should I change this to 915 MHz) - YES (must match exact frequency)
 #define TX_OUTPUT_POWER 22		// dBm
 #define LORA_BANDWIDTH 0		// [0: 125 kHz, 1: 250 kHz, 2: 500 kHz, 3: Reserved]
 #define LORA_SPREADING_FACTOR 7 // [SF7..SF12], SF7 is fastest, SF12 is slowest but greatest range and more robust
@@ -103,12 +98,12 @@ void setup()
 	hwConfig.PIN_LORA_DIO_1 = PIN_LORA_DIO_1; // LORA DIO_1
 	hwConfig.PIN_LORA_BUSY = PIN_LORA_BUSY;	  // LORA SPI BUSY
 	hwConfig.PIN_LORA_MOSI = PIN_LORA_MOSI;	  // LORA SPI MOSI
-	hwConfig.RADIO_TXEN = RADIO_TXEN;		  // LORA ANTENNA TX ENABLE
-	hwConfig.RADIO_RXEN = RADIO_RXEN;		  // LORA ANTENNA RX ENABLE
+	hwConfig.RADIO_TXEN = RADIO_TXEN;		  // LORA ANTENNA TX ENABLE (Note: if this is commented out, serial will print gpio error but code still works)
+	hwConfig.RADIO_RXEN = RADIO_RXEN;		  // LORA ANTENNA RX ENABLE (Note: if this is commented out, serial will print gpio error but code still works)
 	hwConfig.USE_DIO2_ANT_SWITCH = false;	  // Example uses an CircuitRocks Alora RFM1262 which uses DIO2 pins as antenna control
 	hwConfig.USE_DIO3_TCXO = false;			  // Example uses an CircuitRocks Alora RFM1262 which uses DIO3 to control oscillator voltage
 	hwConfig.USE_DIO3_ANT_SWITCH = false;	  // Only Insight ISP4520 module uses DIO3 as antenna control
-	hwConfig.USE_RXEN_ANT_PWR = true;		  // RXEN is used as power for antenna switch
+	hwConfig.USE_RXEN_ANT_PWR = false;		  // RXEN is used as power for antenna switch
 
   pinMode(LED_BUILTIN, OUTPUT); // For ESP32 Dev Module
 	digitalWrite(LED_BUILTIN, LOW);
@@ -236,6 +231,8 @@ void loop()
 				Serial.printf("%02X ", RcvBuffer[idx]);
 			}
 			Serial.println("");
+
+			Serial.println((const char *)RcvBuffer);
 
 			if (isMaster == true)
 			{
