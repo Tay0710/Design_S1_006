@@ -1,6 +1,38 @@
-#include <Bluepad32.h>
+/*
 
+  Adapted using example 'Controller.ino' from Bluepad32 library for Arduino (https://github.com/ricardoquesada/bluepad32) following documentation from 
+  https://bluepad32.readthedocs.io/en/latest/plat_arduino/
+  
+*/
+
+#include <Bluepad32.h>
+#include "SBUS.h"
+
+// Using UART2 on ESP32
+#define RX_PIN 16
+#define TX_PIN 17
+
+// Initialise global variables
 ControllerPtr myControllers[BP32_MAX_GAMEPADS];
+
+uint8_t sbusPacket[SBUS_PACKET_LENGTH];
+int rcChannels[SBUS_CHANNEL_NUMBER];
+uint32_t sbusTime = 0;
+
+// Constant for joystick
+#define AXIS_L_NEUTRAL_X 4
+#define AXIS_L_NEUTRAL_Y -3
+#define AXIS_R_NEUTRAL_X 3
+#define AXIS_R_NEUTRAL_Y 0
+#define AXIS_UP -512
+#define AXIS_DOWN 512
+#define AXIS_LEFT -512
+#define AXIS_RIGHT 512
+
+// Extra SBUS constants
+#define SBUS_MIN 885
+#define SBUS_MID 1500
+#define SBUS_MAX 2115
 
 // This callback gets called any time a new gamepad is connected.
 // Up to 4 gamepads can be connected at the same time.
@@ -39,6 +71,9 @@ void onDisconnectedController(ControllerPtr ctl) {
     if (!foundController) {
         Serial.println("CALLBACK: Controller disconnected, but not found in myControllers");
     }
+
+    // TODO: trigger failsafe mode on AUX2
+    // TODO: setup failsafe mode to land drone on betaflight
 }
 
 /*
@@ -82,165 +117,65 @@ void dumpGamepad(ControllerPtr ctl) {
     );
 }
 
-void dumpMouse(ControllerPtr ctl) {
-    Serial.printf("idx=%d, buttons: 0x%04x, scrollWheel=0x%04x, delta X: %4d, delta Y: %4d\n",
-                   ctl->index(),        // Controller Index
-                   ctl->buttons(),      // bitmask of pressed buttons
-                   ctl->scrollWheel(),  // Scroll Wheel
-                   ctl->deltaX(),       // (-511 - 512) left X Axis
-                   ctl->deltaY()        // (-511 - 512) left Y axis
-    );
-}
-
-void dumpKeyboard(ControllerPtr ctl) {
-    static const char* key_names[] = {
-        // clang-format off
-        // To avoid having too much noise in this file, only a few keys are mapped to strings.
-        // Starts with "A", which is offset 4.
-        "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V",
-        "W", "X", "Y", "Z", "1", "2", "3", "4", "5", "6", "7", "8", "9", "0",
-        // Special keys
-        "Enter", "Escape", "Backspace", "Tab", "Spacebar", "Underscore", "Equal", "OpenBracket", "CloseBracket",
-        "Backslash", "Tilde", "SemiColon", "Quote", "GraveAccent", "Comma", "Dot", "Slash", "CapsLock",
-        // Function keys
-        "F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8", "F9", "F10", "F11", "F12",
-        // Cursors and others
-        "PrintScreen", "ScrollLock", "Pause", "Insert", "Home", "PageUp", "Delete", "End", "PageDown",
-        "RightArrow", "LeftArrow", "DownArrow", "UpArrow",
-        // clang-format on
-    };
-    static const char* modifier_names[] = {
-        // clang-format off
-        // From 0xe0 to 0xe7
-        "Left Control", "Left Shift", "Left Alt", "Left Meta",
-        "Right Control", "Right Shift", "Right Alt", "Right Meta",
-        // clang-format on
-    };
-    Serial.printf("idx=%d, Pressed keys: ", ctl->index());
-    for (int key = Keyboard_A; key <= Keyboard_UpArrow; key++) {
-        if (ctl->isKeyPressed(static_cast<KeyboardKey>(key))) {
-            const char* keyName = key_names[key-4];
-            Serial.printf("%s,", keyName);
-       }
-    }
-    for (int key = Keyboard_LeftControl; key <= Keyboard_RightMeta; key++) {
-        if (ctl->isKeyPressed(static_cast<KeyboardKey>(key))) {
-            const char* keyName = modifier_names[key-0xe0];
-            Serial.printf("%s,", keyName);
-        }
-    }
-    Console.printf("\n");
-}
-
-void dumpBalanceBoard(ControllerPtr ctl) {
-    Serial.printf("idx=%d,  TL=%u, TR=%u, BL=%u, BR=%u, temperature=%d\n",
-                   ctl->index(),        // Controller Index
-                   ctl->topLeft(),      // top-left scale
-                   ctl->topRight(),     // top-right scale
-                   ctl->bottomLeft(),   // bottom-left scale
-                   ctl->bottomRight(),  // bottom-right scale
-                   ctl->temperature()   // temperature: used to adjust the scale value's precision
-    );
-}
-
 void processGamepad(ControllerPtr ctl) {
-    // There are different ways to query whether a button is pressed.
-    // By query each button individually:
-    //  a(), b(), x(), y(), l1(), etc...
-    if (ctl->a()) {
-        static int colorIdx = 0;
-        // Some gamepads like DS4 and DualSense support changing the color LED.
-        // It is possible to change it by calling:
-        switch (colorIdx % 3) {
-            case 0:
-                // Red
-                ctl->setColorLED(255, 0, 0);
-                break;
-            case 1:
-                // Green
-                ctl->setColorLED(0, 255, 0);
-                break;
-            case 2:
-                // Blue
-                ctl->setColorLED(0, 0, 255);
-                break;
-        }
-        colorIdx++;
+    // When R1 is pressed
+    if (ctl->r1()) {
+      dumpGamepad(ctl); // Prints everything for debug
+    }
+    // Press L2 + R2 to arm (AUX1)
+    if (ctl->l2() and ctl->r2()) {
+      Serial.println("ARM DRONE");
+      rcChannels[AUX1] = 1800;
+    } else {
+      rcChannels[AUX1] = 1500;
+      // Unsure if it needs to be set back to 1500 otherwise... probably
     }
 
-    if (ctl->b()) {
-        // Turn on the 4 LED. Each bit represents one LED.
-        static int led = 0;
-        led++;
-        // Some gamepads like the DS3, DualSense, Nintendo Wii, Nintendo Switch
-        // support changing the "Player LEDs": those 4 LEDs that usually indicate
-        // the "gamepad seat".
-        // It is possible to change them by calling:
-        ctl->setPlayerLEDs(led & 0x0f);
+    // Map throttle values
+    if (ctl->axisY() <= AXIS_L_NEUTRAL_Y) {
+      rcChannels[THROTTLE] =(int)map(ctl->axisY(), AXIS_L_NEUTRAL_Y, AXIS_UP, SBUS_MID, SBUS_MAX);
+    } else {
+      rcChannels[THROTTLE] =(int)map(ctl->axisY(), AXIS_L_NEUTRAL_Y, AXIS_DOWN, SBUS_MID, SBUS_MIN);
     }
+    // Serial.print("axis l - y: ");
+    // Serial.print(ctl->axisY());
+    // Serial.print("\t throttle: ");
+    // Serial.println(rcChannels[THROTTLE]);
 
-    if (ctl->x()) {
-        // Some gamepads like DS3, DS4, DualSense, Switch, Xbox One S, Stadia support rumble.
-        // It is possible to set it by calling:
-        // Some controllers have two motors: "strong motor", "weak motor".
-        // It is possible to control them independently.
-        ctl->playDualRumble(0 /* delayedStartMs */, 250 /* durationMs */, 0x80 /* weakMagnitude */,
-                            0x40 /* strongMagnitude */);
+    // Map yaw values
+    if (ctl->axisX() <= AXIS_L_NEUTRAL_X) {
+      rcChannels[YAW] =(int)map(ctl->axisX(), AXIS_L_NEUTRAL_X, AXIS_LEFT, SBUS_MID, SBUS_MIN);
+    } else {
+      rcChannels[YAW] =(int)map(ctl->axisX(), AXIS_L_NEUTRAL_X, AXIS_RIGHT, SBUS_MID, SBUS_MAX);
     }
+    // Serial.print("axis l - x: ");
+    // Serial.print(ctl->axisX());
+    // Serial.print("\t yaw: ");
+    // Serial.println(rcChannels[YAW]);
 
-    // Another way to query controller data is by getting the buttons() function.
-    // See how the different "dump*" functions dump the Controller info.
-    dumpGamepad(ctl);
-}
-
-void processMouse(ControllerPtr ctl) {
-    // This is just an example.
-    if (ctl->scrollWheel() > 0) {
-        // Do Something
-    } else if (ctl->scrollWheel() < 0) {
-        // Do something else
+    // Map pitch values
+    // Note: this currently assumes pitching down is > 1500 and pitching up is < 1500, if not simply swap SBUS_MAX and SBUS_MIN
+    if (ctl->axisRY() <= AXIS_R_NEUTRAL_Y) {
+      rcChannels[PITCH] =(int)map(ctl->axisRY(), AXIS_R_NEUTRAL_Y, AXIS_UP, SBUS_MID, SBUS_MAX);
+    } else {
+      rcChannels[PITCH] =(int)map(ctl->axisRY(), AXIS_R_NEUTRAL_Y, AXIS_DOWN, SBUS_MID, SBUS_MIN);
     }
+    // Serial.print("axis r - y: ");
+    // Serial.print(ctl->axisY());
+    // Serial.print("\t pitch: ");
+    // Serial.println(rcChannels[PITCH]);
 
-    // See "dumpMouse" for possible things to query.
-    dumpMouse(ctl);
-}
-
-void processKeyboard(ControllerPtr ctl) {
-    if (!ctl->isAnyKeyPressed())
-        return;
-
-    // This is just an example.
-    if (ctl->isKeyPressed(Keyboard_A)) {
-        // Do Something
-        Serial.println("Key 'A' pressed");
+    // Map roll values
+    if (ctl->axisRX() <= AXIS_R_NEUTRAL_X) {
+      rcChannels[ROLL] =(int)map(ctl->axisRX(), AXIS_R_NEUTRAL_X, AXIS_LEFT, SBUS_MID, SBUS_MIN);
+    } else {
+      rcChannels[ROLL] =(int)map(ctl->axisRX(), AXIS_R_NEUTRAL_X, AXIS_RIGHT, SBUS_MID, SBUS_MAX);
     }
+    // Serial.print("axis r - x: ");
+    // Serial.print(ctl->axisRX());
+    // Serial.print("\t yaw: ");
+    // Serial.println(rcChannels[ROLL]);
 
-    // Don't do "else" here.
-    // Multiple keys can be pressed at the same time.
-    if (ctl->isKeyPressed(Keyboard_LeftShift)) {
-        // Do something else
-        Serial.println("Key 'LEFT SHIFT' pressed");
-    }
-
-    // Don't do "else" here.
-    // Multiple keys can be pressed at the same time.
-    if (ctl->isKeyPressed(Keyboard_LeftArrow)) {
-        // Do something else
-        Serial.println("Key 'Left Arrow' pressed");
-    }
-
-    // See "dumpKeyboard" for possible things to query.
-    dumpKeyboard(ctl);
-}
-
-void processBalanceBoard(ControllerPtr ctl) {
-    // This is just an example.
-    if (ctl->topLeft() > 10000) {
-        // Do Something
-    }
-
-    // See "dumpBalanceBoard" for possible things to query.
-    dumpBalanceBoard(ctl);
 }
 
 void processControllers() {
@@ -248,12 +183,6 @@ void processControllers() {
         if (myController && myController->isConnected() && myController->hasData()) {
             if (myController->isGamepad()) {
                 processGamepad(myController);
-            } else if (myController->isMouse()) {
-                processMouse(myController);
-            } else if (myController->isKeyboard()) {
-                processKeyboard(myController);
-            } else if (myController->isBalanceBoard()) {
-                processBalanceBoard(myController);
             } else {
                 Serial.println("Unsupported controller");
             }
@@ -264,6 +193,8 @@ void processControllers() {
 // Arduino setup function. Runs in CPU 1
 void setup() {
     Serial.begin(115200);
+
+    Serial.println(" --- Setup Bluetooth Controller --- ");
     Serial.printf("Firmware: %s\n", BP32.firmwareVersion());
     const uint8_t* addr = BP32.localBdAddress();
     Serial.printf("BD Addr: %2X:%2X:%2X:%2X:%2X:%2X\n", addr[0], addr[1], addr[2], addr[3], addr[4], addr[5]);
@@ -286,12 +217,35 @@ void setup() {
     // - Second one, which is a "virtual device", is a mouse.
     // By default, it is disabled.
     BP32.enableVirtualDevice(false);
+
+    Serial.println(" --- Setup SBUS --- ");
+
+    // Initialise all channels to 1500
+    for (uint8_t i = 0; i < SBUS_CHANNEL_NUMBER; i++) {
+      rcChannels[i] = 1500;
+    }
+    // Initialise throttle to 885
+    rcChannels[THROTTLE] = 885; // must be below min_check = 1050 when arming
+ 
+    // Stuff that Aidan wanted lmao
+    rcChannels[AUX2] = 1200; // For angle mode?
+    // TODO: might map this to button instead
+
+    Serial1.begin(100000, SERIAL_8E2, RX_PIN, TX_PIN, true); // Initialize Serial1 with 100000 baud rate
+    // false = univerted, true = inverted
+
+    Serial.println(" --- Setup Complete --- ");
 }
 
 // Arduino loop function. Runs in CPU 1.
 void loop() {
+
+    uint32_t currentMillis = millis();
+
     // This call fetches all the controllers' data.
     // Call this function in your main loop.
+
+
     bool dataUpdated = BP32.update();
     if (dataUpdated)
         processControllers();
@@ -303,5 +257,12 @@ void loop() {
     // https://stackoverflow.com/questions/66278271/task-watchdog-got-triggered-the-tasks-did-not-reset-the-watchdog-in-time
 
     //     vTaskDelay(1);
-    delay(150);
+
+    if (currentMillis > sbusTime) {
+      sbusPreparePacket(sbusPacket, rcChannels, false, false);
+      Serial1.write(sbusPacket, SBUS_PACKET_LENGTH);
+      //printSBUSChannel(rcChannels);
+      //printSBUSData(sbusPacket);
+      sbusTime = currentMillis + SBUS_UPDATE_RATE;
+    }
 }
