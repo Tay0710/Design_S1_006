@@ -3,7 +3,7 @@ import time
 from x1_pixel_to_angular_rate import main as pixel_to_angular_rate
 from x2_height_from_ToF import main as height_from_ToF
 from x3_interpolate_heights import main as interpolate_heights
-from optical_flow_method.x4_xy_velocity_calculation import main as xy_velocity_calculation
+from x4_xy_velocity_calculation import main as xy_velocity_calculation
 
 
 def main():
