@@ -1,3 +1,2 @@
 timestamp,gain,gyro_range,accel_rej,mag_rej,rej_timeout_mult,motion_threshold,smoothing_margin_mult,err_xy
-2025-09-03 18:10:30,0.5,500,10,0,3,0.2,1,9.280797094607102
-2025-09-03 18:11:19,0.5,500,14,0,3,0.2,1,7.860873497520642
+2025-09-04 21:52:44,5.6,250,2,0,5,0.2,1,1.6446985744990819

@@ -1,24 +1,13 @@
 [
   {
-    "timestamp": "2025-09-03 18:10:30",
-    "gain": 0.5,
-    "gyro_range": 500,
-    "accel_rej": 10,
+    "timestamp": "2025-09-04 21:52:44",
+    "gain": 5.6,
+    "gyro_range": 250,
+    "accel_rej": 2,
     "mag_rej": 0,
-    "rej_timeout_mult": 3,
+    "rej_timeout_mult": 5,
     "motion_threshold": 0.2,
     "smoothing_margin_mult": 1,
-    "err_xy": 9.280797094607102
-  },
-  {
-    "timestamp": "2025-09-03 18:11:19",
-    "gain": 0.5,
-    "gyro_range": 500,
-    "accel_rej": 14,
-    "mag_rej": 0,
-    "rej_timeout_mult": 3,
-    "motion_threshold": 0.2,
-    "smoothing_margin_mult": 1,
-    "err_xy": 7.860873497520642
+    "err_xy": 1.6446985744990819
   }
 ]

@@ -32,7 +32,7 @@ defaults = {
 
 # === Parameter sweep definitions (full ranges) ===
 param_defs = {
-    "gain": np.round(np.arange(0.5, 5.0, 0.1), 2),
+    "gain": np.round(np.arange(5.1, 10.0, 0.1), 2),
     "gyro_range": [250],
     "accel_rej": [2],  
     "mag_rej": [0],
@@ -63,7 +63,7 @@ def run_once(params):
     for i in range(len(timestamp)):
         gyro[i] = offset.update(gyro[i])
         ahrs.update_no_magnetometer(gyro[i], accel[i], dt[i])
-        earth_acc[i] = ahrs.earth_acceleration * G
+        earth_acc[i] = ahrs.earth_acceleration 
 
     # Motion detection
     acc_norm = np.linalg.norm(earth_acc, axis=1)
@@ -148,6 +148,7 @@ def goto_index(i):
     ax.set_aspect("equal", adjustable="datalim")
     ax.set_title(params_to_str(params, err))
     status.set_text(f"Combo {current_index+1}/{len(GRID)}")
+    ax.grid(True)
     fig.canvas.draw_idle()
 
 def step(delta):
@@ -158,6 +159,8 @@ def on_timer():
         step(1)
         if current_index >= len(GRID)-1:
             toggle_play()
+
+timer.add_callback(on_timer)
 
 def toggle_play(event=None):
     global is_playing
