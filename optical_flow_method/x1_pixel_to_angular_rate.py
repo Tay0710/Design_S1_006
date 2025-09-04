@@ -27,7 +27,7 @@ def compute_dt(t_curr, t_prev):
         return None
 
 def main():
-    input_path = "../optical_flow_method_data/optical_flow_test_log.csv"
+    input_path = "../optical_flow_method_data/combined_samples/square2/OF_combined_square2.csv"
     output_path = "../optical_flow_method_data/optical_flow_angular_rates.csv"
     
     with open(input_path, "r") as f_in, open(output_path, "w", newline="") as f_out:
@@ -41,9 +41,9 @@ def main():
         print("-" * 50)
         
         for row in reader:
-            t = float(row["time_s"])
-            dx = int(row["dx"])
-            dy = int(row["dy"])
+            t = float(row["time"])
+            dx = int(row["deltaX"])
+            dy = int(row["deltaY"])
             
             dt = compute_dt(t, t_prev)
             
