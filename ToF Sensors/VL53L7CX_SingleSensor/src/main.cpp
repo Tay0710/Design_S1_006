@@ -83,7 +83,13 @@ void loop()
         Serial.println();
       }
       Serial.println();
+      for(int i = 0; i < 64; i++) { //8x8 = 64; 4x4 = 16
+          Serial.print(measurementData.distance_mm[i]);
+          Serial.print(',');
+      }
+      Serial.println();
     }
+    for(int i=0; i<64; i++) Serial.print(",D"+String(i));
   }
 
   delay(5); //Small delay between polling

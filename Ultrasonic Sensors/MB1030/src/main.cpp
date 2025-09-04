@@ -8,7 +8,7 @@
 
 #include <Arduino.h>
 
-const int pwPin = 4;  // Connect MB1030 PW output to this pin
+const int pwPin = 20;  // Connect MB1030 PW output to this pin
 const int MAX_SAMPLES  = 50; // Sample size
 
 struct Sample {
