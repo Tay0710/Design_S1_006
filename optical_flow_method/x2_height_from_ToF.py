@@ -45,7 +45,7 @@ def main():
 
     with open(output_path, "w", newline="") as f_out:
         writer = csv.writer(f_out)
-        writer.writerow(["time (s)", "D28", "D27", "D36", "D35"])
+        writer.writerow(["time", "height"])
 
         for t, v28, v27, v36, v35 in zip(times, d28, d27, d36, d35):
             h = calculate_height(v28, v27, v36, v35)
