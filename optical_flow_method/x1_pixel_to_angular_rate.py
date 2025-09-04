@@ -53,6 +53,7 @@ def main():
 
                 # Use the last time in the batch as the timestamp
                 print(f"{batch_times[-1]:12.6f}  {dx_total:7d}  {dy_total:7d}  {wx:12.6f}  {wy:12.6f}")
+                # Currently writing the first time of the sample of ten - open to change
                 writer.writerow([f"{batch_times[-1]:.6f}", f"{wx:.6f}", f"{wy:.6f}"])
 
                 # Reset for next batch
