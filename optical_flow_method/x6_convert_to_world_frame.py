@@ -1,0 +1,113 @@
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+
+
+def load_rotation_matrices(rot_csv):
+    """Load rotation matrices CSV and reshape into (N, 3, 3)."""
+    rot = np.loadtxt(rot_csv, delimiter=",", skiprows=1)
+    return rot.reshape(-1, 3, 3)
+
+
+def load_body_velocities(vel_csv):
+    """Load body-frame velocities and timestamps from CSV."""
+    vel_df = pd.read_csv(vel_csv)
+    times = vel_df["time (s)"].values
+    v_body = vel_df[["v_x (m/s)", "v_y (m/s)"]].values
+    v_body3 = np.hstack([v_body, np.zeros((len(v_body), 1))])  # add z=0
+    return times, v_body3
+
+
+def rotate_to_world(rot_mats, v_body3):
+    """Rotate body-frame velocities into world frame."""
+    v_world = np.zeros_like(v_body3)
+    for i in range(len(v_body3)):
+        v_world[i] = rot_mats[i] @ v_body3[i]
+    return v_world
+
+
+def integrate_velocity(times, v_world):
+    """Integrate velocity to get position (trapezoidal)."""
+    pos_world = np.zeros_like(v_world)
+    for i in range(1, len(times)):
+        dt = times[i] - times[i - 1]
+        pos_world[i] = pos_world[i - 1] + 0.5 * dt * (v_world[i] + v_world[i - 1])
+    return pos_world
+
+
+def save_results(times, v_world, pos_world, output_csv):
+    """Save world-frame velocities and positions to CSV."""
+    out = pd.DataFrame({
+        "time (s)": times,
+        "v_world_x": v_world[:, 0],
+        "v_world_y": v_world[:, 1],
+        "v_world_z": v_world[:, 2],
+        "pos_world_x": pos_world[:, 0],
+        "pos_world_y": pos_world[:, 1],
+        "pos_world_z": pos_world[:, 2],
+    })
+    out.to_csv(output_csv, index=False)
+    print(f"Saved world-frame velocities and positions to {output_csv}")
+
+
+def plot_positions_and_velocities(times, v_world, pos_world):
+    """Plot positions and velocities in world frame."""
+    # === Plot positions ===
+    plt.figure(figsize=(12, 5))
+
+    # XY trajectory
+    plt.subplot(1, 2, 1)
+    plt.plot(pos_world[:, 0], pos_world[:, 1], "-o")
+    plt.xlabel("X (m, world)")
+    plt.ylabel("Y (m, world)")
+    plt.title("Trajectory in World Frame (XY)")
+    plt.axis("equal")
+    plt.grid(True)
+
+    # XYZ position vs time
+    plt.subplot(1, 2, 2)
+    plt.plot(times, pos_world[:, 0], label="X (m)")
+    plt.plot(times, pos_world[:, 1], label="Y (m)")
+    plt.plot(times, pos_world[:, 2], label="Z (m)")
+    plt.xlabel("Time (s)")
+    plt.ylabel("Position (m)")
+    plt.title("World Position vs Time")
+    plt.legend()
+    plt.grid(True)
+
+    plt.tight_layout()
+    plt.show()
+
+    # === Plot velocities ===
+    plt.figure(figsize=(8, 5))
+    plt.plot(times, v_world[:, 0], label="Vx (m/s)")
+    plt.plot(times, v_world[:, 1], label="Vy (m/s)")
+    plt.plot(times, v_world[:, 2], label="Vz (m/s)")
+    plt.xlabel("Time (s)")
+    plt.ylabel("Velocity (m/s)")
+    plt.title("World Velocities vs Time")
+    plt.legend()
+    plt.grid(True)
+    plt.show()
+
+
+def main():
+    rot_csv = "../optical_flow_method_data/rotation_matrices.csv"
+    vel_csv = "../optical_flow_method_data/xy_velocities.csv"
+    output_csv = "../optical_flow_method_data/xy_velocities_to_world_frame.csv"
+
+    # Load data
+    rot_mats = load_rotation_matrices(rot_csv)
+    times, v_body3 = load_body_velocities(vel_csv)
+
+    # Rotate + integrate
+    v_world = rotate_to_world(rot_mats, v_body3)
+    pos_world = integrate_velocity(times, v_world)
+
+    # Save and plot
+    save_results(times, v_world, pos_world, output_csv)
+    plot_positions_and_velocities(times, v_world, pos_world)
+
+
+if __name__ == "__main__":
+    main()
