@@ -32,12 +32,12 @@ defaults = {
 
 # === Parameter sweep definitions (full ranges) ===
 param_defs = {
-    "gain": np.round(np.arange(5.1, 10.0, 0.1), 2),
+    "gain": np.round(np.arange(0.1, 2.0, 0.1), 2),
     "gyro_range": [250],
     "accel_rej": [2],  
     "mag_rej": [0],
     "rej_timeout_mult": [1, 2, 3, 4, 5] ,
-    "motion_threshold": np.round(np.arange(0.05, 0.2, 0.05), 2),
+    "motion_threshold": np.round(np.arange(0.05, 1.0, 0.05), 2),
     "smoothing_margin_mult": [1, 2, 3]
 }
 
