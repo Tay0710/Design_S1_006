@@ -4,117 +4,89 @@ import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 from mpl_toolkits.mplot3d import Axes3D  # noqa: F401
 
-"""
-Has been adapted from the https://github.com/xioTechnologies/Fusion Github repo
-"""
 
-# Import sensor data
-# data = np.genfromtxt("../optical_flow_method_data/sensor_data.csv", delimiter=",", skip_header=1)
-data = np.genfromtxt("../optical_flow_method_data/ICM456_StillV02_2_15625.csv", delimiter=",", skip_header=1)
+def load_sensor_data(input_csv):
+    """Load IMU CSV with timestamp, gyro, accel."""
+    data = np.genfromtxt(input_csv, delimiter=",", skip_header=1)
+    timestamp = data[:, 0]
+    gyroscope = data[:, 1:4]       # [deg/s]
+    accelerometer = data[:, 4:7]   # [g]
+    return timestamp, gyroscope, accelerometer
 
-timestamp = data[:, 0]
-gyroscope = data[:, 1:4]       # [deg/s]
-accelerometer = data[:, 4:7]   # [g]
 
-sample_rate = np.mean(np.diff(timestamp))
-print("Sample Rate: ", sample_rate)
+def run_ahrs(timestamp, gyroscope, accelerometer):
+    """Run AHRS filter and return rotation matrices (flattened)."""
+    sample_rate = int(round(1.0 / np.mean(np.diff(timestamp))))
+    print("Sample Rate: ", sample_rate)
 
-delta_time = np.diff(timestamp, prepend=timestamp[0])
+    delta_time = np.diff(timestamp, prepend=timestamp[0])
 
-# Instantiate algorithms
-offset = imufusion.Offset(sample_rate)
-ahrs = imufusion.Ahrs()
+    offset = imufusion.Offset(sample_rate)
+    ahrs = imufusion.Ahrs()
 
-ahrs.settings = imufusion.Settings(
-    imufusion.CONVENTION_NWU,  # convention
-    0.5,  # gain
-    2000,  # gyroscope range
-    10,  # acceleration rejection
-    10,  # magnetic rejection
-    5 * sample_rate,  # recovery trigger period = 5 seconds
-)
+    ahrs.settings = imufusion.Settings(
+        imufusion.CONVENTION_NWU,
+        0.5,   # gain
+        250,   # gyroscope range
+        2,     # acceleration rejection
+        10,    # magnetic rejection
+        5 * sample_rate,  # recovery trigger period = 5 seconds
+    )
 
-# === Run filter and store rotation matrices ===
-rot_mats = []
+    rot_mats = []
+    for i in range(len(timestamp)):
+        gyroscope[i] = offset.update(gyroscope[i])
+        ahrs.update_no_magnetometer(gyroscope[i], accelerometer[i], delta_time[i])
+        R = ahrs.quaternion.to_matrix()
+        rot_mats.append(R.flatten())  # store flattened row
 
-for i in range(len(timestamp)):
-    gyroscope[i] = offset.update(gyroscope[i])
-    ahrs.update_no_magnetometer(gyroscope[i], accelerometer[i], delta_time[i])
-    R = ahrs.quaternion.to_matrix()  # 3x3 rotation matrix
-    rot_mats.append(R.flatten())     # flatten to 9 numbers per row
+    return np.array(rot_mats)
 
-rot_mats = np.array(rot_mats)
 
-# === Save to CSV ===
-header = ",".join([f"r{i}{j}" for i in range(3) for j in range(3)])
-np.savetxt("../optical_flow_method_data/rotation_matrices.csv", rot_mats, delimiter=",", header=header, comments="")
+def save_rotation_matrices(rot_mats, output_csv):
+    """Save rotation matrices to CSV."""
+    header = ",".join([f"r{i}{j}" for i in range(3) for j in range(3)])
+    np.savetxt(output_csv, rot_mats, delimiter=",", header=header, comments="")
+    print(f"Saved rotation matrices to {output_csv}")
 
-print("Saved rotation matrices to rotation_matrices.csv")
 
-# === Simple 3D animation ===
-fig = plt.figure()
-ax = fig.add_subplot(111, projection="3d")
-ax.set_xlim([-1, 1])
-ax.set_ylim([-1, 1])
-ax.set_zlim([-1, 1])
-ax.set_xlabel("X")
-ax.set_ylabel("Y")
-ax.set_zlabel("Z")
+def animate_rotation(rot_mats):
+    """Simple 3D animation of basis vectors over time."""
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection="3d")
+    ax.set_xlim([-1, 1]); ax.set_ylim([-1, 1]); ax.set_zlim([-1, 1])
+    ax.set_xlabel("X"); ax.set_ylabel("Y"); ax.set_zlabel("Z")
 
-# Draw basis vectors (rotated axes)
-quiver = ax.quiver(0, 0, 0, 1, 0, 0, color="r")  # placeholder
+    def update(frame):
+        ax.cla()
+        ax.set_xlim([-1, 1]); ax.set_ylim([-1, 1]); ax.set_zlim([-1, 1])
+        ax.set_xlabel("X"); ax.set_ylabel("Y"); ax.set_zlabel("Z")
 
-def update(frame):
-    ax.cla()  # clear entire 3D axis
+        R = rot_mats[frame].reshape(3, 3)
+        origin = np.zeros(3)
+        ax.quiver(*origin, *R[:, 0], color="r", length=1)
+        ax.quiver(*origin, *R[:, 1], color="g", length=1)
+        ax.quiver(*origin, *R[:, 2], color="b", length=1)
+        ax.set_title(f"Frame {frame}/{len(rot_mats)}")
 
-    # Reset limits/labels every frame (since cla() wipes them)
-    ax.set_xlim([-1, 1])
-    ax.set_ylim([-1, 1])
-    ax.set_zlim([-1, 1])
-    ax.set_xlabel("X")
-    ax.set_ylabel("Y")
-    ax.set_zlabel("Z")
+    ani = FuncAnimation(fig, update, frames=len(rot_mats), interval=50)
+    plt.show()
+    return ani  # keep a reference so it doesn’t get garbage collected
 
-    R = rot_mats[frame].reshape(3, 3)
-    origin = np.zeros(3)
-    x_axis, y_axis, z_axis = R[:, 0], R[:, 1], R[:, 2]
-    ax.quiver(*origin, *x_axis, color="r", length=1)
-    ax.quiver(*origin, *y_axis, color="g", length=1)
-    ax.quiver(*origin, *z_axis, color="b", length=1)
-    ax.set_title(f"Frame {frame}/{len(rot_mats)}")
 
-ani = FuncAnimation(fig, update, frames=len(rot_mats), interval=50)
-plt.show()
+def main():
+    # === File paths ===
+    input_csv = "../optical_flow_method_data/combined_samples/square2/IMU_combined_square2.csv"
+    output_csv = "../optical_flow_method_data/rotation_matrices.csv"
 
-# # === Interactive viewer ===
-# fig = plt.figure()
-# ax = fig.add_subplot(111, projection="3d")
-# current_frame = [0]  # use list so it's mutable in nested function
+    # === Pipeline ===
+    timestamp, gyro, accel = load_sensor_data(input_csv)
+    rot_mats = run_ahrs(timestamp, gyro, accel)
+    save_rotation_matrices(rot_mats, output_csv)
 
-# def draw_frame(frame):
-#     ax.cla()
-#     ax.set_xlim([-1, 1])
-#     ax.set_ylim([-1, 1])
-#     ax.set_zlim([-1, 1])
-#     ax.set_xlabel("X")
-#     ax.set_ylabel("Y")
-#     ax.set_zlabel("Z")
+    # === Run animation ===
+    _ = animate_rotation(rot_mats)
 
-#     R = rot_mats[frame].reshape(3, 3)
-#     origin = np.zeros(3)
-#     ax.quiver(*origin, *R[:, 0], color="r", length=1)
-#     ax.quiver(*origin, *R[:, 1], color="g", length=1)
-#     ax.quiver(*origin, *R[:, 2], color="b", length=1)
-#     ax.set_title(f"Frame {frame}/{len(rot_mats)-1}")
 
-# def on_key(event):
-#     if event.key == "right":
-#         current_frame[0] = min(current_frame[0] + 1, len(rot_mats) - 1)
-#     elif event.key == "left":
-#         current_frame[0] = max(current_frame[0] - 1, 0)
-#     draw_frame(current_frame[0])
-#     plt.draw()
-
-# fig.canvas.mpl_connect("key_press_event", on_key)
-# draw_frame(current_frame[0])  # show first frame
-# plt.show()
+if __name__ == "__main__":
+    main()
