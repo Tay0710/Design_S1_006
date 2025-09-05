@@ -58,7 +58,7 @@ def main():
     print("\n=== Stage 4: angular-rate + height → v_x, v_y ===")
     xy_velocity_calculation()
 
-    print(f"\n✅ Pipeline complete in {time.time() - t0:.2f}s")
+    print(f"\nPipeline complete in {time.time() - t0:.2f}s")
 
 if __name__ == "__main__":
     main()
