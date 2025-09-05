@@ -42,6 +42,8 @@ from x1_pixel_to_angular_rate import main as pixel_to_angular_rate
 from x2_height_from_ToF import main as height_from_ToF
 from x3_interpolate_heights import main as interpolate_heights
 from x4_xy_velocity_calculation import main as xy_velocity_calculation
+from x5_rotation_matrix import main as rotation_matrix
+from x6_convert_to_world_frame import main as convert_to_world_frame
 
 def main():
     t0 = time.time()
@@ -57,6 +59,12 @@ def main():
     
     print("\n=== Stage 4: angular-rate + height → v_x, v_y ===")
     xy_velocity_calculation()
+    
+    print("\n=== Stage 5: rotation matrix from IMU orientation ===")
+    rotation_matrix()
+    
+    print("\n=== Stage 6: convert the velocities to world frame ===")
+    convert_to_world_frame()
 
     print(f"\nPipeline complete in {time.time() - t0:.2f}s")
 
