@@ -1,3 +1,30 @@
+"""
+x1_pixel_to_angular_rate.py
+---------------------------
+Converts PMW3901 optical flow pixel deltas into angular velocity estimates.
+
+Overview:
+    The PMW3901 sensor outputs pixel displacement (dx, dy) over time. This script
+    batches 10 consecutive samples, sums their displacements, and converts them 
+    into angular rates about the x and y axes (ωx, ωy) in radians/second.
+
+Method:
+    - Field of View (FOV): 42°
+    - Sensor resolution (res): 35 pixels across FOV
+    - Conversion factor: (FOV [rad] / resolution [pixels]) → rad/pixel
+    - Angular velocity: (Δpixels × rad/pixel) / Δtime
+
+Inputs:
+    Optical flow data:  
+        Columns:
+            time, deltaX, deltaY
+
+Outputs:
+    optical_flow_angular_rates.csv
+        Columns:
+            time (s), wx (rad/s), wy (rad/s)
+"""
+
 import math
 import csv
 
@@ -15,7 +42,6 @@ def pixels_to_angular_rates(dx, dy, dt):
     wy = (dy * s) / dt
     
     return wx, wy
-
 
 def main():
     input_path = "../optical_flow_method_data/combined_samples/square2/OF_combined_square2.csv"

@@ -1,3 +1,36 @@
+"""
+x3_interpolate_heights.py
+-------------------------
+Interpolates ToF-derived height data to align with optical flow timestamps.
+
+Overview:
+    Optical flow and ToF sensors operate at different sample rates.
+    To combine them for velocity estimation, height measurements from 
+    the ToF sensor must be resampled to match the optical flow timestamps.
+
+    This script:
+        1. Loads ToF height measurements (time, height).
+        2. Loads optical flow angular-rate timestamps.
+        3. Performs linear interpolation to estimate height values at 
+           each optical flow timestamp.
+        4. Outputs synchronized (time, height) pairs to CSV.
+        5. Optionally visualizes the interpolation.
+
+Inputs:
+    - ToF_heights.csv
+        Columns:
+            time (s), height (mm)
+    - optical_flow_angular_rates.csv
+        Columns:
+            time (s), wx (rad/s), wy (rad/s)
+
+Outputs:
+    - ToF_heights_interp.csv
+        Columns:
+            time (s), height (mm)
+        Interpolated heights aligned to optical flow sample times.
+"""
+
 import csv
 import numpy as np
 import matplotlib.pyplot as plt

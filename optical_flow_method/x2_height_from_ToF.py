@@ -1,3 +1,35 @@
+"""
+x2_height_from_ToF.py
+---------------------
+Processes raw VL53L7CX ToF sensor data to estimate drone height.
+
+Overview:
+    The VL53L7CX is an 8×8 ToF sensor with a 90° field of view (FOV).
+    We select 4 central measurement zones (D27, D28, D35, D36) around the 
+    center of the array, adjust each measurement for the sensor angle, 
+    and average them to obtain an estimate of drone altitude.
+
+    This assumes the sensor is mounted perpendicular to the floor.
+
+Notes:
+    - FOV = 90°
+    - Pixel pitch = 90 / 7 = 12.857°
+    - Offset angle from central measurement to FOV mid = 6.429°
+    - Correction: h = d × cos(θ)
+
+Inputs:
+    ToF_combined_square2.csv
+        Columns: 
+            time, D0 … D63 (distance in mm per zone)
+
+Outputs:
+    ToF_heights.csv
+        Columns:
+            time (s), height (mm)
+        where height is the averaged, corrected altitude.
+
+"""
+
 import math
 import csv
 import numpy as np

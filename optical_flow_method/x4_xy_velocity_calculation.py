@@ -1,3 +1,39 @@
+"""
+x4_xy_velocity_calculation.py
+-----------------------------
+Computes drone planar velocities (v_x, v_y) from optical flow angular rates 
+and interpolated ToF heights.
+
+Overview:
+    Optical flow provides angular rates (ωx, ωy) in rad/s. To convert these
+    into linear velocities in the horizontal plane, we multiply by the
+    estimated drone altitude (h):
+
+        v_x = ωx × h
+        v_y = ωy × h
+
+    where h is obtained from ToF sensor data, interpolated to optical 
+    flow timestamps.
+
+Notes:
+    - Heights are converted from mm to m before producing velocities.
+    - A simple timestamp check is applied: rows are processed only if
+      rounded time values match to 6 decimal places.
+
+Inputs:
+    - optical_flow_angular_rates.csv
+        Columns:
+            time (s), wx (rad/s), wy (rad/s)
+    - ToF_heights_interp.csv
+        Columns:
+            time (s), height (mm)
+
+Outputs:
+    - xy_velocities.csv
+        Columns:
+            time (s), v_x (m/s), v_y (m/s)
+"""
+
 import csv
 import matplotlib.pyplot as plt
 
