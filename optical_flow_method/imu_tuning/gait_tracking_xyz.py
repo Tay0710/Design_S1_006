@@ -27,9 +27,9 @@ gain = 1.9
 gyro_range = 250 # Set range of the gyro
 accel_rej = 2 # Set max of the accel
 mag_rej = 0
-rej_timeout = 1 * int(sample_rate)
-motion_threshold = 0.1
-smoothing_margin = int(1 * sample_rate)
+rej_timeout = 4 * int(sample_rate)
+motion_threshold = 0.5
+smoothing_margin = int(2 * sample_rate)
                        
 ahrs.settings = imufusion.Settings(imufusion.CONVENTION_NWU,
                                    gain,
