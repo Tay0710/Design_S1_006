@@ -107,7 +107,7 @@ void setup()
 
     radio.setFrequency(915);
     radio.setBandwidth(125);
-    radio.setSpreadingFactor(7);
+    radio.setSpreadingFactor(7); // change to 12 from 7
     radio.setCodingRate(5);
     radio.setPreambleLength(8);
     // TO DO: check if I need to set any other settings
