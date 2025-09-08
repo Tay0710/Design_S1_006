@@ -22,8 +22,8 @@
 #define THROTTLE 2 // T
 #define YAW 3  // R
 #define AUX1 4 // ARM
-#define AUX2 5 // ANGLE (**CHECK THIS)
-#define AUX3 6 // FAILSAFE (** Set this up)
+#define AUX2 5 // ANGLE/HORIZON
+#define AUX3 6 // FAILSAFE
 
 void sbusPreparePacket(uint8_t packet[], int channels[], bool isSignalLoss, bool isFailsafe);
 

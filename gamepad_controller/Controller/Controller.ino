@@ -126,12 +126,23 @@ void processGamepad(ControllerPtr ctl) {
     if (ctl->l2() and ctl->r2()) {
       Serial.println("ARM DRONE");
       rcChannels[AUX1] = 1800;
-    } else {
-      rcChannels[AUX1] = 1500;
-      // Unsure if it needs to be set back to 1500 otherwise... probably
-    }
+    } 
+    // else {
+    //   // rcChannels[AUX1] = 1500;
+    //   // Unsure if it needs to be set back to 1500 otherwise... probably
+    // }
+
+    // Press X to trigger failsafe (Note: X button is labelled as Y on controller)
+    if (ctl->y()) {
+      Serial.println("FAILSAFE");
+      rcChannels[AUX3] = 1800;
+    } 
+    // else {
+    //   // rcChannels[AUX3] = 1500;
+    // }
 
     // Map throttle values
+    // NOTE: may require non-linear mapping
     if (ctl->axisY() <= AXIS_L_NEUTRAL_Y) {
       rcChannels[THROTTLE] =(int)map(ctl->axisY(), AXIS_L_NEUTRAL_Y, AXIS_UP, SBUS_MID, SBUS_MAX);
     } else {
