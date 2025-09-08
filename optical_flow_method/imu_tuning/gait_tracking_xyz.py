@@ -8,7 +8,7 @@ from mpl_toolkits.mplot3d import Axes3D
 import numpy
 
 # === Import sensor data ===
-data = numpy.genfromtxt("../../optical_flow_method_data/combined_samples/square2/IMU_combined_square2.csv",
+data = numpy.genfromtxt("../../optical_flow_method_data/IMU_new/square_constant_orientation.csv",
                      delimiter=",", skip_header=1)
 timestamp = data[:, 0]
 gyroscope = data[:, 1:4]
@@ -23,12 +23,12 @@ offset = imufusion.Offset(int(sample_rate))
 ahrs = imufusion.Ahrs()
 
 # === Tuning Variables ===
-gain = 1.9
+gain = 1
 gyro_range = 250 # Set range of the gyro
 accel_rej = 2 # Set max of the accel
 mag_rej = 0
 rej_timeout = 4 * int(sample_rate)
-motion_threshold = 0.5
+motion_threshold = 0.2
 smoothing_margin = int(2 * sample_rate)
                        
 ahrs.settings = imufusion.Settings(imufusion.CONVENTION_NWU,
@@ -199,24 +199,24 @@ ax_acc.grid(True)
 pyplot.tight_layout(pad=4.0)
 pyplot.show()
 
-# # === 3D Animation ===
-# fig_anim = pyplot.figure(figsize=(8, 8))
-# ax_anim = fig_anim.add_subplot(111, projection='3d')
-# line_anim, = ax_anim.plot([], [], [], lw=1, marker='o', markersize=1)
+# === 3D Animation ===
+fig_anim = pyplot.figure(figsize=(8, 8))
+ax_anim = fig_anim.add_subplot(111, projection='3d')
+line_anim, = ax_anim.plot([], [], [], lw=1, marker='o', markersize=1)
 
-# ax_anim.set_xlim(numpy.min(position[:, 0]) - 1, numpy.max(position[:, 0]) + 1)
-# ax_anim.set_ylim(numpy.min(position[:, 1]) - 1, numpy.max(position[:, 1]) + 1)
-# ax_anim.set_zlim(numpy.min(position[:, 2]) - 1, numpy.max(position[:, 2]) + 1)
-# ax_anim.set_title("Live 3D Trajectory")
-# ax_anim.set_xlabel("X Position (m)")
-# ax_anim.set_ylabel("Y Position (m)")
-# ax_anim.set_zlabel("Z Position (m)")
-# ax_anim.grid(True)
+ax_anim.set_xlim(numpy.min(position[:, 0]) - 1, numpy.max(position[:, 0]) + 1)
+ax_anim.set_ylim(numpy.min(position[:, 1]) - 1, numpy.max(position[:, 1]) + 1)
+ax_anim.set_zlim(numpy.min(position[:, 2]) - 1, numpy.max(position[:, 2]) + 1)
+ax_anim.set_title("Live 3D Trajectory")
+ax_anim.set_xlabel("X Position (m)")
+ax_anim.set_ylabel("Y Position (m)")
+ax_anim.set_zlabel("Z Position (m)")
+ax_anim.grid(True)
 
-# def update_3d(frame):
-#     line_anim.set_data(position[:frame, 0], position[:frame, 1])
-#     line_anim.set_3d_properties(position[:frame, 2])
-#     return line_anim,
+def update_3d(frame):
+    line_anim.set_data(position[:frame, 0], position[:frame, 1])
+    line_anim.set_3d_properties(position[:frame, 2])
+    return line_anim,
 
-# ani3d = animation.FuncAnimation(fig_anim, update_3d, frames=range(1, len(position), 10), interval=20, blit=True)
-# pyplot.show()
+ani3d = animation.FuncAnimation(fig_anim, update_3d, frames=range(1, len(position), 10), interval=20, blit=True)
+pyplot.show()

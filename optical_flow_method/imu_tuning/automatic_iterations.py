@@ -7,7 +7,7 @@ import numpy as np
 import itertools, json, csv, time
 
 # === Load sensor data ===
-data = np.genfromtxt("../../optical_flow_method_data/combined_samples/square2/IMU_combined_square2.csv",
+data = np.genfromtxt("../../optical_flow_method_data/IMU_new/square_constant_orientation.csv",
                      delimiter=",", skip_header=1)
 timestamp     = data[:, 0]
 gyroscope_raw = data[:, 1:4]
@@ -32,13 +32,13 @@ defaults = {
 
 # === Parameter sweep definitions (full ranges) ===
 param_defs = {
-    "gain": np.round(np.arange(0.1, 2.0, 0.1), 2),
+    "gain": np.round(np.arange(1.0, 3.5, 0.5), 2),
     "gyro_range": [250],
-    "accel_rej": [2],  
+    "accel_rej": [5, 10, 15],
     "mag_rej": [0],
-    "rej_timeout_mult": [1, 2, 3, 4, 5] ,
-    "motion_threshold": np.round(np.arange(0.05, 1.0, 0.05), 2),
-    "smoothing_margin_mult": [1, 2, 3]
+    "rej_timeout_mult": [2, 4],
+    "motion_threshold": np.round(np.arange(0.05, 0.20, 0.05), 2),
+    "smoothing_margin_mult": [1, 2],
 }
 
 # =========================================================
@@ -63,7 +63,7 @@ def run_once(params):
     for i in range(len(timestamp)):
         gyro[i] = offset.update(gyro[i])
         ahrs.update_no_magnetometer(gyro[i], accel[i], dt[i])
-        earth_acc[i] = ahrs.earth_acceleration 
+        earth_acc[i] = ahrs.earth_acceleration
 
     # Motion detection
     acc_norm = np.linalg.norm(earth_acc, axis=1)
