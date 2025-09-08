@@ -44,6 +44,8 @@ from x3_interpolate_heights import main as interpolate_heights
 from x4_xy_velocity_calculation import main as xy_velocity_calculation
 from x5_rotation_matrix import main as rotation_matrix
 from x6_convert_to_world_frame import main as convert_to_world_frame
+from x7_imu_integration_to_position import main as imu_integration_to_position
+# from x8_estimator import main as estimator
 
 def main():
     t0 = time.time()
@@ -65,6 +67,12 @@ def main():
     
     print("\n=== Stage 6: convert the velocities to world frame ===")
     convert_to_world_frame()
+    
+    print("\n=== Stage 7: IMU acceleration integration to position ===")
+    imu_integration_to_position()
+    
+    print("\n=== Stage 8: estimator (EFK) ===")
+    # estimator()
 
     print(f"\nPipeline complete in {time.time() - t0:.2f}s")
 
