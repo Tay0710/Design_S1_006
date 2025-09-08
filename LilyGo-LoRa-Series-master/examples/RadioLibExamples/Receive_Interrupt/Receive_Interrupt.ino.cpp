@@ -45,7 +45,7 @@ SX1278 radio = new Module(RADIO_CS_PIN, RADIO_DIO0_PIN, RADIO_RST_PIN, RADIO_DIO
 
 #elif   defined(USING_SX1262)
 #ifndef CONFIG_RADIO_FREQ
-#define CONFIG_RADIO_FREQ           850.0
+#define CONFIG_RADIO_FREQ           915.0
 #endif
 #ifndef CONFIG_RADIO_OUTPUT_POWER
 #define CONFIG_RADIO_OUTPUT_POWER   22
@@ -135,6 +135,30 @@ void setFlag(void)
     receivedFlag = true;
 }
 
+void drawMain()
+{
+    if (u8g2) {
+        u8g2->clearBuffer();
+        u8g2->drawRFrame(0, 0, 128, 64, 5);
+        u8g2->setFont(u8g2_font_pxplusibmvga8_mr);
+        u8g2->setCursor(15, 20);
+        u8g2->print("RX:");
+        u8g2->setCursor(15, 35);
+        u8g2->print("SNR:");
+        u8g2->setCursor(15, 50);
+        u8g2->print("RSSI:");
+
+        u8g2->setFont(u8g2_font_crox1h_tr);
+        u8g2->setCursor( U8G2_HOR_ALIGN_RIGHT(payload.c_str()) - 21, 20 );
+        u8g2->print(payload);
+        u8g2->setCursor( U8G2_HOR_ALIGN_RIGHT(snr.c_str()) - 21, 35 );
+        u8g2->print(snr);
+        u8g2->setCursor( U8G2_HOR_ALIGN_RIGHT(rssi.c_str()) - 21, 50 );
+        u8g2->print(rssi);
+        u8g2->sendBuffer();
+    }
+}
+
 void setup()
 {
     setupBoards();
@@ -210,7 +234,7 @@ void setup()
     * SX1280        :  Allowed values range from 5 to 8.
     * LR1121        :  Allowed values range from 5 to 8.
     * * * */
-    if (radio.setCodingRate(6) == RADIOLIB_ERR_INVALID_CODING_RATE) {
+    if (radio.setCodingRate(5) == RADIOLIB_ERR_INVALID_CODING_RATE) {
         Serial.println(F("Selected coding rate is invalid for this module!"));
         while (true);
     }
@@ -219,10 +243,10 @@ void setup()
     * Sets LoRa sync word.
     * SX1278/SX1276/SX1268/SX1262/SX1280 : Sets LoRa sync word. Only available in LoRa mode.
     * * */
-    if (radio.setSyncWord(0xAB) != RADIOLIB_ERR_NONE) {
-        Serial.println(F("Unable to set sync word!"));
-        while (true);
-    }
+    // if (radio.setSyncWord(0xAB) != RADIOLIB_ERR_NONE) {
+    //     Serial.println(F("Unable to set sync word!"));
+    //     while (true);
+    // }
 
     /*
     * Sets transmission output power.
@@ -257,10 +281,11 @@ void setup()
     * SX1280        : Allowed values range from 1 to 65535. preamble length is multiple of 4
     * LR1121        : Allowed values range from 1 to 65535.
     * * */
-    if (radio.setPreambleLength(16) == RADIOLIB_ERR_INVALID_PREAMBLE_LENGTH) {
+    if (radio.setPreambleLength(8) == RADIOLIB_ERR_INVALID_PREAMBLE_LENGTH) {
         Serial.println(F("Selected preamble length is invalid for this module!"));
         while (true);
     }
+    // Note: may be an issue (originally 16)
 
     // Enables or disables CRC check of received packets.
     if (radio.setCRC(false) == RADIOLIB_ERR_INVALID_CRC_CONFIGURATION) {
@@ -366,7 +391,7 @@ void loop()
         receivedFlag = false;
 
         // you can read received data as an Arduino String
-        int state = radio.readData(payload);
+        int state = radio.readData(payload, 0);
 
         // you can also read received data as byte array
         /*
@@ -413,26 +438,3 @@ void loop()
     }
 }
 
-void drawMain()
-{
-    if (u8g2) {
-        u8g2->clearBuffer();
-        u8g2->drawRFrame(0, 0, 128, 64, 5);
-        u8g2->setFont(u8g2_font_pxplusibmvga8_mr);
-        u8g2->setCursor(15, 20);
-        u8g2->print("RX:");
-        u8g2->setCursor(15, 35);
-        u8g2->print("SNR:");
-        u8g2->setCursor(15, 50);
-        u8g2->print("RSSI:");
-
-        u8g2->setFont(u8g2_font_crox1h_tr);
-        u8g2->setCursor( U8G2_HOR_ALIGN_RIGHT(payload.c_str()) - 21, 20 );
-        u8g2->print(payload);
-        u8g2->setCursor( U8G2_HOR_ALIGN_RIGHT(snr.c_str()) - 21, 35 );
-        u8g2->print(snr);
-        u8g2->setCursor( U8G2_HOR_ALIGN_RIGHT(rssi.c_str()) - 21, 50 );
-        u8g2->print(rssi);
-        u8g2->sendBuffer();
-    }
-}

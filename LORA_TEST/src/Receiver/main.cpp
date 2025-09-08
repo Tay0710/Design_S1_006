@@ -107,11 +107,15 @@ void setup()
 
     radio.setFrequency(915);
     radio.setBandwidth(125);
-    radio.setSpreadingFactor(7); // change to 12 from 7
+    radio.setSpreadingFactor(12); // change to 12 from 7
     radio.setCodingRate(5);
     radio.setPreambleLength(8);
     // TO DO: check if I need to set any other settings
     // Update: currently working with these settings :)
+
+    // Spreading Factor: works on 7, 8, 9
+    // Receiving does not work on 10, 11, 12 ??
+    // Other code not working on: 12
 
     /*
     #define LORA_BANDWIDTH 0		// [0: 125 kHz, 1: 250 kHz, 2: 500 kHz, 3: Reserved]
@@ -208,7 +212,7 @@ void loop()
             }
 
             // wait a second before transmitting again
-            delay(1000);
+            delay(1000); // Changing this to 10 seconds breaks other code so it doesnt receive
 
             // send another one
             Serial.print(F("[SX1262] Sending another packet ... "));

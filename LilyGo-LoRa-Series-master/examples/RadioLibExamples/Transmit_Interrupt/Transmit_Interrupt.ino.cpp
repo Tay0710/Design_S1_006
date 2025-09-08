@@ -197,7 +197,7 @@ void setup()
     * SX1280        :  Allowed values range from 5 to 12.
     * LR1121        :  Allowed values range from 5 to 12.
     * * * */
-    if (radio.setSpreadingFactor(12) == RADIOLIB_ERR_INVALID_SPREADING_FACTOR) {
+    if (radio.setSpreadingFactor(7) == RADIOLIB_ERR_INVALID_SPREADING_FACTOR) {
         Serial.println(F("Selected spreading factor is invalid for this module!"));
         while (true);
     }
@@ -208,7 +208,7 @@ void setup()
     * SX1280        :  Allowed values range from 5 to 8.
     * LR1121        :  Allowed values range from 5 to 8.
     * * * */
-    if (radio.setCodingRate(6) == RADIOLIB_ERR_INVALID_CODING_RATE) {
+    if (radio.setCodingRate(5) == RADIOLIB_ERR_INVALID_CODING_RATE) {
         Serial.println(F("Selected coding rate is invalid for this module!"));
         while (true);
     }
@@ -217,10 +217,10 @@ void setup()
     * Sets LoRa sync word.
     * SX1278/SX1276/SX1268/SX1262/SX1280 : Sets LoRa sync word. Only available in LoRa mode.
     * * */
-    if (radio.setSyncWord(0xAB) != RADIOLIB_ERR_NONE) {
-        Serial.println(F("Unable to set sync word!"));
-        while (true);
-    }
+    // if (radio.setSyncWord(0xAB) != RADIOLIB_ERR_NONE) {
+    //     Serial.println(F("Unable to set sync word!"));
+    //     while (true);
+    // }
 
     /*
     * Sets transmission output power.
@@ -255,7 +255,7 @@ void setup()
     * SX1280        : Allowed values range from 1 to 65535. preamble length is multiple of 4
     * LR1121        : Allowed values range from 1 to 65535.
     * * */
-    if (radio.setPreambleLength(16) == RADIOLIB_ERR_INVALID_PREAMBLE_LENGTH) {
+    if (radio.setPreambleLength(8) == RADIOLIB_ERR_INVALID_PREAMBLE_LENGTH) {
         Serial.println(F("Selected preamble length is invalid for this module!"));
         while (true);
     }
