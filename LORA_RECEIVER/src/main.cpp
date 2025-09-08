@@ -34,14 +34,14 @@ void OnCadDone(bool cadResult); // Cad = Channel Activity Detection
 #define RF_FREQUENCY 915000000	// Hz (Note: should I change this to 915 MHz) - YES (must match exact frequency)
 #define TX_OUTPUT_POWER 22		// dBm
 #define LORA_BANDWIDTH 0		// [0: 125 kHz, 1: 250 kHz, 2: 500 kHz, 3: Reserved]
-#define LORA_SPREADING_FACTOR 12 // [SF7..SF12], SF7 is fastest, SF12 is slowest but greatest range and more robust
+#define LORA_SPREADING_FACTOR 7 // [SF7..SF12], SF7 is fastest, SF12 is slowest but greatest range and more robust
 #define LORA_CODINGRATE 1		// [1: 4/5, 2: 4/6,  3: 4/7,  4: 4/8]
 #define LORA_PREAMBLE_LENGTH 8	// Same for Tx and Rx
 #define LORA_SYMBOL_TIMEOUT 0	// Symbols
 #define LORA_FIX_LENGTH_PAYLOAD_ON false
 #define LORA_IQ_INVERSION_ON false
-#define RX_TIMEOUT_VALUE 6000  // originally 3000
-#define TX_TIMEOUT_VALUE 7000 // originally 5000
+#define RX_TIMEOUT_VALUE 3000  // originally 3000
+#define TX_TIMEOUT_VALUE 5000 // originally 5000
 
 #define BUFFER_SIZE 64 // Define the payload size here
 
@@ -56,6 +56,8 @@ const uint8_t PongMsg[] = "PONG";
 time_t timeToSend;
 
 time_t cadTime;
+
+time_t lastMessage;
 
 uint8_t pingCnt = 0;
 uint8_t pongCnt = 0;
@@ -126,7 +128,7 @@ void setup()
 	}
 
 	Serial.println("=====================================");
-	Serial.println("SX126x PingPong test");
+	Serial.println("SX126x Receiver test");
 	Serial.println("=====================================");
 
 	Serial.println("MCU Espressif ESP32");
@@ -181,193 +183,28 @@ void setup()
 					  0, true, 0, 0, LORA_IQ_INVERSION_ON, true);
 
 	// Create the task event semaphore
-	g_task_sem = xSemaphoreCreateBinary();
-	// Initialize semaphore
-	xSemaphoreGive(g_task_sem); // Controls access to common resource by threads
+	// g_task_sem = xSemaphoreCreateBinary();
+	// // Initialize semaphore
+	// xSemaphoreGive(g_task_sem); // Controls access to common resource by threads
 
-	// Take the semaphore so the loop will go to sleep until an event happens
-	xSemaphoreTake(g_task_sem, 10);
+	// // Take the semaphore so the loop will go to sleep until an event happens
+	// xSemaphoreTake(g_task_sem, 10);
 
 	// Start LoRa
 	Serial.println("Starting Radio.Rx");
 	Radio.Rx(RX_TIMEOUT_VALUE);
+
+  lastMessage = millis();
 }
 
-void loop()
-{
-	// Wait until semaphore is released (FreeRTOS)
-	xSemaphoreTake(g_task_sem, portMAX_DELAY);
+void loop() {
+  Radio.Rx(0); // Note: this is non-blocking
+  // Serial.println("Wait for message...");
+  delay(2000);
 
-	Serial.println("Loop wakeup");
-
-	// Handle event
-	while (g_task_event_type != NO_EVENT)
-	{
-		if ((g_task_event_type & TX_FIN) == TX_FIN)
-		{
-			g_task_event_type &= N_TX_FIN;
-			Serial.println("OnTxDone");
-			Radio.Sleep();
-			Radio.Rx(RX_TIMEOUT_VALUE);
-		}
-		if ((g_task_event_type & TX_ERR) == TX_ERR)
-		{
-			g_task_event_type &= N_TX_ERR;
-			Serial.println("OnTxTimeout");
-			digitalWrite(LED_BUILTIN, LOW);
-			Radio.Sleep();
-			Radio.Rx(RX_TIMEOUT_VALUE);
-		}
-		if ((g_task_event_type & RX_FIN) == RX_FIN)
-		{
-			g_task_event_type &= N_RX_FIN;
-			Serial.println("OnRxDone");
-			delay(10);
-
-			Serial.printf("RssiValue=%d dBm, SnrValue=%d\n", rx_rssi, rx_snr);
-
-			for (int idx = 0; idx < rx_size; idx++)
-			{
-				Serial.printf("%02X ", RcvBuffer[idx]);
-			}
-			Serial.println("");
-
-			Serial.println((const char *)RcvBuffer);
-
-			if (isMaster == true)
-			{
-				digitalWrite(LED_BUILTIN, HIGH);
-
-				if (BufferSize > 0)
-				{
-					if (strncmp((const char *)RcvBuffer, (const char *)PongMsg, 4) == 0)
-					{
-						Serial.println("Received a PONG in OnRxDone as Master");
-						// Wait 500ms before sending the next package
-						delay(500);
-
-						// Check if our channel is available for sending
-						Radio.Sleep();
-						Radio.SetCadParams(LORA_CAD_08_SYMBOL, LORA_SPREADING_FACTOR + 13, 10, LORA_CAD_ONLY, 0);
-						cadTime = millis();
-						Radio.StartCad();
-						// Sending next Ping will be started when the channel is free
-					}
-					else if (strncmp((const char *)RcvBuffer, (const char *)PingMsg, 4) == 0)
-					{ // A master already exists then become a slave
-						Serial.println("Received a PING in OnRxDone as Master, switch to Slave");
-						isMaster = false;
-						// Check if our channel is available for sending
-						Radio.Sleep();
-						Radio.SetCadParams(LORA_CAD_08_SYMBOL, LORA_SPREADING_FACTOR + 13, 10, LORA_CAD_ONLY, 0);
-						cadTime = millis();
-						Radio.StartCad();
-						// Sending next Pong will be started when the channel is free
-					}
-					else // valid reception but neither a PING or a PONG message
-					{	 // Set device as master and start again
-						isMaster = true;
-						Radio.Rx(RX_TIMEOUT_VALUE);
-					}
-				}
-			}
-			else
-			{
-				if (BufferSize > 0)
-				{
-					if (strncmp((const char *)RcvBuffer, (const char *)PingMsg, 4) == 0)
-					{
-						Serial.println("Received a PING in OnRxDone as Slave");
-						// Check if our channel is available for sending
-						Radio.Sleep();
-						Radio.SetCadParams(LORA_CAD_08_SYMBOL, LORA_SPREADING_FACTOR + 13, 10, LORA_CAD_ONLY, 0);
-						cadTime = millis();
-						Radio.StartCad();
-						// Sending Pong will be started when the channel is free
-					}
-					else // valid reception but not a PING as expected
-					{	 // Set device as master and start again
-						Serial.println("Received something in OnRxDone as Slave");
-						isMaster = true;
-						Radio.Rx(RX_TIMEOUT_VALUE);
-					}
-				}
-			}
-		}
-		if ((g_task_event_type & RX_ERR) == RX_ERR)
-		{
-			g_task_event_type &= N_RX_ERR;
-			Serial.println("OnRxError");
-			digitalWrite(LED_BUILTIN, LOW);
-
-			if (isMaster == true)
-			{
-				// Wait 500ms before sending the next package
-				delay(500);
-				Serial.println("Send as Master after RX timeout");
-				// Check if our channel is available for sending
-				Radio.Sleep();
-				Radio.SetCadParams(LORA_CAD_08_SYMBOL, LORA_SPREADING_FACTOR + 13, 10, LORA_CAD_ONLY, 0);
-				cadTime = millis();
-				Radio.StartCad();
-				// Sending the ping will be started when the channel is free
-			}
-			else
-			{
-				// No Ping received within timeout, switch to Master
-				isMaster = true;
-				Serial.println("Switch to Master after RX timeout");
-				// Check if our channel is available for sending
-				Radio.Sleep();
-				Radio.SetCadParams(LORA_CAD_08_SYMBOL, LORA_SPREADING_FACTOR + 13, 10, LORA_CAD_ONLY, 0);
-				cadTime = millis();
-				Radio.StartCad();
-				// Sending the ping will be started when the channel is free
-			}
-		}
-		if ((g_task_event_type & CAD_FIN) == CAD_FIN)
-		{
-			g_task_event_type &= N_CAD_FIN;
-			time_t duration = millis() - cadTime;
-			if (tx_cadResult)
-			{
-				Serial.printf("CAD returned channel busy after %ldms\n", duration);
-				Radio.Rx(RX_TIMEOUT_VALUE);
-			}
-			else
-			{
-				Serial.printf("CAD returned channel free after %ldms\n", duration);
-				if (isMaster)
-				{
-					digitalWrite(LED_BUILTIN, HIGH);
-					Serial.println("Sending a PING in OnCadDone as Master");
-					// Send the next PING frame
-					TxdBuffer[0] = 'P';
-					TxdBuffer[1] = 'I';
-					TxdBuffer[2] = 'N';
-					TxdBuffer[3] = 'G';
-				}
-				else
-				{
-					digitalWrite(LED_BUILTIN, LOW);
-					Serial.println("Sending a PONG in OnCadDone as Slave");
-					// Send the reply to the PONG string
-					TxdBuffer[0] = 'P';
-					TxdBuffer[1] = 'O';
-					TxdBuffer[2] = 'N';
-					TxdBuffer[3] = 'G';
-				}
-				// We fill the buffer with numbers for the payload
-				for (int i = 4; i < BufferSize; i++)
-				{
-					TxdBuffer[i] = i - 4;
-				}
-
-				Radio.Send(TxdBuffer, BufferSize);
-			}
-		}
-	}
+  // add logic to check if no message received in last 30 seconds then stop
 }
+
 
 /**@brief Function to be executed on Radio Tx Done event
  */
@@ -376,24 +213,37 @@ void OnTxDone(void)
 	Serial.println("OnTxDone CB");
 	g_task_event_type |= TX_FIN;
 	// Wake up task to send initial packet
-	xSemaphoreGive(g_task_sem);
+	//xSemaphoreGive(g_task_sem);
 }
 
 /**@brief Function to be executed on Radio Rx Done event
  */
 void OnRxDone(uint8_t *payload, uint16_t size, int16_t rssi, int8_t snr)
 {
-	Serial.println("OnRxDone CB");
+	Serial.println("OnRxDone:");
 	rx_payload = payload;
 	rx_size = size;
 	rx_rssi = rssi;
 	rx_snr = snr;
 	g_task_event_type |= RX_FIN;
 
-	memcpy(RcvBuffer, payload, size);
+	memcpy(RcvBuffer, payload, 64);
+
+  // Time from last message
+  time_t now = millis();
+  double time_between_message = (now - lastMessage)/1000.0;
+
+
+  Serial.print("Message: ");
+  Serial.println((const char *)RcvBuffer);
+  Serial.printf("RssiValue=%d dBm, SnrValue=%d\n", rx_rssi, rx_snr);
+  Serial.printf("Time from last message=%.2f seconds \n", time_between_message);
+
+  lastMessage = millis();
+
 
 	// Wake up task to send initial packet
-	xSemaphoreGive(g_task_sem);
+	// xSemaphoreGive(g_task_sem);
 }
 
 /**@brief Function to be executed on Radio Tx Timeout event
@@ -404,7 +254,7 @@ void OnTxTimeout(void)
 	g_task_event_type |= TX_ERR;
 
 	// Wake up task to send initial packet
-	xSemaphoreGive(g_task_sem);
+	// xSemaphoreGive(g_task_sem);
 }
 
 /**@brief Function to be executed on Radio Rx Timeout event
@@ -415,7 +265,7 @@ void OnRxTimeout(void)
 	g_task_event_type |= RX_ERR;
 
 	// Wake up task to send initial packet
-	xSemaphoreGive(g_task_sem);
+	// xSemaphoreGive(g_task_sem);
 }
 
 /**@brief Function to be executed on Radio Rx Error event
@@ -426,7 +276,7 @@ void OnRxError(void)
 	g_task_event_type |= RX_ERR;
 
 	// Wake up task to send initial packet
-	xSemaphoreGive(g_task_sem);
+	// xSemaphoreGive(g_task_sem);
 }
 
 /**@brief Function to be executed on CAD Done event
@@ -438,5 +288,5 @@ void OnCadDone(bool cadResult)
 	g_task_event_type |= CAD_FIN;
 
 	// Wake up task to send initial packet
-	xSemaphoreGive(g_task_sem);
+	// xSemaphoreGive(g_task_sem);
 }
