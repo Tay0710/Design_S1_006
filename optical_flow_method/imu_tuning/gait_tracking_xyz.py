@@ -8,7 +8,7 @@ from mpl_toolkits.mplot3d import Axes3D
 import numpy
 
 # === Import sensor data ===
-data = numpy.genfromtxt("../../optical_flow_method_data/IMU_new/square_constant_orientation.csv",
+data = numpy.genfromtxt("../../optical_flow_method_data/IMU_new/forward_backward_30cm.csv",
                      delimiter=",", skip_header=1)
 timestamp = data[:, 0]
 gyroscope = data[:, 1:4]
@@ -29,7 +29,7 @@ accel_rej = 2 # Set max of the accel
 mag_rej = 0
 rej_timeout = 4 * int(sample_rate)
 motion_threshold = 0.2
-smoothing_margin = int(2 * sample_rate)
+smoothing_margin = int(0.3 * sample_rate)
                        
 ahrs.settings = imufusion.Settings(imufusion.CONVENTION_NWU,
                                    gain,
