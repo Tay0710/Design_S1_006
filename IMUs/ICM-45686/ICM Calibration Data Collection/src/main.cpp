@@ -114,7 +114,9 @@ void setup() {
   IMU.startAccel(1600, G_rating);   // 100 Hz, ±16 g
   IMU.startGyro(1600, dps_rating);  // 100 Hz, ±2000 dps
 
-  
+  // IMU.startGaf(2, NULL); // 2 = INT pin, NULL = no handler
+
+
   // Initialize SD card on same SPI bus but different CS
   if (!SD.begin(SD_CS, hspi)) {
     Serial.println("SD init failed!");
@@ -156,6 +158,8 @@ void setup() {
 }
 
 static File file;  // persistent across loop() calls
+float qw, qx, qy, qz;
+
 
 void loop() {
 
@@ -164,6 +168,7 @@ void loop() {
     if (recording) {
         inv_imu_sensor_data_t imu_data;
         IMU.getDataFromRegisters(imu_data);
+        // IMU.getGafData(qw, qx, qy, qz);
 
         // static unsigned long lastMicros = 0;
         unsigned long now = micros();
