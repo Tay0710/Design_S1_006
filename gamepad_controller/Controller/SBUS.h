@@ -14,7 +14,7 @@
 #define SBUS_FRAME_FOOTER_V2 0x04
 #define SBUS_STATE_FAILSAFE 0x08
 #define SBUS_STATE_SIGNALLOSS 0x04
-#define SBUS_UPDATE_RATE  4
+#define SBUS_UPDATE_RATE  7
 
 // SBUS channels
 #define ROLL 0 // A

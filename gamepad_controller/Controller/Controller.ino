@@ -346,7 +346,7 @@ void loop() {
   if (currentMillis > sbusTime) {
     sbusPreparePacket(sbusPacket, rcChannels, false, false);
     Serial1.write(sbusPacket, SBUS_PACKET_LENGTH);
-    //printSBUSChannel(rcChannels);
+    printSBUSChannel(rcChannels);
     //printSBUSData(sbusPacket);
     sbusTime = currentMillis + SBUS_UPDATE_RATE;
   }
