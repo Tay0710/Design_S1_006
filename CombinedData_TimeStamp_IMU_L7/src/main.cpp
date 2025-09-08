@@ -184,7 +184,7 @@ void setup()
   SD.remove(tofFileName);
   File tof = SD.open(tofFileName, FILE_WRITE);
   tof.print("time");
-  for(int i=0; i<16; i++) tof.print(",D"+String(i));
+  for(int i=0; i<64; i++) tof.print(",D"+String(i));
   tof.println();
   tof.close();
 
@@ -306,7 +306,7 @@ void logIMU() {
   float az = imu_data.accel_data[2]*G_rating/32768.0 - calibAccelZ;
 
   int idx = appendTimestamp(imuBuf, now);
-  idx += snprintf(imuBuf + idx, sizeof(imuBuf) - idx, ",%.9f,%.9f,%.9f,%.9f,%.9f,%.9f\n", ax, ay, az, gx, gy, gz);
+  idx += snprintf(imuBuf + idx, sizeof(imuBuf) - idx, ",%.9f,%.9f,%.9f,%.9f,%.9f,%.9f\n", gx, gy, gz, ax, ay, az);
   imuFile.write((uint8_t*)imuBuf, idx);
   // Serial.print("leaving_imu:");
   // now = micros();
