@@ -30,7 +30,8 @@ float  dps_rating = 125; // 15.625/31.25/62.5/125/250/500/1000/2000/4000 dps
 //  -0.015272462	0.009307082	1.006992415	0.754845671	-0.746207889	-0.116757765
 //  AccelX(g)	AccelY(g)	AccelZ(g)	GyroX(dps)	GyroY(dps)	GyroZ(dps)
 
-
+// quaternion values
+float qw, qx, qy, qz;
 
 // Web server
 WebServer server(80);
