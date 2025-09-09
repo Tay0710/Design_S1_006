@@ -7,7 +7,7 @@
 hw_config hwConfig;
 
 // ESP32 - SX126x pin configuration
-int PIN_LORA_RESET = 1;	 // LORA RESET
+// int PIN_LORA_RESET = 1;	 // LORA RESET
 int PIN_LORA_DIO_1 = 2; // LORA DIO_1
 int PIN_LORA_BUSY = 3;	 // LORA SPI BUSY
 int PIN_LORA_NSS = 10;	 // LORA SPI CS
@@ -16,8 +16,8 @@ int PIN_LORA_MISO = 11;	 // LORA SPI MISO
 int PIN_LORA_MOSI = 13;	 // LORA SPI MOSI
 
 // Not actually connected
-int RADIO_TXEN = 43;	 // LORA ANTENNA TX ENABLE
-int RADIO_RXEN = 44;	 // LORA ANTENNA RX ENABLE
+// int RADIO_TXEN = 43;	 // LORA ANTENNA TX ENABLE
+// int RADIO_RXEN = 44;	 // LORA ANTENNA RX ENABLE
 
 
 // Function declarations
@@ -93,15 +93,15 @@ void setup()
 {
 	// Define the HW configuration between MCU and SX126x
 	hwConfig.CHIP_TYPE = SX1262_CHIP;		  // Example uses an eByte E22 module with an SX1262
-	hwConfig.PIN_LORA_RESET = PIN_LORA_RESET; // LORA RESET
+	// hwConfig.PIN_LORA_RESET = PIN_LORA_RESET; // LORA RESET
 	hwConfig.PIN_LORA_NSS = PIN_LORA_NSS;	  // LORA SPI CS
 	hwConfig.PIN_LORA_SCLK = PIN_LORA_SCLK;	  // LORA SPI CLK
 	hwConfig.PIN_LORA_MISO = PIN_LORA_MISO;	  // LORA SPI MISO
 	hwConfig.PIN_LORA_DIO_1 = PIN_LORA_DIO_1; // LORA DIO_1
 	hwConfig.PIN_LORA_BUSY = PIN_LORA_BUSY;	  // LORA SPI BUSY
 	hwConfig.PIN_LORA_MOSI = PIN_LORA_MOSI;	  // LORA SPI MOSI
-	hwConfig.RADIO_TXEN = RADIO_TXEN;		  // LORA ANTENNA TX ENABLE (Note: if this is commented out, serial will print gpio error but code still works)
-	hwConfig.RADIO_RXEN = RADIO_RXEN;		  // LORA ANTENNA RX ENABLE (Note: if this is commented out, serial will print gpio error but code still works)
+	// hwConfig.RADIO_TXEN = RADIO_TXEN;		  // LORA ANTENNA TX ENABLE (Note: if this is commented out, serial will print gpio error but code still works)
+	// hwConfig.RADIO_RXEN = RADIO_RXEN;		  // LORA ANTENNA RX ENABLE (Note: if this is commented out, serial will print gpio error but code still works)
 	hwConfig.USE_DIO2_ANT_SWITCH = false;	  // Example uses an CircuitRocks Alora RFM1262 which uses DIO2 pins as antenna control
 	hwConfig.USE_DIO3_TCXO = false;			  // Example uses an CircuitRocks Alora RFM1262 which uses DIO3 to control oscillator voltage
 	hwConfig.USE_DIO3_ANT_SWITCH = false;	  // Only Insight ISP4520 module uses DIO3 as antenna control
