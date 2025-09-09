@@ -40,9 +40,9 @@ int timestamp = 0;
 #define AXIS_RIGHT 512
 
 // Extra SBUS constants
-#define SBUS_MIN 885
+#define SBUS_MIN 890 // 885
 #define SBUS_MID 1500
-#define SBUS_MAX 2115
+#define SBUS_MAX 2110 // 2115
 
 // Constants for Wifi
 #define SSID "ESP-TEST-DJ"
@@ -219,7 +219,7 @@ void processControllers() {
 }
 
 void sendData() {
-  char buffer[200];                                                                                                                                                                                  // arbitrarily large size
+  char buffer[200];                                                                                                                                                                                 // arbitrarily large size
   sprintf(buffer, "(%d, %d, %d, %d, %d, %d, %d, %d)", millis(), rcChannels[ROLL], rcChannels[PITCH], rcChannels[THROTTLE], rcChannels[YAW], rcChannels[AUX1], rcChannels[AUX2], rcChannels[AUX3]);  // automatically trims buffer[]
   // Send data
   if (client->canSend()) {
@@ -230,21 +230,19 @@ void sendData() {
 }
 
 /* event callbacks */
-static void handleData(void* arg, AsyncClient* client, void *data, size_t len) {
-	Serial.printf("\n data received from %s \n", client->remoteIP().toString().c_str());
-	Serial.write((uint8_t*)data, len);
-
+static void handleData(void* arg, AsyncClient* client, void* data, size_t len) {
+  Serial.printf("\n data received from %s \n", client->remoteIP().toString().c_str());
+  Serial.write((uint8_t*)data, len);
 }
 
 void onConnect(void* arg, AsyncClient* client) {
   Serial.printf("\n client has been connected to %s on port %d \n", SERVER_HOST_NAME, TCP_PORT);
   sendTimer.attach(0.2, sendData);  // interval in seconds
-
 }
 
 void onDisconnect(void* arg, AsyncClient* client) {
   Serial.printf("\n client has been disconnected from %s on port %d \n", SERVER_HOST_NAME, TCP_PORT);
-  sendTimer.detach(); // Pause timer
+  sendTimer.detach();  // Pause timer
 }
 
 // Arduino setup function. Runs in CPU 1
@@ -281,14 +279,12 @@ void setup() {
   for (uint8_t i = 0; i < SBUS_CHANNEL_NUMBER; i++) {
     rcChannels[i] = 1500;
   }
-  // Initialise throttle to 885
-  rcChannels[THROTTLE] = 885;  // must be below min_check = 1050 when arming
-
-  // Stuff that Aidan wanted lmao
-  rcChannels[AUX2] = 1200;  // For angle mode?
+  // Initialise throttle to 890 (failsafe is triggered if mapping maps 885 below 885)
+  rcChannels[THROTTLE] = 890;  // must be below min_check = 1050 when arming
+  rcChannels[AUX2] = 1200;  // For angle mode
   // TODO: might map this to button instead
 
-  Serial1.begin(100000, SERIAL_8E2, RX_PIN, TX_PIN, true);  // Initialize Serial1 with 100000 baud rate
+  Serial1.begin(100000, SERIAL_8E2, RX_PIN, TX_PIN, false);  // Initialize Serial1 with 100000 baud rate
   // false = univerted, true = inverted
 
   Serial.println(" --- Setup WIFI/TCP Connection --- ");
@@ -316,7 +312,7 @@ void setup() {
   //   delay(1000);
   // }
 
-  client->onDisconnect(&onDisconnect, client); // when disconnected
+  client->onDisconnect(&onDisconnect, client);  // when disconnected
 
 
   Serial.println(" --- Setup Complete --- ");
@@ -329,8 +325,6 @@ void loop() {
 
   // This call fetches all the controllers' data.
   // Call this function in your main loop.
-
-
   bool dataUpdated = BP32.update();
   if (dataUpdated)
     processControllers();
@@ -347,7 +341,7 @@ void loop() {
     sbusPreparePacket(sbusPacket, rcChannels, false, false);
     Serial1.write(sbusPacket, SBUS_PACKET_LENGTH);
     printSBUSChannel(rcChannels);
-    //printSBUSData(sbusPacket);
+    printSBUSData(sbusPacket);
     sbusTime = currentMillis + SBUS_UPDATE_RATE;
   }
 }
