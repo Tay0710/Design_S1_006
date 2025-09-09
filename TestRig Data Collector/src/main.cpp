@@ -1,4 +1,6 @@
 // 
+
+
 // lib's for each of the sensors?
 // Components:
 // IMU, OF, SD Card, 4*ToF, 4*Ultrasonic
@@ -41,6 +43,12 @@
 #define US3 16
 #define US4 4
 #define US5 5
+
+#define BOOT_PIN 0
+bool mode = false;         // toggled by BOOT button
+unsigned long lastPress = 0;
+const unsigned long debounceDelay = 200; // ms
+
 
 // VL53L7CX new I2C addresses for 2nd Sensor on I2C bus
 #define CHANGE_ADDR 0x30
@@ -172,8 +180,11 @@ void calibrateIMU(int samples) {
 
 void setup()
 {
+  
   Serial.begin(115200);
   delay(1000);
+  pinMode(BOOT_PIN, INPUT_PULLUP);
+  delay(10);
 
 
   // SPI Setup
@@ -400,22 +411,9 @@ void logToF() {
   unsigned long now = micros();
   if (now - lastTOFtime < tofInterval) return;  
   lastTOFtime = now;
-  // Serial.print("entering_tof:");
-  // Serial.printf("%.9f",now/1000000.0);
   if (!tofFile) return;
 
-// Sensor objects and measurement data
-SparkFun_VL53L5CX sensorS1;
-VL53L5CX_ResultsData measurementDataS1; // Result data class structure, 1356 byes of RAM
-SparkFun_VL53L5CX sensorS2;
-VL53L5CX_ResultsData measurementDataS2;
-SparkFun_VL53L5CX sensorR;
-VL53L5CX_ResultsData measurementDataR;
-SparkFun_VL53L5CX sensorF;
-VL53L5CX_ResultsData measurementDataF;
-        // (2*(RimageResolution+S1imageResolution))
-
-int idx = appendTimestamp(tofBuf, now); // write timestamp
+  int idx = appendTimestamp(tofBuf, now); // write timestamp
   if(sensorS1.isDataReady() && sensorS1.getRangingData(&measurementDataS1)) {
       for(int i = 0; i < S1imageResolution; i++) { 
           tofBuf[idx++] = ',';      
@@ -473,45 +471,30 @@ void logOF() {
   unsigned long now = micros();
   if (now - lastOFtime < ofInterval) return;  
   lastOFtime = now;
-  // Serial.print("entering_of:");
-  // Serial.printf("%.9f", now / 1000000.0);
 
   if (!ofFile) return;
-
   // flow.readFrameBuffer(frame);
   flow.readMotionCount(&deltaX, &deltaY);
-
-  // Serial.print("      read:");
-  // now = micros();
-  // Serial.printf("%.9f", now / 1000000.0);
-  // Serial.println("");
-
-  // Add timestamp
   int idx = appendTimestamp(ofBuf, now);
-
   // Add DeltaX and DeltaY values
   idx += snprintf(ofBuf + idx, sizeof(ofBuf) - idx, ",%d,%d\n", deltaX, deltaY);
-  // // Add each pixel value
-  // for (int i = 0; i < 1225; i++) {
-  //     idx += sprintf(line + idx, ",%d", frame[i]);
-  //     if (idx >= sizeof(line) - 10) break; // safeguard
-  // }
-
-  // Write raw bytes to SD
   ofFile.write((uint8_t*)ofBuf, idx);
-
-  // Serial.print("      leaving_of:");
-  // now = micros();
-  // Serial.printf("%.9f", now / 1000000.0);
-  // Serial.println("");
 }
 
-// This method opens all the files when trigger is set LOW. The files stay open until trigger is HIGH (or Not Low - it is pulled high internally)
-// This is to eliminate the time it takes to open and close the files each time for each sensor, which can make up few hundreds of us to low ms. 
 
 void loop() {
+    // --- Handle BOOT button toggle ---
+  if (digitalRead(BOOT_PIN) == LOW) {  // pressed (active LOW)
+    if (millis() - lastPress > debounceDelay) {
+      mode = !mode;   // toggle mode
+      Serial.print("Mode toggled to: ");
+      Serial.println(mode);
+      lastPress = millis();
+    }
+  }
 
-  if (digitalRead(TRIGGER_PIN) == LOW) {
+
+  if (mode) { // if mode is true, start recording
       // --- Open files once when recording starts ---
       if (!imuFile) {
         imuFile = SD.open(imuFileName, FILE_APPEND);

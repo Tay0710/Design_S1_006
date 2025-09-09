@@ -6,6 +6,12 @@
 #define AP_SDO2 38
 #define AP_CS2 35
 
+#define BOOT_PIN 0
+
+bool mode = false;         // toggled by BOOT button
+unsigned long lastPress = 0;
+const unsigned long debounceDelay = 200; // ms
+
 SPIClass psramSPI(FSPI); // Custom: using Flash/PSRAM bus for IMU
 
 // Use VSPI bus on ESP32, CS on GPIO5
@@ -14,6 +20,8 @@ ICM456xx IMU(psramSPI, AP_CS2);
 void setup() {
   int ret;
   Serial.begin(115200);
+  pinMode(BOOT_PIN, INPUT_PULLUP);
+
   Serial.println("check");
   // Optional: initialize SPI bus explicitly
   // SPI.begin(18, 19, 23, 5); // SCK=18, MISO=19, MOSI=23, CS=5
@@ -51,21 +59,37 @@ void setup() {
 
 
 void loop() {
+    // --- Handle BOOT button toggle ---
+  if (digitalRead(BOOT_PIN) == LOW) {  // pressed (active LOW)
+    if (millis() - lastPress > debounceDelay) {
+      mode = !mode;   // toggle mode
+      Serial.print("Mode toggled to: ");
+      Serial.println(mode);
+      lastPress = millis();
+    }
+  }
+  
+  
+  
   inv_imu_sensor_data_t imu_data;
 
   // Read sensor data
   IMU.getDataFromRegisters(imu_data);
 
-  
-  // Print data 
-  // Data is a step value from -2^15 to +2^15 representing the full scale range
-  Serial.print("AccelX: "); Serial.println(imu_data.accel_data[0]);
-  Serial.print("AccelY: "); Serial.println(imu_data.accel_data[1]);
-  Serial.print("AccelZ: "); Serial.println(imu_data.accel_data[2]);
-  Serial.print("GyroX: ");  Serial.println(imu_data.gyro_data[0]);
-  Serial.print("GyroY: ");  Serial.println(imu_data.gyro_data[1]);
-  Serial.print("GyroZ: ");  Serial.println(imu_data.gyro_data[2]);
-  Serial.print("Temp: ");   Serial.println(imu_data.temp_data);
+  // bool boot button pressed
+  // if true, return mode = 1
+  // Next time boot button pressed, return mode = 0
+  if (mode == true) {
+    // Print data 
+    // Data is a step value from -2^15 to +2^15 representing the full scale range
+    Serial.print("AccelX: "); Serial.println(imu_data.accel_data[0]);
+    Serial.print("AccelY: "); Serial.println(imu_data.accel_data[1]);
+    Serial.print("AccelZ: "); Serial.println(imu_data.accel_data[2]);
+    Serial.print("GyroX: ");  Serial.println(imu_data.gyro_data[0]);
+    Serial.print("GyroY: ");  Serial.println(imu_data.gyro_data[1]);
+    Serial.print("GyroZ: ");  Serial.println(imu_data.gyro_data[2]);
+    Serial.print("Temp: ");   Serial.println(imu_data.temp_data);
 
-  delay(10); // ~100 Hz loop
+    delay(10); // ~100 Hz loop
+  }
 }
