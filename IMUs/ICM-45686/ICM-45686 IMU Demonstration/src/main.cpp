@@ -1,25 +1,33 @@
 #include <SPI.h>
 #include "ICM45686.h"
 
+#define AP_SDI2 37 // IMU / ICM - PSRAM
+#define AP_CLK2 36 // SDO = MISO; SDI = MOSI
+#define AP_SDO2 38
+#define AP_CS2 35
+
+SPIClass psramSPI(FSPI); // Custom: using Flash/PSRAM bus for IMU
+
 // Use VSPI bus on ESP32, CS on GPIO5
-ICM456xx IMU(SPI, 5);
+ICM456xx IMU(psramSPI, AP_CS2);
 
 void setup() {
   int ret;
   Serial.begin(115200);
 
   // Optional: initialize SPI bus explicitly
-  SPI.begin(18, 19, 23, 5); // SCK=18, MISO=19, MOSI=23, CS=5
+  // SPI.begin(18, 19, 23, 5); // SCK=18, MISO=19, MOSI=23, CS=5
+  psramSPI.begin(AP_CLK2, AP_SDO2, AP_SDI2, AP_CS2);
 
   // --- SPI low-level WHO_AM_I test ---
-  pinMode(5, OUTPUT);
-  digitalWrite(5, HIGH); // CS high idle
+  pinMode(AP_CS2, OUTPUT);
+  digitalWrite(AP_CS2, HIGH); // CS high idle
 
   SPI.beginTransaction(SPISettings(1000000, MSBFIRST, SPI_MODE0));
-  digitalWrite(5, LOW); // select IMU
+  digitalWrite(AP_CS2, LOW); // select IMU
   SPI.transfer(0x75 | 0x80); // 0x75 = WHO_AM_I, 0x80 = read flag
   uint8_t who_am_i = SPI.transfer(0x00); // read data
-  digitalWrite(5, HIGH); // deselect
+  digitalWrite(AP_CS2, HIGH); // deselect
   SPI.endTransaction();
   Serial.print("WHO_AM_I = 0x");
   Serial.println(who_am_i, HEX);
