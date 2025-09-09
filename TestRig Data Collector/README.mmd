@@ -22,3 +22,9 @@ CSV files available: (header + values in csv files)
     of_PMW3901
         returns:
             time,deltaX,deltaY
+
+
+Bug:
+    When data is not ready from one of the Tofs, then it skips it and returns the next set of ToF data;
+    therefore tof data will be misalgined
+    fix code to return Xs if not reday. 
