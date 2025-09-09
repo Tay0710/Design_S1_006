@@ -5,7 +5,6 @@
 // The same code should work for both. 
 
 
-
 #include <Arduino.h>
 
 const int pwPin = 20;  // Connect MB1030 PW output to this pin

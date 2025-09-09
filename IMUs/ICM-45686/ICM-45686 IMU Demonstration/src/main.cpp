@@ -14,7 +14,7 @@ ICM456xx IMU(psramSPI, AP_CS2);
 void setup() {
   int ret;
   Serial.begin(115200);
-
+  Serial.println("check");
   // Optional: initialize SPI bus explicitly
   // SPI.begin(18, 19, 23, 5); // SCK=18, MISO=19, MOSI=23, CS=5
   psramSPI.begin(AP_CLK2, AP_SDO2, AP_SDI2, AP_CS2);
@@ -23,12 +23,12 @@ void setup() {
   pinMode(AP_CS2, OUTPUT);
   digitalWrite(AP_CS2, HIGH); // CS high idle
 
-  SPI.beginTransaction(SPISettings(1000000, MSBFIRST, SPI_MODE0));
+  psramSPI.beginTransaction(SPISettings(1000000, MSBFIRST, SPI_MODE0));
   digitalWrite(AP_CS2, LOW); // select IMU
-  SPI.transfer(0x75 | 0x80); // 0x75 = WHO_AM_I, 0x80 = read flag
-  uint8_t who_am_i = SPI.transfer(0x00); // read data
+  psramSPI.transfer(0x75 | 0x80); // 0x75 = WHO_AM_I, 0x80 = read flag
+  uint8_t who_am_i = psramSPI.transfer(0x00); // read data
   digitalWrite(AP_CS2, HIGH); // deselect
-  SPI.endTransaction();
+  psramSPI.endTransaction();
   Serial.print("WHO_AM_I = 0x");
   Serial.println(who_am_i, HEX);
   // -----------------------------------
