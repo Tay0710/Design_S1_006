@@ -12,10 +12,12 @@ CSV files available: (header + values in csv files)
             time,gyro x,gyro y,gyro z,accel x,accel y,accel z
 
     4x_tof_L7
-        Instead of Zone X (ToF Name) as Header, it is D0, ..., D159 respectively. 
-        e.g. D0-D63 = S1, D64-D127 (S2), D128-D143 (R), D144-D159 (F)
-        returns: 
-            time, Zone 0 (S1), .... , Zone 63 (S1), Zone 0 (S2), .... ,        Zone 63 (S2), Zone 0 (R), .... , Zone 15 (R), Zone 0 (F), .... ,        Zone 15 (F)
+        The type is: S1, S2, R, F
+        Type refers to the specific ToF being called upon. 
+        S1 and S2 are D0 to D63; R and F are from D0 to D15
+        returns:
+            time,type,D0,...,D63
+
     Note: look at datasheet to identify were each zone is (they are at different angles)
         Link: https://www.st.com/resource/en/datasheet/vl53l7cx.pdf
 

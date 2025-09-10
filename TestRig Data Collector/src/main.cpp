@@ -311,8 +311,8 @@ void setup()
   // Init ToF CSV
   SD.remove(tofFileName);
   File tof = SD.open(tofFileName, FILE_WRITE);
-  tof.print("time");
-  for(int i=0; i<(2*(RimageResolution+S1imageResolution)); i++) tof.print(",D"+String(i));
+  tof.print("time,type");
+  for(int i=0; i<((S1imageResolution)); i++) tof.print(",D"+String(i));
   tof.println();
   tof.close();
   // Init OF CSV
@@ -407,65 +407,46 @@ int intToStr(int val, char* buf) {
   return i;
 }
 
-void logToF() {
-  unsigned long now = micros();
-  if (now - lastTOFtime < tofInterval) return;  
-  lastTOFtime = now;
-  if (!tofFile) return;
+// Helper to log one ToF sensor in CSV: timestamp,type,D0,D1,...
+void logOneToF(SparkFun_VL53L5CX &sensor, VL53L5CX_ResultsData &data,
+               const char *type, int resolution) {
+    unsigned long now = micros();
+    if (!sensor.isDataReady() || !sensor.getRangingData(&data)) return;
 
-  int idx = appendTimestamp(tofBuf, now); // write timestamp
-  if(sensorS1.isDataReady() && sensorS1.getRangingData(&measurementDataS1)) {
-      for(int i = 0; i < S1imageResolution; i++) { 
-          tofBuf[idx++] = ',';      
-          const uint8_t stat  = measurementDataS1.target_status[i];
-          if (stat == 5){         
-          idx += intToStr(measurementDataS1.distance_mm[i], tofBuf + idx); // fast int -> string
-          }
-          else{
+    int idx = appendTimestamp(tofBuf, now); // timestamp
+    tofBuf[idx++] = ',';
+
+    // add type string
+    for (const char *p = type; *p; p++) tofBuf[idx++] = *p;
+
+    // add distances
+    for (int i = 0; i < resolution; i++) {
+        tofBuf[idx++] = ',';
+        const uint8_t stat = data.target_status[i];
+        if (stat == 5) {
+            idx += intToStr(data.distance_mm[i], tofBuf + idx);
+        } else {
             tofBuf[idx++] = 'X';
-          }
-      }
-  }
-  if(sensorS2.isDataReady() && sensorS2.getRangingData(&measurementDataS2)) {
-      for(int i = 0; i < S1imageResolution; i++) { 
-          tofBuf[idx++] = ',';      
-          const uint8_t stat  = measurementDataS2.target_status[i];
-          if (stat == 5){         
-          idx += intToStr(measurementDataS2.distance_mm[i], tofBuf + idx); // fast int -> string
-          }
-          else{
-            tofBuf[idx++] = 'X';
-          }
-      }
-  }
-  if(sensorR.isDataReady() && sensorR.getRangingData(&measurementDataR)) {
-      for(int i = 0; i < RimageResolution; i++) { 
-          tofBuf[idx++] = ',';      
-          const uint8_t stat  = measurementDataR.target_status[i];
-          if (stat == 5){         
-          idx += intToStr(measurementDataR.distance_mm[i], tofBuf + idx); // fast int -> string
-          }
-          else{
-            tofBuf[idx++] = 'X';
-          }
-      }
-  }
-  if(sensorF.isDataReady() && sensorF.getRangingData(&measurementDataF)) {
-      for(int i = 0; i < RimageResolution; i++) { 
-          tofBuf[idx++] = ',';      
-          const uint8_t stat  = measurementDataF.target_status[i];
-          if (stat == 5){         
-          idx += intToStr(measurementDataF.distance_mm[i], tofBuf + idx); // fast int -> string
-          }
-          else{
-            tofBuf[idx++] = 'X';
-          }
-      }
-  }
-  
-  tofBuf[idx++] = '\n';
-  tofFile.write((uint8_t*)tofBuf, idx);  // write raw bytes
+        }
+    }
+
+    tofBuf[idx++] = '\n';
+    tofFile.write((uint8_t*)tofBuf, idx);
 }
+
+void logToF() {
+    unsigned long now = micros();
+    if (now - lastTOFtime < tofInterval) return;
+    lastTOFtime = now;
+    if (!tofFile) return;
+
+    // each sensor logs a separate line
+    logOneToF(sensorS1, measurementDataS1, "S1", S1imageResolution);
+    logOneToF(sensorS2, measurementDataS2, "S2", S1imageResolution);
+    logOneToF(sensorR,  measurementDataR,  "R",  RimageResolution);
+    logOneToF(sensorF,  measurementDataF,  "F",  RimageResolution);
+}
+
 
 void logOF() {
   unsigned long now = micros();
