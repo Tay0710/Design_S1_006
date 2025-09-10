@@ -56,6 +56,7 @@ def rotate_to_world(rot_mats, v_body3):
     v_world = np.zeros_like(v_body3)
     for i in range(len(v_body3)):
         v_world[i] = rot_mats[i] @ v_body3[i]
+        v_world[i, 2] = 0.0   # force z-velocity to 0 for every sample
     return v_world
 
 def integrate_velocity(times, v_world):
