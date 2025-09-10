@@ -1,3 +1,44 @@
+"""
+x7_imu_integration_to_position.py
+------------------------
+Estimates velocity and position directly from IMU data 
+(gyroscope + accelerometer) with motion detection.
+
+Overview:
+    - Runs imufusion AHRS on IMU data.
+    - Computes linear acceleration (gravity removed).
+    - Detects "moving" vs "still" periods based on acceleration norm.
+    - Integrates acceleration → velocity (clamped to zero when still).
+    - Integrates velocity → position.
+    - Detrends velocity signals to mitigate drift.
+    - Saves results to CSV and plots 2D trajectory.
+
+Notes:
+    - Gravity removal:
+        By default we use ahrs.earth_acceleration (already gravity-compensated).
+        Optionally, subtract explicit gravity vector if tuning requires.
+    - Motion detection:
+        Threshold-based (acceleration norm > 0.2 m/s²).
+        Smoothed with a margin to avoid chattering.
+    - Drift:
+        Linear detrend applied to each velocity component.
+
+Inputs:
+    - IMU_combined_square2.csv
+        Columns:
+            time (s), gyro_x, gyro_y, gyro_z, accel_x, accel_y, accel_z
+        Units:
+            Gyroe in deg/s
+            Accel in g
+
+Outputs:
+    - imu_position.csv
+        Columns:
+            time, vx, vy, vz, px, py, pz
+        Units:
+            velocity in m/s, position in m
+"""
+
 from dataclasses import dataclass
 from scipy.signal import detrend
 import imufusion
