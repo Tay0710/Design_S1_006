@@ -61,8 +61,8 @@ def run_ahrs(timestamp, gyroscope, accelerometer):
         0.5,   # gain
         250,   # gyroscope range
         2,     # acceleration rejection
-        10,    # magnetic rejection
-        5 * sample_rate,  # recovery trigger period = 5 seconds
+        0,    # magnetic rejection
+        1 * sample_rate,  # recovery trigger period = 5 seconds
     )
 
     rot_mats = []
@@ -73,7 +73,6 @@ def run_ahrs(timestamp, gyroscope, accelerometer):
         rot_mats.append(R.flatten())  # store flattened row
 
     return np.array(rot_mats)
-
 
 def save_rotation_matrices(rot_mats, output_csv):
     """Save rotation matrices to CSV."""
