@@ -40,9 +40,13 @@ int timestamp = 0;
 #define AXIS_RIGHT 512
 
 // Extra SBUS constants
-#define SBUS_MIN 890 // 885
+#define SBUS_MIN 1400 // 885 to 890
 #define SBUS_MID 1500
-#define SBUS_MAX 2110 // 2115
+#define SBUS_MAX 1600 // 2115, switched to 2110
+
+#define THROTTLE_MIN 890
+#define THROTTLE_MID 1050
+#define THROTTLE_MAX 1210 // shrink range of throttle
 
 // Constants for Wifi
 #define SSID "ESP-TEST-DJ"
@@ -162,9 +166,9 @@ void processGamepad(ControllerPtr ctl) {
   // Map throttle values
   // NOTE: may require non-linear mapping
   if (ctl->axisY() <= AXIS_L_NEUTRAL_Y) {
-    rcChannels[THROTTLE] = (int)map(ctl->axisY(), AXIS_L_NEUTRAL_Y, AXIS_UP, SBUS_MID, SBUS_MAX);
+    rcChannels[THROTTLE] = (int)map(ctl->axisY(), AXIS_L_NEUTRAL_Y, AXIS_UP, THROTTLE_MID, THROTTLE_MAX);
   } else {
-    rcChannels[THROTTLE] = (int)map(ctl->axisY(), AXIS_L_NEUTRAL_Y, AXIS_DOWN, SBUS_MID, SBUS_MIN);
+    rcChannels[THROTTLE] = (int)map(ctl->axisY(), AXIS_L_NEUTRAL_Y, AXIS_DOWN, THROTTLE_MID, THROTTLE_MIN);
   }
   // Serial.print("axis l - y: ");
   // Serial.print(ctl->axisY());
@@ -172,34 +176,41 @@ void processGamepad(ControllerPtr ctl) {
   // Serial.println(rcChannels[THROTTLE]);
 
   // Map yaw values
-  if (ctl->axisX() <= AXIS_L_NEUTRAL_X) {
-    rcChannels[YAW] = (int)map(ctl->axisX(), AXIS_L_NEUTRAL_X, AXIS_LEFT, SBUS_MID, SBUS_MIN);
+  // NOTE: disable for now
+  // if (ctl->axisX() <= AXIS_L_NEUTRAL_X) {
+  //   rcChannels[YAW] = (int)map(ctl->axisX(), AXIS_L_NEUTRAL_X, AXIS_LEFT, SBUS_MID, SBUS_MIN);
+  // } else {
+  //   rcChannels[YAW] = (int)map(ctl->axisX(), AXIS_L_NEUTRAL_X, AXIS_RIGHT, SBUS_MID, SBUS_MAX);
+  // }
+  if (ctl->axisRX() <= AXIS_R_NEUTRAL_X) {
+    rcChannels[YAW] = (int)map(ctl->axisRX(), AXIS_R_NEUTRAL_X, AXIS_LEFT, SBUS_MID, SBUS_MIN);
   } else {
-    rcChannels[YAW] = (int)map(ctl->axisX(), AXIS_L_NEUTRAL_X, AXIS_RIGHT, SBUS_MID, SBUS_MAX);
+    rcChannels[YAW] = (int)map(ctl->axisRX(), AXIS_R_NEUTRAL_X, AXIS_RIGHT, SBUS_MID, SBUS_MAX);
   }
-  // Serial.print("axis l - x: ");
-  // Serial.print(ctl->axisX());
-  // Serial.print("\t yaw: ");
-  // Serial.println(rcChannels[YAW]);
+  Serial.print("axis l - x: ");
+  Serial.print(ctl->axisX());
+  Serial.print("\t yaw: ");
+  Serial.println(rcChannels[YAW]);
 
   // Map pitch values
   // Note: this currently assumes pitching down is > 1500 and pitching up is < 1500, if not simply swap SBUS_MAX and SBUS_MIN
-  if (ctl->axisRY() <= AXIS_R_NEUTRAL_Y) {
-    rcChannels[PITCH] = (int)map(ctl->axisRY(), AXIS_R_NEUTRAL_Y, AXIS_UP, SBUS_MID, SBUS_MAX);
-  } else {
-    rcChannels[PITCH] = (int)map(ctl->axisRY(), AXIS_R_NEUTRAL_Y, AXIS_DOWN, SBUS_MID, SBUS_MIN);
-  }
+  // TODO: change this to button
+  // if (ctl->axisRY() <= AXIS_R_NEUTRAL_Y) {
+  //   rcChannels[PITCH] = (int)map(ctl->axisRY(), AXIS_R_NEUTRAL_Y, AXIS_UP, SBUS_MID, SBUS_MAX);
+  // } else {
+  //   rcChannels[PITCH] = (int)map(ctl->axisRY(), AXIS_R_NEUTRAL_Y, AXIS_DOWN, SBUS_MID, SBUS_MIN);
+  // }
   // Serial.print("axis r - y: ");
   // Serial.print(ctl->axisY());
   // Serial.print("\t pitch: ");
   // Serial.println(rcChannels[PITCH]);
 
   // Map roll values
-  if (ctl->axisRX() <= AXIS_R_NEUTRAL_X) {
-    rcChannels[ROLL] = (int)map(ctl->axisRX(), AXIS_R_NEUTRAL_X, AXIS_LEFT, SBUS_MID, SBUS_MIN);
-  } else {
-    rcChannels[ROLL] = (int)map(ctl->axisRX(), AXIS_R_NEUTRAL_X, AXIS_RIGHT, SBUS_MID, SBUS_MAX);
-  }
+  // if (ctl->axisRX() <= AXIS_R_NEUTRAL_X) {
+  //   rcChannels[ROLL] = (int)map(ctl->axisRX(), AXIS_R_NEUTRAL_X, AXIS_LEFT, SBUS_MID, SBUS_MIN);
+  // } else {
+  //   rcChannels[ROLL] = (int)map(ctl->axisRX(), AXIS_R_NEUTRAL_X, AXIS_RIGHT, SBUS_MID, SBUS_MAX);
+  // }
   // Serial.print("axis r - x: ");
   // Serial.print(ctl->axisRX());
   // Serial.print("\t yaw: ");
@@ -341,7 +352,7 @@ void loop() {
     sbusPreparePacket(sbusPacket, rcChannels, false, false);
     Serial1.write(sbusPacket, SBUS_PACKET_LENGTH);
     printSBUSChannel(rcChannels);
-    printSBUSData(sbusPacket);
+    printSBUSPacket(sbusPacket);
     sbusTime = currentMillis + SBUS_UPDATE_RATE;
   }
 }
