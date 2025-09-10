@@ -5,6 +5,7 @@
 // Components:
 // IMU, OF, SD Card, 4*ToF, 4*Ultrasonic
 
+#include <Arduino.h>
 #include <Wire.h>
 #include <SD.h>
 #include <SPI.h>
@@ -42,7 +43,7 @@
 #define US2 15
 #define US3 16
 #define US4 4
-#define US5 5
+#define USO 5
 
 #define BOOT_PIN 0
 bool mode = false;         // toggled by BOOT button
@@ -79,6 +80,7 @@ ICM456xx IMU(psramSPI, AP_CS2);
 File imuFile;
 File ofFile;
 File tofFile;
+File UltraFile;
 // For if we do separate ToF files
 // File ToFS1; // side 1
 // File ToFS2; // side 2
@@ -89,6 +91,7 @@ File tofFile;
 const char* imuFileName = "/imu_ICM45686.csv";
 const char* tofFileName = "/4x_tof_L7.csv";
 const char* ofFileName = "/of_PMW3901.csv";
+const char* UltraFileName = "/4xUltra_MB1030.csv";
 
 // Variables for PMW3901
 char frame[35*35]; //array to hold the framebuffer
@@ -103,7 +106,7 @@ int RimageResolution  = 0; // Same for F
 //////////////////////////////////////////////////////
 char imuBuf[128];
 char ofBuf[64];
-
+char ultraBuf[128]; // enough for timestamp + 4 readings
 // ToF data can be recorded all at the same time?
 char tofBuf[1024]; // All 4 ToFs in one buffer
 // char tofS1Buf[384]; // 8x8 resolution, with 4 character + 1 space ~ 384 chars
@@ -122,9 +125,12 @@ float  dps_rating = 1000; // 15.625/31.25/62.5/125/250/500/1000/2000/4000 dps
 unsigned long lastIMUtime = 0;
 unsigned long lastOFtime = 0;
 unsigned long lastTOFtime = 0;
+static unsigned long lastUltraTime = 0;
 const unsigned long imuInterval = 625;    // microseconds → ~1600 Hz
 const unsigned long ofInterval = 10000;   // microseconds → ~100 Hz
 const unsigned long tofInterval = 250000;   // microseconds → ~4 Hz // Side Tof should be every 0.25s and Roof/ Floor ToF should be every 0.5s. 
+const unsigned long ultraInterval = 50000; // 50 ms → 20 Hz
+
 // const unsigned long S1tofInterval = 250000;
 // const unsigned long S2tofInterval = 250000;
 // const unsigned long RtofInterval  = 250000; 
@@ -302,6 +308,12 @@ void setup()
   sensorS2.startRanging();
   Serial.println("Sensors are now ranging.");
 
+  // Ultrasonics
+  pinMode(US1, INPUT); // Note: Ultrasonics operate on a 49mS cycle.
+  pinMode(US2, INPUT);
+  pinMode(US3, INPUT);
+  pinMode(US4, INPUT);
+  pinMode(USO, INPUT); // USO is for object detection (front of drone). 
 
   // Init IMU CSV
   SD.remove(imuFileName);
@@ -322,13 +334,18 @@ void setup()
   of.print(",deltaX,deltaY");
   of.println();
   of.close();
+  // Init Ultra CSV
+  SD.remove(UltraFileName);
+  File Ultra = SD.open(UltraFileName, FILE_WRITE);
+  Ultra.print("time,US1,US2,US3,US4"); 
+  Ultra.println();
+  Ultra.close();
 
 
 
 
 
-
-  Serial.println("Entering Loop!");
+  Serial.println("Finished Setup!");
 }
 
 // Helper: append unsigned long to buffer, returns number of chars
@@ -463,6 +480,42 @@ void logOF() {
 }
 
 
+// Helper to read one ultrasonic sensor in cm
+float readUltrasonic(int pin) {
+    // pulseIn returns pulse width in microseconds
+    unsigned long duration = pulseIn(pin, HIGH, 37500); // 37.5 ms timeout
+    if (duration == 0) return -1.0; // No reading
+    return duration / 57.87;        // Convert to cm (MB1030 formula)
+}
+
+// Log all 4 ultrasonic sensors (US1-US4) to CSV
+void logUltrasonics() {
+    unsigned long now = micros();
+    if (now - lastUltraTime < ultraInterval) return;
+    lastUltraTime = now;
+
+    if (!UltraFile) return;
+
+    int idx = appendTimestamp(ultraBuf, now);
+    ultraBuf[idx++] = ',';  
+
+    // Read 4 sensors and write to buffer
+    float readings[4];
+    int pins[4] = {US1, US2, US3, US4};
+    for (int i = 0; i < 4; i++) {
+        readings[i] = readUltrasonic(pins[i]);
+        if (i > 0) ultraBuf[idx++] = ',';
+        if (readings[i] < 0) {
+            ultraBuf[idx++] = 'X';  // No reading
+        } else {
+            idx += snprintf(ultraBuf + idx, sizeof(ultraBuf) - idx, "%.2f", readings[i]);
+        }
+    }
+    ultraBuf[idx++] = '\n';
+    UltraFile.write((uint8_t*)ultraBuf, idx);
+}
+
+
 void loop() {
     // --- Handle BOOT button toggle ---
   if (digitalRead(BOOT_PIN) == LOW) {  // pressed (active LOW)
@@ -481,7 +534,7 @@ void loop() {
         imuFile = SD.open(imuFileName, FILE_APPEND);
         tofFile = SD.open(tofFileName, FILE_APPEND);
         ofFile = SD.open(ofFileName, FILE_APPEND);
-
+        UltraFile = SD.open(UltraFileName, FILE_APPEND);
 
           Serial.println("Opening files for logging...");
           if (!imuFile || !tofFile || !ofFile) {
@@ -493,6 +546,7 @@ void loop() {
       logIMU();   // writes to imuFile
       logToF();   // writes to tofFile
       logOF();    // writes to ofFile
+      logUltrasonics();
   } 
   else {
 
@@ -504,6 +558,8 @@ void loop() {
           tofFile = File();
           ofFile.close();
           ofFile = File();
+          UltraFile.close();
+          UltraFile = File();
           Serial.println("Files closed, safe to download.");
       }
     }
