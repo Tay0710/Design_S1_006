@@ -72,7 +72,7 @@ def process_data(filepath):
 
     # === Tuning Variables ===
     gain = 1
-    gyro_range = 250 # Set range of the gyro
+    gyro_range = 2000 # Set range of the gyro
     accel_rej = 2 # Set max of the accel
     mag_rej = 0
     rej_timeout = 4 * int(sample_rate)
@@ -201,7 +201,7 @@ def save_csv(filename, timestamp, velocity, position):
 
 # === Main ===
 def main():
-    input_csv = "../optical_flow_method_data/combined_samples/square2/IMU_combined_square2.csv"
+    input_csv = "../optical_flow_method_data/combined_samples/MILC_carpet/s1/download_imu (13).csv"
     output_csv = "../optical_flow_method_data/imu_position.csv"
     timestamp, delta_time, acceleration, is_moving = process_data(input_csv)
     velocity = accel_to_velocity(timestamp, acceleration, delta_time, is_moving)
@@ -211,6 +211,9 @@ def main():
     # Example XY plot
     plt.figure(figsize=(8, 8))
     plt.plot(position[:, 0], position[:, 1], marker="o", markersize=1, linewidth=1)
+        # Start (green) and End (red)
+    plt.scatter(position[0, 0], position[0, 1], color="green", s=80, label="Start")
+    plt.scatter(position[-1, 0], position[-1, 1], color="red", s=80, label="End")
     plt.xlabel("X (m)")
     plt.ylabel("Y (m)")
     plt.title("2D Trajectory")

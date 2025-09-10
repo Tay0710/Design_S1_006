@@ -107,7 +107,7 @@ def animate_rotation(rot_mats):
 
 def main():
     # === File paths ===
-    input_csv = "../optical_flow_method_data/combined_samples/square2/IMU_combined_square2.csv"
+    input_csv = "../optical_flow_method_data/combined_samples/MILC_carpet/s1/download_imu (13).csv"
     output_csv = "../optical_flow_method_data/rotation_matrices.csv"
 
     # === Pipeline ===

@@ -60,7 +60,7 @@ def calculate_height(D28, D27, D36, D35):
     return h_rounded
 
 def main():
-    input_path = "../optical_flow_method_data/combined_samples/square2/ToF_combined_square2.csv"
+    input_path = "../optical_flow_method_data/combined_samples/MILC_carpet/s1/download_tof.csv"
     output_path = "../optical_flow_method_data/ToF_heights.csv"
 
     # Load CSV (skip header)
