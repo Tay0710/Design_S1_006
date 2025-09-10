@@ -1,5 +1,5 @@
 """
-imu_accel_to_position.py
+x7_imu_integration_to_position.py
 ------------------------
 Estimates velocity and position directly from IMU data 
 (gyroscope + accelerometer) with motion detection.

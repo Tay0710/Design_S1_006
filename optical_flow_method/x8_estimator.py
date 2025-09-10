@@ -1,4 +1,48 @@
-import numpy as np
+"""
+x8_estimator.py
+-------------------------
+Fuses IMU-derived position/velocity with optical flow + ToF estimates
+using a 6-state Kalman filter.
+
+Overview:
+    - IMU pipeline (imu_position.csv) gives relative position/velocity from 
+      double integration of accelerations.
+    - Optical flow pipeline (xy_velocities_to_world_frame.csv) gives world-frame
+      positions/velocities derived from optical flow and ToF height.
+    - Kalman filter fuses both sources:
+        State vector: [px, py, pz, vx, vy, vz]^T
+        Dynamics: constant velocity model
+        Measurements: directly observe pos + vel from optical flow
+        Process noise: tuned for IMU
+        Measurement noise: tuned for flow
+
+Notes:
+    - Process noise (Q) and measurement noise (R) are the key tuning parameters.
+    
+Pipeline:
+    1. Load IMU (time, p, v) and optical flow world-frame data.
+    2. Interpolate optical flow data to IMU timestamps.
+    3. Initialize Kalman filter with IMU initial pos/vel.
+    4. Predict step from IMU (dt).
+    5. Update step from optical flow measurement.
+    6. Save fused estimates and plot comparisons.
+
+Inputs:
+    - imu_position.csv
+        Columns:
+            time, vx, vy, vz, px, py, pz
+    - xy_velocities_to_world_frame.csv
+        Columns:
+            time (s), v_world_x, v_world_y, v_world_z, 
+            pos_world_x, pos_world_y, pos_world_z
+
+Outputs:
+    - fused_position.csv
+        Columns:
+            time, px, py, pz, vx, vy, vz
+"""
+
+numpy as np
 import pandas as pd
 from filterpy.kalman import KalmanFilter
 import matplotlib.pyplot as plt

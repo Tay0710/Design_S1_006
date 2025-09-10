@@ -1,5 +1,5 @@
 """
-imu_to_rotation_matrices.py
+x5_rotation_matrix.py
 ---------------------------
 Processes IMU data (gyroscope + accelerometer) using the xioTechnologies 
 imufusion library to estimate orientation as rotation matrices.

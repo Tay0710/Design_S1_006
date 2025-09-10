@@ -1,5 +1,5 @@
 """
-xy_velocities_to_world_frame.py
+x6_convert_to_world_frame.py
 -------------------------------
 Transforms body-frame velocities into the world frame and integrates them 
 to estimate drone trajectory.
