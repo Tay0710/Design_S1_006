@@ -1,8 +1,40 @@
+"""
+imu_to_rotation_matrices.py
+---------------------------
+Processes IMU data (gyroscope + accelerometer) using the xioTechnologies 
+imufusion library to estimate orientation as rotation matrices.
+
+Overview:
+    The script runs an AHRS (Attitude and Heading Reference System) filter
+    on IMU data to compute orientation over time. The output is stored as
+    flattened 3×3 rotation matrices and can also be visualized in a 3D
+    animation showing how the body axes evolve.
+    
+Notes:
+    - Includes optional matplotlib 3D animation for visualization.
+
+Inputs:
+    - IMU_combined_square2.csv
+        Columns:
+            time (s), gyro_x, gyro_y, gyro_z, accel_x, accel_y, accel_z
+        Units:
+            Gyro in deg/s
+            Accel in g
+
+Outputs:
+    - rotation_matrices.csv
+        Columns:
+            r00, r01, r02,
+            r10, r11, r12,
+            r20, r21, r22
+        Each row corresponds to a flattened 3×3 orientation matrix at a timestep.
+"""
+
 import numpy as np
 import imufusion
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
-from mpl_toolkits.mplot3d import Axes3D  # noqa: F401
+from mpl_toolkits.mplot3d import Axes3D
 
 
 def load_sensor_data(input_csv):
