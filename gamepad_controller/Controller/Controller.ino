@@ -48,6 +48,8 @@ int timestamp = 0;
 #define THROTTLE_MID 1050
 #define THROTTLE_MAX 1210 // shrink range of throttle
 
+#define DPAD_INCREMENT 3
+
 // Constants for Wifi
 #define SSID "ESP-TEST-DJ"
 #define PASSWORD "123456789"
@@ -159,6 +161,14 @@ void processGamepad(ControllerPtr ctl) {
     Serial.println("FAILSAFE");
     rcChannels[AUX3] = 1800;
   }
+
+  // Press B to reset roll and pitch to 1500
+  if (ctl->buttons() & 0x0001) {
+    Serial.println("Reset pitch and roll");
+    rcChannels[ROLL] = SBUS_MID;
+    rcChannels[PITCH] = SBUS_MID;
+  }
+
   // else {
   //   // rcChannels[AUX3] = 1500;
   // }
@@ -187,10 +197,10 @@ void processGamepad(ControllerPtr ctl) {
   } else {
     rcChannels[YAW] = (int)map(ctl->axisRX(), AXIS_R_NEUTRAL_X, AXIS_RIGHT, SBUS_MID, SBUS_MAX);
   }
-  Serial.print("axis l - x: ");
-  Serial.print(ctl->axisX());
-  Serial.print("\t yaw: ");
-  Serial.println(rcChannels[YAW]);
+  // Serial.print("axis l - x: ");
+  // Serial.print(ctl->axisX());
+  // Serial.print("\t yaw: ");
+  // Serial.println(rcChannels[YAW]);
 
   // Map pitch values
   // Note: this currently assumes pitching down is > 1500 and pitching up is < 1500, if not simply swap SBUS_MAX and SBUS_MIN
@@ -215,6 +225,33 @@ void processGamepad(ControllerPtr ctl) {
   // Serial.print(ctl->axisRX());
   // Serial.print("\t yaw: ");
   // Serial.println(rcChannels[ROLL]);
+
+
+  // Dpad: up = 0x01 = 0b00000001, down = 0x02 = 0b00000010, left = 0x08 = 0b00001000, right = 0x04 = 0b00000100
+  // Map pitch to Dpad
+  if(ctl->dpad() & 0x01 && rcChannels[PITCH] > SBUS_MIN) {
+    rcChannels[PITCH] = rcChannels[PITCH] - DPAD_INCREMENT;
+  }
+  if(ctl->dpad() & 0x02 && rcChannels[PITCH] < SBUS_MAX) {
+    rcChannels[PITCH] = rcChannels[PITCH] + DPAD_INCREMENT;
+  }
+  if(ctl->dpad() & 0x08 && rcChannels[ROLL] > SBUS_MIN) {
+    rcChannels[ROLL] = rcChannels[ROLL] - DPAD_INCREMENT;
+  }
+  if(ctl->dpad() & 0x04 && rcChannels[ROLL] < SBUS_MAX) {
+    rcChannels[ROLL] = rcChannels[ROLL] + DPAD_INCREMENT;
+  }
+
+  if(ctl->dpad()) {
+    Serial.print("pitch: ");
+    Serial.println(rcChannels[PITCH]);
+    Serial.print("roll: ");
+    Serial.println(rcChannels[ROLL]);
+  }
+  
+
+  // dumpGamepad(ctl);  // Prints everything for debug
+
 }
 
 void processControllers() {
@@ -351,8 +388,8 @@ void loop() {
   if (currentMillis > sbusTime) {
     sbusPreparePacket(sbusPacket, rcChannels, false, false);
     Serial1.write(sbusPacket, SBUS_PACKET_LENGTH);
-    printSBUSChannel(rcChannels);
-    printSBUSPacket(sbusPacket);
+    // printSBUSChannel(rcChannels);
+    // printSBUSPacket(sbusPacket);
     sbusTime = currentMillis + SBUS_UPDATE_RATE;
   }
 }
