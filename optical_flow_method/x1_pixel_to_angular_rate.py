@@ -30,7 +30,7 @@ import csv
 
 # Convert PMW3901 pixel deltas to angular-rates (rad/s)
 def pixels_to_angular_rates(dx, dy, dt):
-    res = 35.0
+    res = 35.0*35
     fov_deg = 42.0
     if dt is None or dt <= 0:
         return 0.0, 0.0
@@ -44,8 +44,8 @@ def pixels_to_angular_rates(dx, dy, dt):
     return wx, wy
 
 def main():
-    input_path = "../optical_flow_method_data/combined_samples/square2/OF_combined_square2.csv"
-    output_path = "../optical_flow_method_data/optical_flow_angular_rates.csv"
+    input_path = "C:/Users/samue/Desktop/Design_S1_006-1/optical_flow_method_data/combined_samples/square2/OF_combined_square2.csv"
+    output_path = "C:/Users/samue/Desktop/Design_S1_006-1/optical_flow_method_data/optical_flow_angular_rates.csv"
     
     with open(input_path, "r") as f_in, open(output_path, "w", newline="") as f_out:
         reader = csv.DictReader(f_in)
@@ -60,6 +60,7 @@ def main():
         batch_dx = []
         batch_dy = []
 
+
         for row in reader:
             t = float(row["time"])
             dx = int(row["deltaX"])
@@ -68,10 +69,11 @@ def main():
             batch_times.append(t)
             batch_dx.append(dx)
             batch_dy.append(dy)
-
+            
+            last_time = 12.3
             # Process batch every 10 samples
             if len(batch_times) == 10:
-                dt = batch_times[-1] - batch_times[0]
+                dt = batch_times[-1] - last_time
                 dx_total = sum(batch_dx)
                 dy_total = sum(batch_dy)
 
@@ -83,6 +85,7 @@ def main():
                 writer.writerow([f"{batch_times[-1]:.6f}", f"{wx:.6f}", f"{wy:.6f}"])
 
                 # Reset for next batch
+                last_time = batch_times[-1]
                 batch_times.clear()
                 batch_dx.clear()
                 batch_dy.clear()
