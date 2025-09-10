@@ -42,7 +42,7 @@ Outputs:
             time, px, py, pz, vx, vy, vz
 """
 
-numpy as np
+import numpy as np
 import pandas as pd
 from filterpy.kalman import KalmanFilter
 import matplotlib.pyplot as plt
