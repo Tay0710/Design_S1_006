@@ -3,7 +3,8 @@
 
 // lib's for each of the sensors?
 // Components:
-// IMU, OF, SD Card, 4*ToF, 4*Ultrasonic
+// IMU, OF, SD Card, 4*ToF, 5*Ultrasonic (4 mapping, 1 obejct detection)
+// Missing SBUS commands
 
 #include <Arduino.h>
 #include <Wire.h>
@@ -13,7 +14,7 @@
 #include <SparkFun_VL53L5CX_Library.h> //http://librarymanager/All#SparkFun_VL53L5CX
 #include <Bitcraze_PMW3901.h>
 
-// Optical flow SPI pins (pins for Owen's ESP32)
+// Optical flow SPI pins
 #define MOSI1 11 // OF, VSPI
 #define CLK1 12
 #define MISO1 13
