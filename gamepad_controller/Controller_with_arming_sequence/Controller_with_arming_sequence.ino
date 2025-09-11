@@ -51,8 +51,8 @@ bool armingSequenceFlag = false;
 #define SBUS_MAX 1600 // 2115, switched to 2110
 
 #define THROTTLE_MIN 890
-#define THROTTLE_MID 1050
-#define THROTTLE_MAX 1210 // shrink range of throttle
+#define THROTTLE_MID 1200
+#define THROTTLE_MAX 1510 // shrink range of throttle
 
 #define DPAD_INCREMENT 3
 
@@ -349,7 +349,7 @@ void setup() {
   rcChannels[AUX2] = 1200;  // For angle mode
   // TODO: might map this to button instead
 
-  Serial1.begin(100000, SERIAL_8E2, RX_PIN, TX_PIN, false);  // Initialize Serial1 with 100000 baud rate
+  Serial1.begin(100000, SERIAL_8E2, RX_PIN, TX_PIN, true);  // Initialize Serial1 with 100000 baud rate
   // false = univerted, true = inverted
 
   Serial.println(" --- Setup WIFI/TCP Connection --- ");
