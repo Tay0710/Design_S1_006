@@ -1,7 +1,9 @@
-Notes, to Add:
+Software Notes, to Add:
     Make the LoRa module an interrupt insead of duty cycle checking, and add a limit where if it has not heard from LoRa for X time Drone goes into landing procedure. 
 
-
+Hardware Notes:
+    Special Case if OF, LoRa, SD Card on same SPI bus. 
+    Is it possible to put the SD card module on the PCB board?
 
 Steps to record:
     1. Upload code
@@ -34,11 +36,9 @@ CSV files available: (header + values in csv files)
             time,US1,US2,US3,US4
 
 Bug:
-    fix code to return Xs if not reday. 
+    fix code to return Xs if ToF is not ready. 
 
-
-
-Notes:
+Component Notes:
     Ultrasonics MB10 Series
         Each 49mS period starts by the RX being high or open, after which the LV-MaxSonar-EZ sends the transmit burst, after
         which the pulse width pin (PW) is set high. When a target is detected the PW pin is pulled low. The PW pin is high for up
@@ -61,9 +61,15 @@ Notes:
 
 
 Idea:
+Missing: 
+    Comms to STM SBUS
+        Priority 2
+
 Core 0: IMU, OF, 
+    Priority: 4,4
     Timing: IMU 
 Core 1: US, ToF, LoRa, SD Card
+    Priority: 3,4,4, (4 or 5) 
     Timing (on cycle ~ 50ms): US(5ms), ToF (~36ms), Idle (~9ms)
        Idle time (Off cycle): Write to SD Card (Idle), ***Check LoRa (every 1-2s or 1-0.5Hz)
 
@@ -71,7 +77,7 @@ Lets go with normal SPI writing to SD card for the time being, and if this is to
 
         Example of operations on Core 1. 
                     Time (ms)
-                0        5        10       15       20       25       30       35       40       45       50
+                0        5        10       15       20       25       30       35       40       45      50
                 |--------|--------|--------|--------|--------|--------|--------|--------|--------|--------|
                 Core 1 CPU:
                 [ Ultrasonics PWM 5ms ]---CPU free---CPU free---CPU free---CPU free---CPU free
