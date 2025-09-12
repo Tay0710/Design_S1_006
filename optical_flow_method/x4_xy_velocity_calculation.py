@@ -128,6 +128,8 @@ def main():
     # === Plot trajectory (XY) ===
     plt.subplot(1, 2, 2)
     plt.plot(pos_x, pos_y, "-o", markersize=2)
+    plt.scatter(pos_x[0], pos_y[0], color="green", s=80, label="Start")
+    plt.scatter(pos_x[-1], pos_y[-1], color="red", s=80, label="End")
     plt.xlabel("X position (m)")
     plt.ylabel("Y position (m)")
     plt.title("Integrated XY Position")
