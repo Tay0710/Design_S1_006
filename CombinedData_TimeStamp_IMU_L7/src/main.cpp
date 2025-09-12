@@ -184,7 +184,7 @@ void setup()
   SD.remove(tofFileName);
   File tof = SD.open(tofFileName, FILE_WRITE);
   tof.print("time");
-  for(int i=0; i<64; i++) tof.print(",D"+String(i));
+  for(int i=0; i<16; i++) tof.print(",D"+String(i));
   tof.println();
   tof.close();
 
@@ -239,7 +239,7 @@ void setup()
       ;
   }
 
-  myImager.setResolution(8*8); // Enable all 64 pads or 16 pads for 4x4 resolution
+  myImager.setResolution(4*4); // Enable all 64 pads or 16 pads for 4x4 resolution
 
   imageResolution = myImager.getResolution(); // Query sensor for current resolution - either 4x4 or 8x8
 
