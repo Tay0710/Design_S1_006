@@ -297,7 +297,7 @@ void logIMU() {
 
   inv_imu_sensor_data_t imu_data;
   IMU.getDataFromRegisters(imu_data);
-
+// Need to add If statement to check if return signal is vaild. 
   float gx = imu_data.gyro_data[0]*dps_rating/32768.0 - calibGyroX;
   float gy = imu_data.gyro_data[1]*dps_rating/32768.0 - calibGyroY;
   float gz = imu_data.gyro_data[2]*dps_rating/32768.0 - calibGyroZ;
