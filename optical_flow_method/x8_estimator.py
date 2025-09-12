@@ -82,11 +82,11 @@ def create_kalman_filter(dt, init_pos, init_vel):
 
     # Covariances (can tune these *******)
     kf.P *= 1.0
-    # kf.R = np.diag([0.5]*3 + [0.2]*3)  # measurement noise (flow)
-    # kf.Q = np.eye(6) * 1e-2              # process noise (IMU)
+    kf.R = np.diag([0.5]*3 + [0.2]*3)  # measurement noise (flow)
+    kf.Q = np.eye(6) * 1e-2              # process noise (IMU)
     
-    kf.R = np.eye(6) * 1e6   # HUGE measurement noise → ignore optical flow
-    kf.Q = np.eye(6) * 1e-3
+    # kf.R = np.eye(6) * 1e6   # HUGE measurement noise → ignore optical flow
+    # kf.Q = np.eye(6) * 1e-3
 
     return kf
 

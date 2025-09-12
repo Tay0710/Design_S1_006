@@ -30,7 +30,7 @@ import csv
 
 # Convert PMW3901 pixel deltas to angular-rates (rad/s)
 def pixels_to_angular_rates(dx, dy, dt):
-    res = 35.0*35
+    res = 35.0
     fov_deg = 42.0
     if dt is None or dt <= 0:
         return 0.0, 0.0
@@ -58,7 +58,6 @@ def main(input_path):
         batch_times = []
         batch_dx = []
         batch_dy = []
-
 
         for row in reader:
             t = float(row["time"])
