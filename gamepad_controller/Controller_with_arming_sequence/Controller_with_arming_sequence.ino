@@ -51,8 +51,8 @@ bool armingSequenceFlag = false;
 #define SBUS_MAX 1600 // 2115, switched to 2110
 
 #define THROTTLE_MIN 890
-#define THROTTLE_MID 1200
-#define THROTTLE_MAX 1510 // shrink range of throttle
+#define THROTTLE_MID 1500
+#define THROTTLE_MAX 2110 // shrink range of throttle
 
 #define DPAD_INCREMENT 3
 
