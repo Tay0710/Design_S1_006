@@ -65,12 +65,15 @@ from x8_estimator import main as estimator
 
 def main():
     t0 = time.time()
-
+    stage_1_input_path = "../optical_flow_method_data/combined_samples/MILC_carpet/s1/download_of (1).csv"
+    stage_2_input_path = "../optical_flow_method_data/combined_samples/MILC_carpet/s1/download_tof.csv"
+    stage_5_and_7_input_csv = "../optical_flow_method_data/combined_samples/MILC_carpet/s1/download_imu (13).csv"
+    
     print("\n=== Stage 1: pixel → angular-rate ===")
-    pixel_to_angular_rate()
+    pixel_to_angular_rate(stage_1_input_path)
 
     print("\n=== Stage 2: ToF → height ===")
-    height_from_ToF()
+    height_from_ToF(stage_2_input_path)
 
     print("\n=== Stage 3: interpolate heights ===")
     interpolate_heights()
@@ -79,13 +82,13 @@ def main():
     xy_velocity_calculation()
     
     print("\n=== Stage 5: rotation matrix from IMU orientation ===")
-    rotation_matrix()
+    rotation_matrix(stage_5_and_7_input_csv)
     
     print("\n=== Stage 6: convert the velocities to world frame ===")
     convert_to_world_frame()
     
     print("\n=== Stage 7: IMU acceleration integration to position ===")
-    imu_integration_to_position()
+    imu_integration_to_position(stage_5_and_7_input_csv)
     
     print("\n=== Stage 8: estimator (EFK) ===")
     estimator()

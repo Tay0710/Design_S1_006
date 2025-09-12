@@ -61,8 +61,8 @@ def run_ahrs(timestamp, gyroscope, accelerometer):
         0.5,   # gain
         250,   # gyroscope range
         2,     # acceleration rejection
-        10,    # magnetic rejection
-        5 * sample_rate,  # recovery trigger period = 5 seconds
+        0,    # magnetic rejection
+        1 * sample_rate,  # recovery trigger period = 5 seconds
     )
 
     rot_mats = []
@@ -73,7 +73,6 @@ def run_ahrs(timestamp, gyroscope, accelerometer):
         rot_mats.append(R.flatten())  # store flattened row
 
     return np.array(rot_mats)
-
 
 def save_rotation_matrices(rot_mats, output_csv):
     """Save rotation matrices to CSV."""
@@ -106,9 +105,8 @@ def animate_rotation(rot_mats):
     return ani  # keep a reference so it doesn’t get garbage collected
 
 
-def main():
+def main(input_csv):
     # === File paths ===
-    input_csv = "../optical_flow_method_data/combined_samples/square2/IMU_combined_square2.csv"
     output_csv = "../optical_flow_method_data/rotation_matrices.csv"
 
     # === Pipeline ===
@@ -118,7 +116,6 @@ def main():
 
     # === Run animation ===
     _ = animate_rotation(rot_mats)
-
 
 if __name__ == "__main__":
     main()
