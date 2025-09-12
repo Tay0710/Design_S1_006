@@ -7,7 +7,7 @@
 hw_config hwConfig;
 
 // ESP32 - SX126x pin configuration
-// int PIN_LORA_RESET = 1;	 // LORA RESET
+int PIN_LORA_RESET = 1;	 // LORA RESET
 int PIN_LORA_DIO_1 = 2; // LORA DIO_1
 int PIN_LORA_BUSY = 3;	 // LORA SPI BUSY
 int PIN_LORA_NSS = 10;	 // LORA SPI CS
@@ -93,7 +93,7 @@ void setup()
 {
 	// Define the HW configuration between MCU and SX126x
 	hwConfig.CHIP_TYPE = SX1262_CHIP;		  // Example uses an eByte E22 module with an SX1262
-	// hwConfig.PIN_LORA_RESET = PIN_LORA_RESET; // LORA RESET
+	hwConfig.PIN_LORA_RESET = PIN_LORA_RESET; // LORA RESET // Note: times out way more often...
 	hwConfig.PIN_LORA_NSS = PIN_LORA_NSS;	  // LORA SPI CS
 	hwConfig.PIN_LORA_SCLK = PIN_LORA_SCLK;	  // LORA SPI CLK
 	hwConfig.PIN_LORA_MISO = PIN_LORA_MISO;	  // LORA SPI MISO
