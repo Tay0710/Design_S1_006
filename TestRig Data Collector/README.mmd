@@ -61,15 +61,13 @@ Component Notes:
 
 
 Idea:
-Missing: 
-    Comms to STM SBUS
-        Priority 2
+Core 1 handles real-time data, Core 0 handles slower logging and communication.
 
-Core 0: IMU, OF, 
-    Priority: 4,4
+Core 1: IMU, OF, US, SBUS
+    Priority: 4,4,3,2??
     Timing: IMU 
-Core 1: US, ToF, LoRa, SD Card
-    Priority: 3,4,4, (4 or 5) 
+Core 0: ToF, LoRa, SD Card
+    Priority: 4,4, (4 or 5) 
     Timing (on cycle ~ 50ms): US(5ms), ToF (~36ms), Idle (~9ms)
        Idle time (Off cycle): Write to SD Card (Idle), ***Check LoRa (every 1-2s or 1-0.5Hz)
 
