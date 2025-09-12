@@ -5,7 +5,7 @@ Processes raw VL53L7CX ToF sensor data to estimate drone height.
 
 Overview:
     The VL53L7CX is an 8×8 ToF sensor with a 90° field of view (FOV).
-    We select 4 central measurement zones (D27, D28, D35, D36) around the 
+    We select 4 central measurement zones (D6, D5, D10, D9) around the 
     center of the array, adjust each measurement for the sensor angle, 
     and average them to obtain an estimate of drone altitude.
 
@@ -35,29 +35,48 @@ import csv
 import numpy as np
 import ast
 # Maybe an outlier fn - but how can you make sure this doesn't include the dodgy one
-# 163.28125 is average - maybe twice this as outlier cancel
+# 163.5125 is average - maybe twice this as outlier cancel
 
-def calculate_height(D28, D27, D36, D35):
+def calculate_height(D5, D6, D9, D10, last_height):
     """
     These are altered to suit a 4x4 array as this is currently the most accurate
     The field of view (fov) of the VL53L7CX_2 is 90 degrees
     The angle between each data point is 90/3 = 30
     The angle from the central measurements to the middle of the fov is 30/2 = 15
     """
-    h1 = D28 * math.cos(15 * math.pi/180)
-    h2 = D27 * math.cos(15 * math.pi/180)
-    h3 = D36 * math.cos(15 * math.pi/180)
-    h4 = D35 * math.cos(15 * math.pi/180)    
     
-    print(f"[calculate_height] arr1 = {D28}")
-    print(f"[calculate_height] arr2 = {D27}")
-    print(f"[calculate_height] arr3 = {D36}")
-    print(f"[calculate_height] arr4 = {D35}")
+    angle = 15 * math.pi/180
+    valid = []
+    
+    # Check each input, skip if it's "x" or nan
+    for val in [D5, D6, D9, D10]:
+        if isinstance(val, str):
+            if val.lower() == "x":
+                continue
+            try:
+                v = float(val)
+            except ValueError:
+                continue
+        else:
+            v = float(val)
+
+        if np.isnan(v):   # skip NaN values
+            continue
+        valid.append(v * math.cos(angle))
+            
+    if len(valid) == 0:
+        print("[calculate_height] All values invalid, using last_height =", last_height)
+        return last_height
+    
+    print(f"[calculate_height] arr1 = {D5}")
+    print(f"[calculate_height] arr2 = {D6}")
+    print(f"[calculate_height] arr3 = {D9}")
+    print(f"[calculate_height] arr4 = {D10}")
           
-    h_ave = (h1 + h2 + h3 + h4) / 4
+    h_ave = sum(valid) / len(valid)
     h_rounded = round(h_ave, 3)
-    print(f"[calculate_height] h_ave = ({h1} + {h2} + {h3} + {h4}) / 4 = {h_rounded}")
-    
+    print(f"[calculate_height] h_ave = {h_rounded} from {len(valid)} valid values")
+
     return h_rounded
 
 def main(input_path):
@@ -68,19 +87,22 @@ def main(input_path):
 
     # First column is time
     times = data[:, 0]
+    last_height = 0.0  # initial fallback value
 
     # Grab only the requested columns
-    d28 = data[:, 29]  # D28 is the 29th column (0-based index)
-    d27 = data[:, 28]
-    d36 = data[:, 37]
-    d35 = data[:, 36]
+    d5 = data[:, 5]
+    d6 = data[:, 6]
+    d9 = data[:, 9]
+    d10 = data[:, 10]
 
     with open(output_path, "w", newline="") as f_out:
         writer = csv.writer(f_out)
         writer.writerow(["time", "height"])
 
-        for t, v28, v27, v36, v35 in zip(times, d28, d27, d36, d35):
-            h = calculate_height(v28, v27, v36, v35)
+        for t, v5, v6, v9, v10 in zip(times, d5, d6, d9, d10):
+            h = calculate_height(v5, v6, v9, v10, last_height)
+            last_height = h  # update last known height
             writer.writerow([f"{t:.6f}", f"{h:.6f}"])
+            
 if __name__ == "__main__":
     main()
