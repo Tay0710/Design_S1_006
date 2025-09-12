@@ -39,14 +39,15 @@ import ast
 
 def calculate_height(D28, D27, D36, D35):
     """
+    These are altered to suit a 4x4 array as this is currently the most accurate
     The field of view (fov) of the VL53L7CX_2 is 90 degrees
-    The angle between each data point is 90/7 = 12.857
-    The angle from the central measurements to the middle of the fov is 12.857/2 = 6.429
+    The angle between each data point is 90/3 = 30
+    The angle from the central measurements to the middle of the fov is 30/2 = 15
     """
-    h1 = D28 * math.cos(6.429*math.pi/180)
-    h2 = D27 * math.cos(6.429*math.pi/180)
-    h3 = D36 * math.cos(6.429*math.pi/180)
-    h4 = D35 * math.cos(6.429*math.pi/180)    
+    h1 = D28 * math.cos(15 * math.pi/180)
+    h2 = D27 * math.cos(15 * math.pi/180)
+    h3 = D36 * math.cos(15 * math.pi/180)
+    h4 = D35 * math.cos(15 * math.pi/180)    
     
     print(f"[calculate_height] arr1 = {D28}")
     print(f"[calculate_height] arr2 = {D27}")
