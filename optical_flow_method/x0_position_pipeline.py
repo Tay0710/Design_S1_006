@@ -65,8 +65,8 @@ from x8_estimator import main as estimator
 
 def main():
     t0 = time.time()
-    stage_1_input_path = "../optical_flow_method_data/combined_samples/12_09_25_MILC_carpet/straight1/download_of.csv"
-    stage_2_input_path = "../optical_flow_method_data/combined_samples/12_09_25_MILC_carpet/straight1/download_tof.csv"
+    stage_1_input_path = "../optical_flow_method_data/combined_samples/12_09_25_Lv4/straight2/download_of.csv"
+    stage_2_input_path = "../optical_flow_method_data/combined_samples/12_09_25_Lv4/straight2/download_tof.csv"
     stage_5_and_7_input_csv = "../optical_flow_method_data/combined_samples/MILC_carpet/s1/download_imu (13).csv"
     
     print("\n=== Stage 1: pixel → angular-rate ===")
@@ -78,8 +78,8 @@ def main():
     print("\n=== Stage 3: interpolate heights ===")
     interpolate_heights()
     
-    # print("\n=== Stage 4: angular-rate + height → v_x, v_y ===")
-    # xy_velocity_calculation()
+    print("\n=== Stage 4: angular-rate + height → v_x, v_y ===")
+    xy_velocity_calculation()
     
     # print("\n=== Stage 5: rotation matrix from IMU orientation ===")
     # rotation_matrix(stage_5_and_7_input_csv)
