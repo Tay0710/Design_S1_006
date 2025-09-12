@@ -352,32 +352,32 @@ void setup() {
   Serial1.begin(100000, SERIAL_8E2, RX_PIN, TX_PIN, true);  // Initialize Serial1 with 100000 baud rate
   // false = univerted, true = inverted
 
-  Serial.println(" --- Setup WIFI/TCP Connection --- ");
-  // Setup ESP32 as the access point
-  // https://randomnerdtutorials.com/esp32-access-point-ap-web-server/
-  Serial.println("Setting Access Point...");
-  WiFi.softAP(SSID, PASSWORD);
+  // Serial.println(" --- Setup WIFI/TCP Connection --- ");
+  // // Setup ESP32 as the access point
+  // // https://randomnerdtutorials.com/esp32-access-point-ap-web-server/
+  // Serial.println("Setting Access Point...");
+  // WiFi.softAP(SSID, PASSWORD);
 
-  // Print ESP Local IP Address
-  IPAddress IP = WiFi.softAPIP();
-  Serial.print("AP IP Address: ");
-  Serial.println(IP);
+  // // Print ESP Local IP Address
+  // IPAddress IP = WiFi.softAPIP();
+  // Serial.print("AP IP Address: ");
+  // Serial.println(IP);
 
-  // Setup ESP32 as AsyncTCP Client
-  client->onConnect(&onConnect, client);  // on successful connect
+  // // Setup ESP32 as AsyncTCP Client
+  // client->onConnect(&onConnect, client);  // on successful connect
 
-  client->connect(SERVER_HOST_NAME, TCP_PORT);  // attempt to connect
-  client->onData(&handleData, client);          // when data is received
+  // client->connect(SERVER_HOST_NAME, TCP_PORT);  // attempt to connect
+  // client->onData(&handleData, client);          // when data is received
 
-  Serial.println("Connecting to TCP server");
+  // Serial.println("Connecting to TCP server");
 
-  // Wait until ESP32 is connected to the TCP Server on PC
-  // while (!client->connected()) {
-  //   Serial.print(".");
-  //   delay(1000);
-  // }
+  // // Wait until ESP32 is connected to the TCP Server on PC
+  // // while (!client->connected()) {
+  // //   Serial.print(".");
+  // //   delay(1000);
+  // // }
 
-  client->onDisconnect(&onDisconnect, client);  // when disconnected
+  // client->onDisconnect(&onDisconnect, client);  // when disconnected
 
 
   Serial.println(" --- Setup Complete --- ");
