@@ -77,15 +77,28 @@ void loop()
       {
         for (int x = imageWidth - 1 ; x >= 0 ; x--)
         {
-          Serial.print(measurementData.distance_mm[x + y]);
-          Serial.print("\t");
+          const uint8_t stat  = measurementData.target_status[x + y];
+          if (stat == 5){         
+            Serial.print(measurementData.distance_mm[x + y]);
+            Serial.print("\t");
+          }
+          else{
+            Serial.print('X');
+            Serial.print("\t");
+          }
         }
         Serial.println();
       }
       Serial.println();
       for(int i = 0; i < 64; i++) { //8x8 = 64; 4x4 = 16
-          Serial.print(measurementData.distance_mm[i]);
-          Serial.print(',');
+          const uint8_t stat  = measurementData.target_status[i];
+          if (stat == 5){         
+            Serial.print(measurementData.distance_mm[i]);
+            Serial.print(',');
+          }
+          else{
+            Serial.print("X,");
+          }
       }
       Serial.println();
     }
