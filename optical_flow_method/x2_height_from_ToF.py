@@ -43,10 +43,10 @@ def calculate_height(D28, D27, D36, D35):
     The angle between each data point is 90/7 = 12.857
     The angle from the central measurements to the middle of the fov is 12.857/2 = 6.429
     """
-    h1 = D28 * math.cos(6.429)
-    h2 = D27 * math.cos(6.429)
-    h3 = D36 * math.cos(6.429)
-    h4 = D35 * math.cos(6.429)    
+    h1 = D28 * math.cos(6.429*math.pi/180)
+    h2 = D27 * math.cos(6.429*math.pi/180)
+    h3 = D36 * math.cos(6.429*math.pi/180)
+    h4 = D35 * math.cos(6.429*math.pi/180)    
     
     print(f"[calculate_height] arr1 = {D28}")
     print(f"[calculate_height] arr2 = {D27}")
@@ -59,8 +59,7 @@ def calculate_height(D28, D27, D36, D35):
     
     return h_rounded
 
-def main():
-    input_path = "../optical_flow_method_data/combined_samples/MILC_carpet/s1/download_tof.csv"
+def main(input_path):
     output_path = "../optical_flow_method_data/ToF_heights.csv"
 
     # Load CSV (skip header)

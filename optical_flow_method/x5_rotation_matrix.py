@@ -105,9 +105,8 @@ def animate_rotation(rot_mats):
     return ani  # keep a reference so it doesn’t get garbage collected
 
 
-def main():
+def main(input_csv):
     # === File paths ===
-    input_csv = "../optical_flow_method_data/combined_samples/MILC_carpet/s1/download_imu (13).csv"
     output_csv = "../optical_flow_method_data/rotation_matrices.csv"
 
     # === Pipeline ===
@@ -117,7 +116,6 @@ def main():
 
     # === Run animation ===
     _ = animate_rotation(rot_mats)
-
 
 if __name__ == "__main__":
     main()

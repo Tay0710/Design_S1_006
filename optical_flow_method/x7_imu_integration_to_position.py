@@ -200,8 +200,7 @@ def save_csv(filename, timestamp, velocity, position):
     print(f"Saved results to {filename}")
 
 # === Main ===
-def main():
-    input_csv = "../optical_flow_method_data/combined_samples/MILC_carpet/s1/download_imu (13).csv"
+def main(input_csv):
     output_csv = "../optical_flow_method_data/imu_position.csv"
     timestamp, delta_time, acceleration, is_moving = process_data(input_csv)
     velocity = accel_to_velocity(timestamp, acceleration, delta_time, is_moving)

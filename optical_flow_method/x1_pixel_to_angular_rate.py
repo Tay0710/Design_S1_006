@@ -43,8 +43,7 @@ def pixels_to_angular_rates(dx, dy, dt):
     
     return wx, wy
 
-def main():
-    input_path = "../optical_flow_method_data/combined_samples/MILC_carpet/s1/download_of (1).csv"
+def main(input_path):
     output_path = "../optical_flow_method_data/optical_flow_angular_rates.csv"
     
     with open(input_path, "r") as f_in, open(output_path, "w", newline="") as f_out:
