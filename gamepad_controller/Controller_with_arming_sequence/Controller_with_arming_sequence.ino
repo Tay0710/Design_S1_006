@@ -13,6 +13,9 @@
 #include <stdio.h>
 #include <Ticker.h>
 
+#include "soc/soc.h"             // disable brownout problems
+#include "soc/rtc_cntl_reg.h"    // disable brownout problems
+
 
 // Using UART2 on ESP32
 #define RX_PIN 16
@@ -312,6 +315,8 @@ void onDisconnect(void* arg, AsyncClient* client) {
 
 // Arduino setup function. Runs in CPU 1
 void setup() {
+  WRITE_PERI_REG(RTC_CNTL_BROWN_OUT_REG, 0); //disable brownout detector
+
   Serial.begin(115200);
 
   Serial.println(" --- Setup Bluetooth Controller --- ");
