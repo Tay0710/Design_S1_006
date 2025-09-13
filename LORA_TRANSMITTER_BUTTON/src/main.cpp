@@ -1,17 +1,6 @@
-/*
-   RadioLib Transmit with Interrupts Example
+// Adapted from RadioLib Transmit with Interrupts Example from RadioLib Library
+// https://github.com/Xinyuan-LilyGO/LilyGo-LoRa-Series/tree/master/examples/RadioLibExamples/Transmit_Interrupt
 
-   This example transmits packets using SX1276/SX1278/SX1262/SX1268/SX1280/LR1121 LoRa radio module.
-   Each packet contains up to 256 bytes of data, in the form of:
-    - Arduino String
-    - null-terminated char array (C-string)
-    - arbitrary binary data (byte array)
-
-   For full API reference, see the GitHub Pages
-   https://jgromes.github.io/RadioLib/
-*/
-
-// TODO: put in proper references
 
 #include "LoRaBoards.h"
 #include <RadioLib.h>

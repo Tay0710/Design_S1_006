@@ -1,3 +1,6 @@
+// Adapted from PingPong Example from SX126x-Arduino Library
+// https://github.com/beegee-tokyo/SX126x-Arduino/blob/master/examples/PingPong/PingPong.ino 
+
 #include <Arduino.h>
 #include <Ticker.h>
 
