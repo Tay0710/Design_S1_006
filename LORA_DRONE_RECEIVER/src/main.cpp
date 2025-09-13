@@ -12,6 +12,12 @@ Ticker loraTimer;
 #define FAILSAFE_LORA_TIMEOUT 5000 // ms
 #define LORA_TIMER_UDPATE_RATE 1000 // check every 1000 ms
 
+void triggerFailsafe() {
+  Serial.println("Failsafe triggered. Land drone.");
+  // rcChannels[AUX3] = 1800;
+
+}
+
 /**@brief Function to be executed on Radio Rx Timeout event
  */
 void OnRxTimeout(void)
@@ -37,6 +43,12 @@ void OnRxDone(uint8_t *payload, uint16_t size, int16_t rssi, int8_t snr)
   Serial.println((const char *)payload);
   Serial.printf("RssiValue=%d dBm, SnrValue=%d\n", rssi, snr);
   Serial.printf("Time from last message=%.2f seconds \n", time_between_message);
+
+  String payload_str = (const char *)payload;
+
+  if (payload_str == "STOP") {
+    triggerFailsafe();
+  }
 
   lastMessage = millis();
 }
@@ -103,14 +115,16 @@ void setupLoRaModule()
   // Receiver is non-blocking
 }
 
+
+
 void loraTimerCallback()
 {
   time_t currentTime = millis();
 
   if (currentTime - lastMessage > FAILSAFE_LORA_TIMEOUT)
   {
-    Serial.printf("Communications lost to failsafe transceiver for %d ms. Land drone. \n", currentTime - lastMessage);
-    // rcChannels[AUX3] = 1800;
+    Serial.printf("Communications lost to failsafe transceiver for %d ms. \n", currentTime - lastMessage);
+    triggerFailsafe();
   }
 }
 

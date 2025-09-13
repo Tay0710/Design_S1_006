@@ -20,15 +20,18 @@
 #define CONFIG_RADIO_OUTPUT_POWER   22
 #define CONFIG_RADIO_BW             125.0
 
+#define BOOT_BUTTON 0
 
+// Define radio object
 SX1262 radio = new Module(RADIO_CS_PIN, RADIO_DIO1_PIN, RADIO_RST_PIN, RADIO_BUSY_PIN);
 
-void drawMain();
+void drawMain(); // Function declaration
 
 // save transmission state between loops
 static int transmissionState = RADIOLIB_ERR_NONE;
 // flag to indicate that a packet was sent
 static volatile bool transmittedFlag = false;
+static volatile bool failsafeFlag = false;
 static uint32_t counter = 0;
 static String payload;
 
@@ -42,13 +45,18 @@ void setFlag(void)
     transmittedFlag = true;
 }
 
+void interruptCallback() {
+
+    // if failsafe button was pressed, set the flag
+    failsafeFlag = true;
+}
+
 void setup()
 {
     setupBoards();
 
     // When the power is turned on, a delay is required.
     delay(1500);
-
 
     // initialize radio with default settings
     int state = radio.begin();
@@ -73,7 +81,6 @@ void setup()
     *   Sets carrier frequency.
     *   SX1268/SX1262 : Allowed values are in range from 150.0 to 960.0 MHz.
     * * * */
-
     if (radio.setFrequency(CONFIG_RADIO_FREQ) == RADIOLIB_ERR_INVALID_FREQUENCY) {
         Serial.println(F("Selected frequency is invalid for this module!"));
         while (true);
@@ -116,7 +123,6 @@ void setup()
         while (true);
     }
 
-#if !defined(USING_SX1280) && !defined(USING_LR1121) && !defined(USING_SX1280PA)
     /*
     * Sets current limit for over current protection at transmitter amplifier.
     * SX1262/SX1268 : Allowed values range from 45 to 120 mA in 2.5 mA steps and 120 to 240 mA in 10 mA steps.
@@ -126,7 +132,6 @@ void setup()
         Serial.println(F("Selected current limit is invalid for this module!"));
         while (true);
     }
-#endif
 
     /*
     * Sets preamble length for LoRa or FSK modem.
@@ -143,19 +148,19 @@ void setup()
         while (true);
     }
 
+
+    // Setup up failsafe button
+    pinMode(BOOT_BUTTON, INPUT); // Pulled up on PCB
+    attachInterrupt(digitalPinToInterrupt(BOOT_BUTTON), interruptCallback, FALLING);
+
+
     // start transmitting the first packet
     Serial.print(F("Radio Sending first packet ... "));
 
     // you can transmit C-string or Arduino string up to
     // 256 characters long
-    transmissionState = radio.startTransmit(String(counter).c_str());
+    transmissionState = radio.startTransmit("First packet");
 
-    // you can also transmit byte array up to 256 bytes long
-    /*
-      byte byteArr[] = {0x01, 0x23, 0x45, 0x67,
-                        0x89, 0xAB, 0xCD, 0xEF};
-      state = radio.startTransmit(byteArr, 8);
-    */
     delay(1000);
 
     drawMain();
@@ -165,8 +170,6 @@ void loop()
 {
     // check if the previous transmission finished
     if (transmittedFlag) {
-
-        payload = "#" + String(counter++);
 
         // reset flag
         transmittedFlag = false;
@@ -195,14 +198,13 @@ void loop()
 
         // you can transmit C-string or Arduino string up to
         // 256 characters long
-        transmissionState = radio.startTransmit(payload);
-        // you can also transmit byte array up to 256 bytes long
-        /*
-          byte byteArr[] = {0x01, 0x23, 0x45, 0x67,
-                            0x89, 0xAB, 0xCD, 0xEF};
-          int state = radio.startTransmit(byteArr, 8);
-        */
 
+        if (failsafeFlag) {
+            payload = "STOP";
+        } else {
+            payload = "#" + String(counter++);
+        }
+        transmissionState = radio.startTransmit(payload);
     }
 }
 
