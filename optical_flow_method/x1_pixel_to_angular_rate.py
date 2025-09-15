@@ -54,39 +54,47 @@ def main(input_path):
         print(f"{'time':>12}  {'dx_sum':>7}  {'dy_sum':>7}  {'wx(rad/s)':>12}  {'wy(rad/s)':>12}")
         print("-" * 60)
 
-        # Buffers for 10-sample batching
-        batch_times = []
-        batch_dx = []
-        batch_dy = []
+        # # Buffers for 10-sample batching
+        # batch_times = []
+        # batch_dx = []
+        # batch_dy = []
 
         for row in reader:
             t = float(row["time"])
             dx = int(row["deltaX"])
             dy = int(row["deltaY"])
 
-            batch_times.append(t)
-            batch_dx.append(dx)
-            batch_dy.append(dy)
+            wx, wy = pixels_to_angular_rates(dx, dy, t)
+
+            print(f"{t:12.6f}  {dx:7d}  {dy:7d}  {wx:12.6f}  {wy:12.6f}")
+            # Currently writing all samples
+            writer.writerow([f"{t:.6f}", f"{wx:.6f}", f"{wy:.6f}"])
+
+
+            # BELOW CODE WAS FOR 100 HZ to 10 HZ
+            # batch_times.append(t)
+            # batch_dx.append(dx)
+            # batch_dy.append(dy)
             
-            last_time = 12.3
-            # Process batch every 10 samples
-            if len(batch_times) == 10:
-                dt = batch_times[-1] - last_time
-                dx_total = sum(batch_dx)
-                dy_total = sum(batch_dy)
+            # last_time = 12.3
+            # # Process batch every 10 samples
+            # if len(batch_times) == 10:
+            #     dt = batch_times[-1] - last_time
+            #     dx_total = sum(batch_dx)
+            #     dy_total = sum(batch_dy)
 
-                wx, wy = pixels_to_angular_rates(dx_total, dy_total, dt)
+            #     wx, wy = pixels_to_angular_rates(dx_total, dy_total, dt) # keep this
 
-                # Use the last time in the batch as the timestamp
-                print(f"{batch_times[-1]:12.6f}  {dx_total:7d}  {dy_total:7d}  {wx:12.6f}  {wy:12.6f}")
-                # Currently writing the first time of the sample of ten - open to change
-                writer.writerow([f"{batch_times[-1]:.6f}", f"{wx:.6f}", f"{wy:.6f}"])
+            #     # Use the last time in the batch as the timestamp
+            #     print(f"{batch_times[-1]:12.6f}  {dx_total:7d}  {dy_total:7d}  {wx:12.6f}  {wy:12.6f}")
+            #     # Currently writing the first time of the sample of ten - open to change
+            #     writer.writerow([f"{batch_times[-1]:.6f}", f"{wx:.6f}", f"{wy:.6f}"]) # keep this
 
-                # Reset for next batch
-                last_time = batch_times[-1]
-                batch_times.clear()
-                batch_dx.clear()
-                batch_dy.clear()
+            #     # Reset for next batch
+            #     last_time = batch_times[-1]
+            #     batch_times.clear()
+            #     batch_dx.clear()
+            #     batch_dy.clear()
 
 if __name__ == "__main__":
     main()
