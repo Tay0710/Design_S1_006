@@ -65,12 +65,14 @@ from x8_estimator import main as estimator
 
 def main():
     t0 = time.time()
-    stage_1_input_path = "../optical_flow_method_data/combined_samples/12_09_25_Lv4/straight_up_2/download_of (2).csv"
-    stage_2_input_path = "../optical_flow_method_data/combined_samples/12_09_25_Lv4/straight_up_2/download_tof (1).csv"
-    stage_5_and_7_input_csv = "../optical_flow_method_data/combined_samples/12_09_25_Lv4/straight_up_2/download_imu (14).csv"
+    stage_1_input_path = "../optical_flow_method_data/combined_samples/13_09_25_MILC/straight1/download_of.csv" # Optical flow raw data
+    stage_2_input_path = "../optical_flow_method_data/combined_samples/13_09_25_MILC/straight1/download_tof.csv" # Time of flight raw data
+    stage_5_and_7_input_csv = "../optical_flow_method_data/combined_samples/13_09_25_MILC/straight1/download_imu.csv" # IMU raw data
+    start_time = 18.14
+    end_time = 21.29
 
     print("\n=== Stage 1: pixel → angular-rate ===")
-    pixel_to_angular_rate(stage_1_input_path)
+    pixel_to_angular_rate(stage_1_input_path, start_time, end_time)
 
     print("\n=== Stage 2: ToF → height ===")
     height_from_ToF(stage_2_input_path)

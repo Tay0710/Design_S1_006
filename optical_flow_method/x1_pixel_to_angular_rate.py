@@ -43,7 +43,7 @@ def pixels_to_angular_rates(dx, dy, dt):
     
     return wx, wy
 
-def main(input_path):
+def main(input_path, start_time, end_time):
     output_path = "../optical_flow_method_data/optical_flow_angular_rates.csv"
     
     with open(input_path, "r") as f_in, open(output_path, "w", newline="") as f_out:
@@ -66,9 +66,10 @@ def main(input_path):
 
             wx, wy = pixels_to_angular_rates(dx, dy, t)
 
-            print(f"{t:12.6f}  {dx:7d}  {dy:7d}  {wx:12.6f}  {wy:12.6f}")
-            # Currently writing all samples
-            writer.writerow([f"{t:.6f}", f"{wx:.6f}", f"{wy:.6f}"])
+            if t > start_time and t < end_time:
+                print(f"{t:12.6f}  {dx:7d}  {dy:7d}  {wx:12.6f}  {wy:12.6f}")
+                # Currently writing all samples
+                writer.writerow([f"{t:.6f}", f"{wx:.6f}", f"{wy:.6f}"])
 
 
             # BELOW CODE WAS FOR 100 HZ to 10 HZ
