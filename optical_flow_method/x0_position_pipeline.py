@@ -65,11 +65,11 @@ from x8_estimator import main as estimator
 
 def main():
     t0 = time.time()
-    stage_1_input_path = "../optical_flow_method_data/combined_samples/13_09_25_MILC/straight1/download_of.csv" # Optical flow raw data
-    stage_2_input_path = "../optical_flow_method_data/combined_samples/13_09_25_MILC/straight1/download_tof.csv" # Time of flight raw data
-    stage_5_and_7_input_csv = "../optical_flow_method_data/combined_samples/13_09_25_MILC/straight1/download_imu.csv" # IMU raw data
-    start_time = 18.14
-    end_time = 21.29
+    stage_1_input_path = "../optical_flow_method_data/combined_samples/13_09_25_MILC/straight2/download_of.csv" # Optical flow raw data
+    stage_2_input_path = "../optical_flow_method_data/combined_samples/13_09_25_MILC/straight2/download_tof.csv" # Time of flight raw data
+    stage_5_and_7_input_csv = "../optical_flow_method_data/combined_samples/13_09_25_MILC/straight2/download_imu.csv" # IMU raw data
+    start_time = 16.48
+    end_time = 19.52
 
     print("\n=== Stage 1: pixel → angular-rate ===")
     pixel_to_angular_rate(stage_1_input_path, start_time, end_time)
@@ -83,17 +83,17 @@ def main():
     print("\n=== Stage 4: angular-rate + height → v_x, v_y ===")
     xy_velocity_calculation()
     
-    print("\n=== Stage 5: rotation matrix from IMU orientation ===")
-    rotation_matrix(stage_5_and_7_input_csv)
+    # print("\n=== Stage 5: rotation matrix from IMU orientation ===")
+    # rotation_matrix(stage_5_and_7_input_csv)
     
-    print("\n=== Stage 6: convert the velocities to world frame ===")
-    convert_to_world_frame()
+    # print("\n=== Stage 6: convert the velocities to world frame ===")
+    # convert_to_world_frame()
     
-    print("\n=== Stage 7: IMU acceleration integration to position ===")
-    imu_integration_to_position(stage_5_and_7_input_csv)
+    # print("\n=== Stage 7: IMU acceleration integration to position ===")
+    # imu_integration_to_position(stage_5_and_7_input_csv)
     
-    print("\n=== Stage 8: estimator (EFK) ===")
-    estimator()
+    # print("\n=== Stage 8: estimator (EFK) ===")
+    # estimator()
 
     print(f"\nPipeline complete in {time.time() - t0:.2f}s")
 

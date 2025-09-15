@@ -30,15 +30,26 @@ import csv
 
 # Convert PMW3901 pixel deltas to angular-rates (rad/s)
 def pixels_to_angular_rates(dx, dy, dt):
+    # https://circuitdigest.com/microcontroller-projects/interfacing-pmw3901-optical-flow-sensor-with-esp32
     res = 35.0
     fov_deg = 42.0
     if dt is None or dt <= 0:
         return 0.0, 0.0
     
     # rad per pixel
-    s = math.radians(fov_deg) / res
+
+    # s = math.radians(fov_deg) / res # original code
+
+    # https://www.andrewgordon.me/posts/Adventures-in-Optical-Flow/
+    # distance = (sensor_reading x distance_to_image / sensor_resolution ) x 2 x tan(field_of_view / 2.0)
+    # distance = (sensor_reading x h / sensor_resolution ) x 2 x tan(field_of_view / 2.0)
+    # s = 2 x tan(field_of_view / 2.0) / sensor_resolution
+    s = 2*math.tan(fov_deg/2 * math.pi/180)/res # new code: unsure which is better yet
+
+
+    # Note: max rate of 7.4 radians/second
     
-    wx = (dx * s) / dt
+    wx = (dx * s) / dt # this is multiplied by h to get v
     wy = (dy * s) / dt
     
     return wx, wy
@@ -64,7 +75,8 @@ def main(input_path, start_time, end_time):
             dx = int(row["deltaX"])
             dy = int(row["deltaY"])
 
-            wx, wy = pixels_to_angular_rates(dx, dy, t)
+            # why is t being input at dt?
+            wx, wy = pixels_to_angular_rates(dx, dy, 0.1) # period of 0.1 for 10 Hz
 
             if t > start_time and t < end_time:
                 print(f"{t:12.6f}  {dx:7d}  {dy:7d}  {wx:12.6f}  {wy:12.6f}")
