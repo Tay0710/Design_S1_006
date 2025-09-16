@@ -66,13 +66,13 @@ from x8_estimator import main as estimator
 
 import numpy as np
 
-def cut_data(stage_0_input_path, stage_1_input_path, stage_2_input_path, stage_5_and_7_input_path):
+def cut_data(stage_0_input_path, stage_1_input_path, stage_2_input_path, stage_5_and_7_input_path, stage_1_input_path_cropped, stage_2_input_path_cropped, stage_5_and_7_input_path_cropped):
     # Stage 0 file is just two numbers: start, end
     data_0 = np.genfromtxt(stage_0_input_path, delimiter=",", skip_header=1)
     start_time, end_time = data_0[0], data_0[1]
 
-    def filter_file(path, start, end):
-        with open(path, "r") as f:
+    def filter_file(input_path, output_path, start, end):
+        with open(input_path, "r") as f:
             lines = f.readlines()
 
         header = lines[0]
@@ -89,28 +89,32 @@ def cut_data(stage_0_input_path, stage_1_input_path, stage_2_input_path, stage_5
             if start <= t <= end:
                 kept.append(line)  # keep original formatting
 
-        with open(path, "w") as f:
+        with open(output_path, "w") as f:
             f.writelines(kept)
 
     # Apply to the three main files
-    filter_file(stage_1_input_path, start_time, end_time)
-    filter_file(stage_2_input_path, start_time, end_time)
-    filter_file(stage_5_and_7_input_path, start_time, end_time)
+    filter_file(stage_1_input_path, stage_1_input_path_cropped, start_time, end_time)
+    filter_file(stage_2_input_path, stage_2_input_path_cropped, start_time, end_time)
+    filter_file(stage_5_and_7_input_path, stage_5_and_7_input_path_cropped, start_time, end_time)
 
     print(f"Files updated and saved with cut data: start={start_time}, end={end_time}")
 
 
 def main():
     t0 = time.time()
-    stage_0_input_path = "../optical_flow_method_data/combined_samples/13_09_25_MILC/straight2/data_times.csv"
-    stage_1_input_path = "../optical_flow_method_data/combined_samples/13_09_25_MILC/straight2/download_of.csv"
-    stage_2_input_path = "../optical_flow_method_data/combined_samples/13_09_25_MILC/straight2/download_tof.csv"
-    stage_5_and_7_input_path = "../optical_flow_method_data/combined_samples/13_09_25_MILC/straight2/download_imu.csv"
+    stage_0_input_path = "../optical_flow_method_data/combined_samples/13_09_25_MILC/straight1/data_times.csv"
+    stage_1_input_path = "../optical_flow_method_data/combined_samples/13_09_25_MILC/straight1/download_of.csv"
+    stage_2_input_path = "../optical_flow_method_data/combined_samples/13_09_25_MILC/straight1/download_tof.csv"
+    stage_5_and_7_input_path = "../optical_flow_method_data/combined_samples/13_09_25_MILC/straight1/download_imu.csv"
 
-    cut_data(stage_0_input_path, stage_1_input_path, stage_2_input_path, stage_5_and_7_input_path)
+    stage_1_input_path_cropped = "../optical_flow_method_data/combined_samples/13_09_25_MILC/straight1/download_of_cropped.csv"
+    stage_2_input_path_cropped = "../optical_flow_method_data/combined_samples/13_09_25_MILC/straight1/download_tof_cropped.csv"
+    stage_5_and_7_input_path_cropped = "../optical_flow_method_data/combined_samples/13_09_25_MILC/straight1/download_imu_cropped.csv"
+
+    cut_data(stage_0_input_path, stage_1_input_path, stage_2_input_path, stage_5_and_7_input_path, stage_1_input_path_cropped, stage_2_input_path_cropped, stage_5_and_7_input_path_cropped)
 
     print("\n=== Stage 1: pixel → angular-rate ===")
-    pixel_to_angular_rate(stage_1_input_path)
+    pixel_to_angular_rate(stage_1_input_path_cropped)
 
     print("\n=== Stage 2: ToF → height ===")
     height_from_ToF(stage_2_input_path)
@@ -122,7 +126,7 @@ def main():
     xy_velocity_calculation()
     
     print("\n=== Stage 5: rotation matrix from IMU orientation ===")
-    rotation_matrix(stage_5_and_7_input_path)
+    rotation_matrix(stage_5_and_7_input_path_cropped)
     
     print("\n=== Stage 6: convert the velocities to world frame ===")
     convert_to_world_frame()
