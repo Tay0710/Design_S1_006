@@ -9,7 +9,7 @@ def running_average(data, window_size):
 x_data, y_data, z_data = [], [], []
 
 # Read data from the IMU CSV file
-file_path = "../../../optical_flow_method_data/combined_samples/13_09_25_MILC/straight2/download_imu.csv"
+file_path = "../../../optical_flow_method_data/combined_samples/rectangle/IMU_combined_rectangle.csv"
 
 with open(file_path, 'r') as file:
     reader = csv.reader(file)
