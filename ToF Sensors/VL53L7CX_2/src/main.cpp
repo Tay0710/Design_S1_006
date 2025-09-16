@@ -17,13 +17,16 @@
 #include <SparkFun_VL53L5CX_Library.h> //http://librarymanager/All#SparkFun_VL53L5CX
 
 // LPn pins to control sensor power/reset
-#define LPN_PIN_1 12
+#define LPN_PIN_1 42
 
 // I2C Reset pin
-#define I2C_RST_PIN 26
+#define I2C_RST_PIN 41
 
 // Power Enable pin
-#define PWR_EN_PIN  14
+#define PWR_EN_PIN 40
+
+#define SDA_PIN 2
+#define SCL_PIN 1
 
 // VL53L5CX default and new I2C addresses
 #define SENSOR1_ADDR 0x29
@@ -94,7 +97,7 @@ void setup()
   digitalWrite(LPN_PIN_1, LOW); // One LPn should be set HIGH permanently
   delay(100); 
 
-  Wire.begin(); // Initialize I2C bus
+  Wire.begin(SDA_PIN, SCL_PIN); // Initialize I2C bus
   Wire.setClock(400000); // Optional: 400 kHz I2C
 
   Serial.println("SCAN #1");
