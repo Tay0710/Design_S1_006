@@ -36,15 +36,25 @@ def pixels_to_angular_rates(dx, dy, dt):
     if dt is None or dt <= 0:
         return 0.0, 0.0
     
+    # check this: https://forum.bitcraze.io/viewtopic.php?t=2882&start=10 
+    
     # rad per pixel
 
-    # s = math.radians(fov_deg) / res # original code
+    # OPTION 1:
+    # s = math.radians(fov_deg) / res 
 
+    # OPTION 2:
     # https://www.andrewgordon.me/posts/Adventures-in-Optical-Flow/
     # distance = (sensor_reading x distance_to_image / sensor_resolution ) x 2 x tan(field_of_view / 2.0)
     # distance = (sensor_reading x h / sensor_resolution ) x 2 x tan(field_of_view / 2.0)
     # s = 2 x tan(field_of_view / 2.0) / sensor_resolution
-    s = 2*math.tan(fov_deg/2 * math.pi/180)/res # new code: unsure which is better yet
+    # https://kamathsblog.com/odometry-using-optical-flow
+    # s = 2*math.tan(fov_deg/2 * math.pi/180)/(res) # new code: unsure which is better yet
+
+    # OPTION 3:
+    # https://isif.org/files/isif/2025-01/optical_flow_p72.pdf
+    # s = 0.0015
+    s = 0.09/57.3
 
 
     # Note: max rate of 7.4 radians/second
@@ -65,17 +75,13 @@ def main(input_path, start_time, end_time):
         print(f"{'time':>12}  {'dx_sum':>7}  {'dy_sum':>7}  {'wx(rad/s)':>12}  {'wy(rad/s)':>12}")
         print("-" * 60)
 
-        # # Buffers for 10-sample batching
-        # batch_times = []
-        # batch_dx = []
-        # batch_dy = []
 
         for row in reader:
             t = float(row["time"])
             dx = int(row["deltaX"])
             dy = int(row["deltaY"])
 
-            # why is t being input at dt?
+            
             wx, wy = pixels_to_angular_rates(dx, dy, 0.1) # period of 0.1 for 10 Hz
 
             if t > start_time and t < end_time:
@@ -84,30 +90,6 @@ def main(input_path, start_time, end_time):
                 writer.writerow([f"{t:.6f}", f"{wx:.6f}", f"{wy:.6f}"])
 
 
-            # BELOW CODE WAS FOR 100 HZ to 10 HZ
-            # batch_times.append(t)
-            # batch_dx.append(dx)
-            # batch_dy.append(dy)
-            
-            # last_time = 12.3
-            # # Process batch every 10 samples
-            # if len(batch_times) == 10:
-            #     dt = batch_times[-1] - last_time
-            #     dx_total = sum(batch_dx)
-            #     dy_total = sum(batch_dy)
-
-            #     wx, wy = pixels_to_angular_rates(dx_total, dy_total, dt) # keep this
-
-            #     # Use the last time in the batch as the timestamp
-            #     print(f"{batch_times[-1]:12.6f}  {dx_total:7d}  {dy_total:7d}  {wx:12.6f}  {wy:12.6f}")
-            #     # Currently writing the first time of the sample of ten - open to change
-            #     writer.writerow([f"{batch_times[-1]:.6f}", f"{wx:.6f}", f"{wy:.6f}"]) # keep this
-
-            #     # Reset for next batch
-            #     last_time = batch_times[-1]
-            #     batch_times.clear()
-            #     batch_dx.clear()
-            #     batch_dy.clear()
 
 if __name__ == "__main__":
     main()
