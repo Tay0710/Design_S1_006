@@ -7,3 +7,6 @@ Description: Moved forward 5m for 3.64s. Walked the route given below:
 Orientation: OF facing ELEC Lv4 roof.
 Speed: 1.37m/s.
 OF sample rate: 100Hz.
+
+Post-processing notes:
+- angular-rates are greater than the maximum of 7.4 rad/s
