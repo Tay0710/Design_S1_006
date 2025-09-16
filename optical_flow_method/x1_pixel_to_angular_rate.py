@@ -76,15 +76,17 @@ def main(input_path):
         print(f"{'time':>12}  {'dx_sum':>7}  {'dy_sum':>7}  {'wx(rad/s)':>12}  {'wy(rad/s)':>12}")
         print("-" * 60)
 
+        last_time = 0
 
         for row in reader:
             t = float(row["time"])
             dx = int(row["deltaX"])
             dy = int(row["deltaY"])
 
+            dt = t - last_time
+            last_time = t
             
-            wx, wy = pixels_to_angular_rates(dx, dy, 0.01) # period of 0.1 for 10 Hz
-
+            wx, wy = pixels_to_angular_rates(dx, dy, dt)
             
             print(f"{t:12.6f}  {dx:7d}  {dy:7d}  {wx:12.6f}  {wy:12.6f}")
             # Currently writing all samples
