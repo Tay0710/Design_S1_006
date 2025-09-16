@@ -1,54 +1,70 @@
 import matplotlib.pyplot as plt
 import csv
+import numpy as np
 
-# Function to calculate running average
 def running_average(data, window_size):
     return [sum(data[i:i+window_size]) / window_size for i in range(len(data) - window_size + 1)]
 
-# Initialize empty lists to store accel data
-x_data, y_data, z_data = [], [], []
+def integrate(data, dt):
+    vel = [0.0]
+    for i in range(1, len(data)):
+        v_next = vel[-1] + 0.5 * (data[i] + data[i-1]) * dt
+        vel.append(v_next)
+    return np.array(vel)
 
-# Read data from the IMU CSV file
-file_path = "../../../optical_flow_method_data/combined_samples/13_09_25_MILC/straight2/download_imu.csv"
+# === Load IMU accel data ===
+x_data, y_data, z_data, time = [], [], [], []
+file_path = "../../../optical_flow_method_data/combined_samples/rectangle/IMU_combined_rectangle.csv"
 
 with open(file_path, 'r') as file:
     reader = csv.reader(file)
-    next(reader)  # Skip header row
+    next(reader)
     for row in reader:
-        # accel x, accel y, accel z are columns 4, 5, 6
+        time.append(float(row[0]))
         x_data.append(float(row[4]))
         y_data.append(float(row[5]))
         z_data.append(float(row[6]))
 
-# Define the window size for the running average
-window_size = 250
+dt = np.mean(np.diff(time))
 
-# Calculate running averages for X, Y, and Z data
-x_out = running_average(x_data, window_size)
-y_out = running_average(y_data, window_size)
-z_out = running_average(z_data, window_size)
+# === Running average filter ===
+window_size = 10
+x_f = running_average(x_data, window_size)
+y_f = running_average(y_data, window_size)
+z_f = running_average(z_data, window_size)
 
-# Adjust indices for plotting filtered output
-idx = range(window_size - 1, len(x_data))
+t_f = time[window_size-1:]
 
-# Plotting
-plt.figure(figsize=(8, 6))
+# === Integrate ===
+x_v, y_v, z_v = integrate(x_f, dt), integrate(y_f, dt), integrate(z_f, dt)
+x_p, y_p, z_p = integrate(x_v, dt), integrate(y_v, dt), integrate(z_v, dt)
 
-# Raw vs filtered X
-plt.plot(x_data, color='lightblue', linewidth=0.8, label='Raw Accel X')
-plt.plot(idx, x_out, color='blue', linewidth=2, label='Filtered Accel X')
+# === Plot ===
+fig, axs = plt.subplots(3, 1, figsize=(10, 8))
 
-# Raw vs filtered Y
-plt.plot(y_data, color='navajowhite', linewidth=0.8, label='Raw Accel Y')
-plt.plot(idx, y_out, color='orange', linewidth=2, label='Filtered Accel Y')
+# Acceleration comparison
+axs[0].plot(time, x_data, color='lightblue', alpha=0.6, label='Raw X')
+axs[0].plot(time, y_data, color='navajowhite', alpha=0.6, label='Raw Y')
+axs[0].plot(time, z_data, color='lightgreen', alpha=0.6, label='Raw Z')
+axs[0].plot(t_f, x_f, color='blue', label='Filtered X')
+axs[0].plot(t_f, y_f, color='orange', label='Filtered Y')
+axs[0].plot(t_f, z_f, color='green', label='Filtered Z')
+axs[0].set_title("Acceleration (Raw vs Running Avg)")
+axs[0].legend()
 
-# Raw vs filtered Z
-plt.plot(z_data, color='lightgreen', linewidth=0.8, label='Raw Accel Z')
-plt.plot(idx, z_out, color='green', linewidth=2, label='Filtered Accel Z')
+# Velocity
+axs[1].plot(t_f, x_v, label='Vel X')
+axs[1].plot(t_f, y_v, label='Vel Y')
+axs[1].plot(t_f, z_v, label='Vel Z')
+axs[1].set_title("Velocity (Running Avg)")
+axs[1].legend()
 
-plt.legend()
-plt.xlabel('Sample')
-plt.ylabel('Acceleration (g)')
-plt.title('Accelerometer Data: Raw vs Running Average Filtered')
+# Position
+axs[2].plot(t_f, x_p, label='Pos X')
+axs[2].plot(t_f, y_p, label='Pos Y')
+axs[2].plot(t_f, z_p, label='Pos Z')
+axs[2].set_title("Position (Running Avg)")
+axs[2].legend()
+
 plt.tight_layout()
 plt.show()
