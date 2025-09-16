@@ -93,14 +93,14 @@ def animate_rotation(rot_mats):
         ax.set_xlim([-1, 1]); ax.set_ylim([-1, 1]); ax.set_zlim([-1, 1])
         ax.set_xlabel("X"); ax.set_ylabel("Y"); ax.set_zlabel("Z")
 
-        R = rot_mats[frame].reshape(3, 3)
+        R = rot_mats[frame*50].reshape(3, 3)
         origin = np.zeros(3)
         ax.quiver(*origin, *R[:, 0], color="r", length=1)
         ax.quiver(*origin, *R[:, 1], color="g", length=1)
         ax.quiver(*origin, *R[:, 2], color="b", length=1)
-        ax.set_title(f"Frame {frame}/{len(rot_mats)}")
+        ax.set_title(f"Frame {frame*50}/{len(rot_mats)}")
 
-    ani = FuncAnimation(fig, update, frames=len(rot_mats), interval=50)
+    ani = FuncAnimation(fig, update, frames=round(len(rot_mats)/50), interval=50) # IMU is recorded sampling at around 1000 Hz
     plt.show()
     return ani  # keep a reference so it doesn’t get garbage collected
 
