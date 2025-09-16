@@ -132,7 +132,7 @@ def main():
     convert_to_world_frame()
     
     print("\n=== Stage 7: IMU acceleration integration to position ===")
-    imu_integration_to_position(stage_5_and_7_input_path)
+    imu_integration_to_position(stage_5_and_7_input_path_cropped)
     
     print("\n=== Stage 8: estimator (EFK) ===")
     estimator()
