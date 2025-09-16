@@ -102,10 +102,10 @@ def cut_data(stage_0_input_path, stage_1_input_path, stage_2_input_path, stage_5
 
 def main():
     t0 = time.time()
-    stage_0_input_path = "../optical_flow_method_data/combined_samples/13_09_25_MILC/straight2/data_times.csv"
-    stage_1_input_path = "../optical_flow_method_data/combined_samples/13_09_25_MILC/straight2/download_of.csv"
-    stage_2_input_path = "../optical_flow_method_data/combined_samples/13_09_25_MILC/straight2/download_tof.csv"
-    stage_5_and_7_input_path = "../optical_flow_method_data/combined_samples/13_09_25_MILC/straight2/download_imu.csv"
+    stage_0_input_path = "../optical_flow_method_data/combined_samples/rectangle/data_times.csv"
+    stage_1_input_path = "../optical_flow_method_data/combined_samples/rectangle/OF_combined_rectangle.csv"
+    stage_2_input_path = "../optical_flow_method_data/combined_samples/rectangle/ToF_combined_rectangle.csv"
+    stage_5_and_7_input_path = "../optical_flow_method_data/combined_samples/rectangle/IMU_combined_rectangle.csv"
 
     cut_data(stage_0_input_path, stage_1_input_path, stage_2_input_path, stage_5_and_7_input_path)
 
