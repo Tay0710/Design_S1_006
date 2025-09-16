@@ -53,6 +53,7 @@ Outputs:
 
 
 import time
+import numpy as np
 
 from x1_pixel_to_angular_rate import main as pixel_to_angular_rate
 from x2_height_from_ToF import main as height_from_ToF
@@ -63,16 +64,53 @@ from x6_convert_to_world_frame import main as convert_to_world_frame
 from x7_imu_integration_to_position import main as imu_integration_to_position
 from x8_estimator import main as estimator
 
+import numpy as np
+
+def cut_data(stage_0_input_path, stage_1_input_path, stage_2_input_path, stage_5_and_7_input_path):
+    # Stage 0 file is just two numbers: start, end
+    data_0 = np.genfromtxt(stage_0_input_path, delimiter=",", skip_header=1)
+    start_time, end_time = data_0[0], data_0[1]
+
+    def filter_file(path, start, end):
+        with open(path, "r") as f:
+            lines = f.readlines()
+
+        header = lines[0]
+        kept = [header]
+
+        for line in lines[1:]:
+            if not line.strip():
+                continue
+            parts = line.split(",")
+            try:
+                t = float(parts[0])
+            except ValueError:
+                continue
+            if start <= t <= end:
+                kept.append(line)  # keep original formatting
+
+        with open(path, "w") as f:
+            f.writelines(kept)
+
+    # Apply to the three main files
+    filter_file(stage_1_input_path, start_time, end_time)
+    filter_file(stage_2_input_path, start_time, end_time)
+    filter_file(stage_5_and_7_input_path, start_time, end_time)
+
+    print(f"Files updated and saved with cut data: start={start_time}, end={end_time}")
+
+
 def main():
     t0 = time.time()
-    stage_1_input_path = "../optical_flow_method_data/combined_samples/13_09_25_MILC/straight2/download_of.csv" # Optical flow raw data
-    stage_2_input_path = "../optical_flow_method_data/combined_samples/13_09_25_MILC/straight2/download_tof.csv" # Time of flight raw data
-    stage_5_and_7_input_csv = "../optical_flow_method_data/combined_samples/13_09_25_MILC/straight2/download_imu.csv" # IMU raw data
-    start_time = 16.48
-    end_time = 19.52
+    stage_0_input_path = "../optical_flow_method_data/combined_samples/13_09_25_MILC/straight2/data_times.csv"
+    stage_1_input_path = "../optical_flow_method_data/combined_samples/13_09_25_MILC/straight2/download_of.csv"
+    stage_2_input_path = "../optical_flow_method_data/combined_samples/13_09_25_MILC/straight2/download_tof.csv"
+    stage_5_and_7_input_path = "../optical_flow_method_data/combined_samples/13_09_25_MILC/straight2/download_imu.csv"
+
+    cut_data(stage_0_input_path, stage_1_input_path, stage_2_input_path, stage_5_and_7_input_path)
 
     print("\n=== Stage 1: pixel → angular-rate ===")
-    pixel_to_angular_rate(stage_1_input_path, start_time, end_time)
+    pixel_to_angular_rate(stage_1_input_path)
 
     print("\n=== Stage 2: ToF → height ===")
     height_from_ToF(stage_2_input_path)
@@ -83,17 +121,17 @@ def main():
     print("\n=== Stage 4: angular-rate + height → v_x, v_y ===")
     xy_velocity_calculation()
     
-    # print("\n=== Stage 5: rotation matrix from IMU orientation ===")
-    # rotation_matrix(stage_5_and_7_input_csv)
+    print("\n=== Stage 5: rotation matrix from IMU orientation ===")
+    rotation_matrix(stage_5_and_7_input_path)
     
-    # print("\n=== Stage 6: convert the velocities to world frame ===")
-    # convert_to_world_frame()
+    print("\n=== Stage 6: convert the velocities to world frame ===")
+    convert_to_world_frame()
     
-    # print("\n=== Stage 7: IMU acceleration integration to position ===")
-    # imu_integration_to_position(stage_5_and_7_input_csv)
+    print("\n=== Stage 7: IMU acceleration integration to position ===")
+    imu_integration_to_position(stage_5_and_7_input_path)
     
-    # print("\n=== Stage 8: estimator (EFK) ===")
-    # estimator()
+    print("\n=== Stage 8: estimator (EFK) ===")
+    estimator()
 
     print(f"\nPipeline complete in {time.time() - t0:.2f}s")
 

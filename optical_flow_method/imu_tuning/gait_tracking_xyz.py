@@ -8,10 +8,11 @@ from mpl_toolkits.mplot3d import Axes3D
 import numpy
 
 # === Import sensor data ===
-data = numpy.genfromtxt("../../optical_flow_method_data/IMU_new/forward_backward_30cm.csv",
+data = numpy.genfromtxt("../../optical_flow_method_data/combined_samples/13_09_25_MILC/straight2/download_imu.csv",
                      delimiter=",", skip_header=1)
 timestamp = data[:, 0]
 gyroscope = data[:, 1:4]
+# gyroscope = data[:, 1:4] * numpy.pi / 180.0
 accelerometer = data[:, 4:7]
 
 # === Calculate sample rate ===
@@ -23,7 +24,7 @@ offset = imufusion.Offset(int(sample_rate))
 ahrs = imufusion.Ahrs()
 
 # === Tuning Variables ===
-gain = 1
+gain = 0.1
 gyro_range = 250 # Set range of the gyro
 accel_rej = 2 # Set max of the accel
 mag_rej = 0
@@ -44,6 +45,7 @@ GRAVITY_G_NWU = numpy.array([0.0, 0.0, -1.0])  # NWU: Up=+Z
 
 # === Process sensor data ===
 delta_time = numpy.diff(timestamp, prepend=timestamp[0])
+print("delta time: ", delta_time)
 
 euler = numpy.empty((len(timestamp), 3))
 internal_states = numpy.empty((len(timestamp), 3))
@@ -53,7 +55,8 @@ for index in range(len(timestamp)):
     gyroscope[index] = offset.update(gyroscope[index])
 
     # Convert accel to g for imufusion (accel is already in g)
-    accel_g = accelerometer[index]
+    accel_g = accelerometer[index] * numpy.array([1, 1, -1]) # flip Z-axis
+    gyroscope[index] = gyroscope[index] * numpy.array([1, 1, -1])  # optional: if gyro Z is inverted too
     ahrs.update_no_magnetometer(gyroscope[index], accel_g, delta_time[index])
 
     euler[index] = ahrs.quaternion.to_euler()
@@ -103,6 +106,7 @@ velocity = numpy.zeros((len(timestamp), 3))
 for index in range(len(timestamp)):
     if is_moving[index]:
         velocity[index] = velocity[index - 1] + delta_time[index] * acceleration[index]
+        
     else:
         velocity[index] = numpy.zeros(3)  # clamp to zero during still
 
@@ -124,9 +128,9 @@ for index in range(len(timestamp)):
         is_moving_periods.append(period)
         period = IsMovingPeriod()
 
-# === Remove integral drift from velocity ===
-for i in range(3):
-    velocity[:, i] = detrend(velocity[:, i], type='linear')
+# # === Remove integral drift from velocity ===
+# for i in range(3):
+#     velocity[:, i] = detrend(velocity[:, i], type='constant')
 
 # === Calculate position ===
 position = numpy.zeros((len(timestamp), 3))
