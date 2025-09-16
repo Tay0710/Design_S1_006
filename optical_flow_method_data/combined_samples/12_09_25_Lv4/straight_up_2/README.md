@@ -6,3 +6,6 @@ Description: Moved forward 5m for 3.31s. Walked the route given below:
 <img src="straight2.jpg" alt="drawing" width="250"/>
 Orientation: OF facing ELEC Lv4 roof.
 Speed: 1.51m/s
+
+Post-processing notes:
+- angular-rates are greater than the maximum of 7.4 rad/s
