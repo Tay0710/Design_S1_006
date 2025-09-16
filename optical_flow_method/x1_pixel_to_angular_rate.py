@@ -52,9 +52,10 @@ def pixels_to_angular_rates(dx, dy, dt):
     # s = 2*math.tan(fov_deg/2 * math.pi/180)/(res) # new code: unsure which is better yet
 
     # OPTION 3:
+    # This works specifically for MILC Floor measurements
     # https://isif.org/files/isif/2025-01/optical_flow_p72.pdf
     # s = 0.0015
-    s = 0.09/57.3
+    s = 0.09/57.3 # from matlab sim
 
 
     # Note: max rate of 7.4 radians/second
@@ -82,7 +83,7 @@ def main(input_path, start_time, end_time):
             dy = int(row["deltaY"])
 
             
-            wx, wy = pixels_to_angular_rates(dx, dy, 0.1) # period of 0.1 for 10 Hz
+            wx, wy = pixels_to_angular_rates(dx, dy, 0.01) # period of 0.1 for 10 Hz
 
             if t > start_time and t < end_time:
                 print(f"{t:12.6f}  {dx:7d}  {dy:7d}  {wx:12.6f}  {wy:12.6f}")
