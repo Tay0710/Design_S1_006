@@ -1,48 +1,65 @@
+import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
 
-# Load IMU CSV
+# === Load data ===
 file_path = "../../../optical_flow_method_data/combined_samples/rectangle/IMU_combined_rectangle.csv"
 df = pd.read_csv(file_path)
 
-# Extract accelerometer data
+t = df["time"].to_numpy()
+dt = np.mean(np.diff(t))
+
 x_data = df["accel x"].to_numpy()
 y_data = df["accel y"].to_numpy()
 z_data = df["accel z"].to_numpy()
 
-# Sampling interval from time column
-timestamps = df["time"].to_numpy()
-T_s = float(df["time"].diff().mean())  # seconds
+def integrate(data, dt):
+    vel = [0.0]
+    for i in range(1, len(data)):
+        v_next = vel[-1] + 0.5 * (data[i] + data[i-1]) * dt
+        vel.append(v_next)
+    return np.array(vel)
 
-# Filter cutoff frequency (rad/s)
-w_c = 3.7
+# === Low-pass filter ===
+w_c = 20.0  # rad/s cutoff (adjust as needed)
+alpha = (dt * w_c) / (2 + dt * w_c)
+gamma = (2 - dt * w_c) / (2 + dt * w_c)
 
-alpha = (T_s * w_c) / (2 + T_s * w_c)
-gamma = (2 - T_s * w_c) / (2 + T_s * w_c)
+def lowpass_filter(data):
+    out = [data[0]]
+    for i in range(1, len(data)):
+        out.append(alpha * (data[i] + data[i-1]) + gamma * out[-1])
+    return np.array(out)
 
-# Initialize outputs
-x_out, y_out, z_out = [x_data[0]], [y_data[0]], [z_data[0]]
+x_f, y_f, z_f = lowpass_filter(x_data), lowpass_filter(y_data), lowpass_filter(z_data)
 
-# Recursive filtering
-for i in range(1, len(x_data)):
-    x_out.append(alpha * (x_data[i] + x_data[i - 1]) + gamma * x_out[-1])
-    y_out.append(alpha * (y_data[i] + y_data[i - 1]) + gamma * y_out[-1])
-    z_out.append(alpha * (z_data[i] + z_data[i - 1]) + gamma * z_out[-1])
+# Integrate
+x_v, y_v, z_v = integrate(x_f, dt), integrate(y_f, dt), integrate(z_f, dt)
+x_p, y_p, z_p = integrate(x_v, dt), integrate(y_v, dt), integrate(z_v, dt)
 
-# Plot raw vs filtered
-plt.figure(figsize=(10, 6))
-plt.plot(x_data, color='lightblue', linewidth=0.8, label='Raw Accel X')
-plt.plot(x_out, color='blue', linewidth=2, label='Filtered Accel X')
+# Plot
+fig, axs = plt.subplots(3, 1, figsize=(10, 8))
 
-plt.plot(y_data, color='navajowhite', linewidth=0.8, label='Raw Accel Y')
-plt.plot(y_out, color='orange', linewidth=2, label='Filtered Accel Y')
+axs[0].plot(t, x_data, color='lightblue', alpha=0.6, label='Raw X')
+axs[0].plot(t, y_data, color='navajowhite', alpha=0.6, label='Raw Y')
+axs[0].plot(t, z_data, color='lightgreen', alpha=0.6, label='Raw Z')
+axs[0].plot(t, x_f, color='blue', label='Filtered X')
+axs[0].plot(t, y_f, color='orange', label='Filtered Y')
+axs[0].plot(t, z_f, color='green', label='Filtered Z')
+axs[0].set_title("Acceleration (Raw vs Low-pass)")
+axs[0].legend()
 
-plt.plot(z_data, color='lightgreen', linewidth=0.8, label='Raw Accel Z')
-plt.plot(z_out, color='green', linewidth=2, label='Filtered Accel Z')
+axs[1].plot(t, x_v, label='Vel X')
+axs[1].plot(t, y_v, label='Vel Y')
+axs[1].plot(t, z_v, label='Vel Z')
+axs[1].set_title("Velocity (Low-pass)")
+axs[1].legend()
 
-plt.legend()
-plt.xlabel('Sample')
-plt.ylabel('Acceleration (g)')
-plt.title('Accelerometer Data: Raw vs Low-Pass Filtered')
+axs[2].plot(t, x_p, label='Pos X')
+axs[2].plot(t, y_p, label='Pos Y')
+axs[2].plot(t, z_p, label='Pos Z')
+axs[2].set_title("Position (Low-pass)")
+axs[2].legend()
+
 plt.tight_layout()
 plt.show()
