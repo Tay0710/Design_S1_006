@@ -41,7 +41,8 @@ import matplotlib.pyplot as plt
 def load_rotation_matrices(rot_csv):
     """Load rotation matrices CSV and reshape into (N, 3, 3)."""
     rot = np.loadtxt(rot_csv, delimiter=",", skiprows=1, usecols=(1,2,3,4,5,6,7,8,9))
-    return rot.reshape(-1, 3, 3)
+    times = np.loadtxt(rot_csv, delimiter=",", skiprows=1, usecols=(0))
+    return times, rot.reshape(-1, 3, 3)
 
 def load_body_velocities(vel_csv):
     """Load body-frame velocities and timestamps from CSV."""
@@ -50,6 +51,19 @@ def load_body_velocities(vel_csv):
     v_body = vel_df[["v_x (m/s)", "v_y (m/s)"]].values
     v_body3 = np.hstack([v_body, np.zeros((len(v_body), 1))])  # add z=0
     return times, v_body3
+
+def match_rotation_matrices_times(rot_mats, times_v, times_mat):
+    """Pick closest rotation matrix and store into new np.arr."""
+    index = 0
+    rot_mats_matched = []
+    for t in times_v:
+        # Look through rot_mats times to find t
+        while index < len(times_mat):
+            if times_mat[index] > t:
+                rot_mats_matched.append(rot_mats[index])
+                break
+            index = index + 1
+    return rot_mats_matched
 
 def rotate_to_world(rot_mats, v_body3):
     """Rotate body-frame velocities into world frame."""
@@ -127,16 +141,19 @@ def main():
     output_csv = "../optical_flow_method_data/xy_velocities_to_world_frame.csv"
 
     # Load data
-    rot_mats = load_rotation_matrices(rot_csv)
-    times, v_body3 = load_body_velocities(vel_csv)
+    times_mat, rot_mats = load_rotation_matrices(rot_csv)
+    times_v, v_body3 = load_body_velocities(vel_csv)
+
+    # Match rotation matrix to times from velocity
+    rot_mats_matched = match_rotation_matrices_times(rot_mats, times_v, times_mat)
 
     # Rotate + integrate
-    v_world = rotate_to_world(rot_mats, v_body3)
-    pos_world = integrate_velocity(times, v_world)
+    v_world = rotate_to_world(rot_mats_matched, v_body3)
+    pos_world = integrate_velocity(times_v, v_world)
 
     # Save and plot
-    save_results(times, v_world, pos_world, output_csv)
-    plot_positions_and_velocities(times, v_world, pos_world)
+    save_results(times_v, v_world, pos_world, output_csv)
+    plot_positions_and_velocities(times_v, v_world, pos_world)
 
 if __name__ == "__main__":
     main()
