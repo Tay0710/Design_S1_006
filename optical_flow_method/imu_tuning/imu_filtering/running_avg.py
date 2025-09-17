@@ -135,7 +135,7 @@ def save_csv(filename, timestamp, velocity, position):
 
 # === Main ===
 def main(input_csv):
-    output_csv = "../optical_flow_method_data/imu_position_filtered.csv"
+    output_csv = "imu_position_filtered.csv"
     timestamp, delta_time, acceleration, is_moving = process_data(input_csv, window_size=10)
     velocity = accel_to_velocity(timestamp, acceleration, delta_time, is_moving)
     position = velocity_to_position(timestamp, velocity, delta_time)
@@ -165,4 +165,4 @@ def main(input_csv):
     plt.show()
 
 if __name__ == "__main__":
-    main("../../../optical_flow_method_data/combined_samples/13_09_25_MILC/straight1/download_imu_cropped.csv")
+    main("../../../optical_flow_method_data/combined_samples/13_09_25_MILC/straight1/download_imu.csv")
