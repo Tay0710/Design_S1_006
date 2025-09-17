@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 
 # Load IMU CSV
-file_path = "../../../optical_flow_method_data/combined_samples/13_09_25_MILC/straight2/download_imu.csv"
+file_path = "../../../optical_flow_method_data/combined_samples/13_09_25_MILC/straight1/download_imu_cropped.csv"
 df = pd.read_csv(file_path)
 
 # Extract accelerometer data
