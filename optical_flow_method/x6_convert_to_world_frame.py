@@ -40,7 +40,7 @@ import matplotlib.pyplot as plt
 
 def load_rotation_matrices(rot_csv):
     """Load rotation matrices CSV and reshape into (N, 3, 3)."""
-    rot = np.loadtxt(rot_csv, delimiter=",", skiprows=1)
+    rot = np.loadtxt(rot_csv, delimiter=",", skiprows=1, usecols=(1,2,3,4,5,6,7,8,9))
     return rot.reshape(-1, 3, 3)
 
 def load_body_velocities(vel_csv):
