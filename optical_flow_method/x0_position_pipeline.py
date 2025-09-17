@@ -102,14 +102,14 @@ def cut_data(stage_0_input_path, stage_1_input_path, stage_2_input_path, stage_5
 
 def main():
     t0 = time.time()
-    stage_0_input_path = "../optical_flow_method_data/combined_samples/13_09_25_MILC/straight1/data_times.csv"
-    stage_1_input_path = "../optical_flow_method_data/combined_samples/13_09_25_MILC/straight1/download_of.csv"
-    stage_2_input_path = "../optical_flow_method_data/combined_samples/13_09_25_MILC/straight1/download_tof.csv"
-    stage_5_and_7_input_path = "../optical_flow_method_data/combined_samples/13_09_25_MILC/straight1/download_imu.csv"
+    stage_0_input_path = "../optical_flow_method_data/combined_samples/17_09_25_MILC/6_lyco_lab_2/data_times.csv"
+    stage_1_input_path = "../optical_flow_method_data/combined_samples/17_09_25_MILC/6_lyco_lab_2/download_of.csv"
+    stage_2_input_path = "../optical_flow_method_data/combined_samples/17_09_25_MILC/6_lyco_lab_2/download_tof.csv"
+    stage_5_and_7_input_path = "../optical_flow_method_data/combined_samples/17_09_25_MILC/6_lyco_lab_2/download_imu.csv"
 
-    stage_1_input_path_cropped = "../optical_flow_method_data/combined_samples/13_09_25_MILC/straight1/download_of_cropped.csv"
-    stage_2_input_path_cropped = "../optical_flow_method_data/combined_samples/13_09_25_MILC/straight1/download_tof_cropped.csv"
-    stage_5_and_7_input_path_cropped = "../optical_flow_method_data/combined_samples/13_09_25_MILC/straight1/download_imu_cropped.csv"
+    stage_1_input_path_cropped = "../optical_flow_method_data/combined_samples/17_09_25_MILC/6_lyco_lab_2/download_of_cropped.csv"
+    stage_2_input_path_cropped = "../optical_flow_method_data/combined_samples/17_09_25_MILC/6_lyco_lab_2/download_tof_cropped.csv"
+    stage_5_and_7_input_path_cropped = "../optical_flow_method_data/combined_samples/17_09_25_MILC/6_lyco_lab_2/download_imu_cropped.csv"
 
     cut_data(stage_0_input_path, stage_1_input_path, stage_2_input_path, stage_5_and_7_input_path, stage_1_input_path_cropped, stage_2_input_path_cropped, stage_5_and_7_input_path_cropped)
 
