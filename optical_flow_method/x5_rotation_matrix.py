@@ -66,18 +66,22 @@ def run_ahrs(timestamp, gyroscope, accelerometer):
     )
 
     rot_mats = []
+
     for i in range(len(timestamp)):
         gyroscope[i] = offset.update(gyroscope[i])
         ahrs.update_no_magnetometer(gyroscope[i], accelerometer[i], delta_time[i])
         R = ahrs.quaternion.to_matrix()
-        rot_mats.append(R.flatten())  # store flattened row
+        row = R.flatten()
+        row = np.insert(row, 0, timestamp[i])
+        rot_mats.append(row)  # store flattened row
 
     return np.array(rot_mats)
 
 def save_rotation_matrices(rot_mats, output_csv):
     """Save rotation matrices to CSV."""
     header = ",".join([f"r{i}{j}" for i in range(3) for j in range(3)])
-    np.savetxt(output_csv, rot_mats, delimiter=",", header=header, comments="")
+    final_header = "time," + header
+    np.savetxt(output_csv, rot_mats, delimiter=",", header=final_header, comments="")
     print(f"Saved rotation matrices to {output_csv}")
 
 
@@ -93,7 +97,7 @@ def animate_rotation(rot_mats):
         ax.set_xlim([-1, 1]); ax.set_ylim([-1, 1]); ax.set_zlim([-1, 1])
         ax.set_xlabel("X"); ax.set_ylabel("Y"); ax.set_zlabel("Z")
 
-        R = rot_mats[frame*50].reshape(3, 3)
+        R = rot_mats[frame*50][1:].reshape(3, 3)
         origin = np.zeros(3)
         ax.quiver(*origin, *R[:, 0], color="r", length=1)
         ax.quiver(*origin, *R[:, 1], color="g", length=1)
