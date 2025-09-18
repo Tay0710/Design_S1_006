@@ -103,7 +103,7 @@ def cut_data(stage_0_input_path, stage_1_input_path, stage_2_input_path, stage_5
 def main():
     t0 = time.time()
 
-    data_name = "17_09_25_MILC/1_L_shape/"
+    data_name = "MILC_carpet/s2/"
 
     stage_0_input_path = "../optical_flow_method_data/combined_samples/" + data_name + "data_times.csv"
     stage_1_input_path = "../optical_flow_method_data/combined_samples/" + data_name + "download_of.csv"
