@@ -1,6 +1,12 @@
 # 17_09_25_MILC 1_L_shape
 
-Start time: 34.81
-End time: 41.24
+Walk start: 34.81
+Walk end: 51.27
+Description: Moved in an L shape without rotating the PMW3901. Every turn was 90 degrees to the left
+Orientation: OF facing lv4 EECE carpet (ground) with paper scattered on the ground
+OF sample rate: 50Hz
 
-Note: above times seem wrong
+Details: Start time and distances for each straight segment are given below
+Time (s)    | Distance (m)  
+34.81       | 6.94
+41.24       | 4.88
