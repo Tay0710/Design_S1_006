@@ -70,7 +70,7 @@ unsigned long lastTOFtime = 0;
 unsigned long lastOFtime = 0;
 const unsigned long imuInterval = 625;    // microseconds → ~1600 Hz
 const unsigned long tofInterval = 250000;   // microseconds → ~4 Hz // Side Tof should be every 0.25s and Roof/ Floor ToF should be every 0.5s. 
-const unsigned long ofInterval = 100000;   // microseconds → ~10 Hz
+const unsigned long ofInterval = 20000;   // microseconds → ~50 Hz
 
 char imuBuf[128];
 char tofBuf[512];
@@ -123,6 +123,19 @@ void calibrateIMU(int samples) {
                 duration, samples, (samples * 1000UL) / duration);
 }
 
+uint8_t readRegister(uint8_t reg) {
+  digitalWrite(OF_CS, LOW);
+  SPI.transfer(reg & 0x7F);  // MSB=0 -> read
+  uint8_t val = SPI.transfer(0);
+  digitalWrite(OF_CS, HIGH);
+  return val;
+}
+
+uint16_t readShutter() {
+  uint8_t hi = readRegister(0x0C);   // shutter high byte
+  uint8_t lo = readRegister(0x0B);   // shutter low byte
+  return (uint16_t(hi) << 8) | lo;
+}
 
 void setup()
 {
@@ -192,7 +205,7 @@ void setup()
   SD.remove(ofFileName);
   File of = SD.open(ofFileName, FILE_WRITE);
   of.print("time");
-  of.print(",deltaX,deltaY");
+  of.print(",deltaX,deltaY,squal,shutter");
   of.println();
   of.close();
 
@@ -384,11 +397,14 @@ void logOF() {
   // Serial.printf("%.9f", now / 1000000.0);
   // Serial.println("");
 
+  uint8_t squal = readRegister(0x07);
+  uint8_t shutt = readShutter();
+
   // Add timestamp
   int idx = appendTimestamp(ofBuf, now);
 
   // Add DeltaX and DeltaY values
-  idx += snprintf(ofBuf + idx, sizeof(ofBuf) - idx, ",%d,%d\n", deltaX, deltaY);
+  idx += snprintf(ofBuf + idx, sizeof(ofBuf) - idx, ",%d,%d,%i,%i\n", deltaX, deltaY, squal, shutt);
   // // Add each pixel value
   // for (int i = 0; i < 1225; i++) {
   //     idx += sprintf(line + idx, ",%d", frame[i]);
