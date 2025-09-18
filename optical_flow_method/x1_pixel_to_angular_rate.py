@@ -55,7 +55,12 @@ def pixels_to_angular_rates(dx, dy, dt):
     # This works specifically for MILC Floor measurements
     # https://isif.org/files/isif/2025-01/optical_flow_p72.pdf
     # s = 0.0015
-    s = 0.09/57.3 # from matlab sim
+    # s = 0.09/57.3 # from matlab sim
+
+    # OPTION 4:
+    # Empirically determine our own scale factor
+    # s = 0.0015706806282723
+    s = 0.00188
 
 
     # Note: max rate of 7.4 radians/second
