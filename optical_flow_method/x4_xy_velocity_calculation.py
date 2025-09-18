@@ -101,6 +101,8 @@ def main():
             v_x /= 1000.0
             v_y /= 1000.0
 
+            v_y = -v_y # negate y_velocity as OF axis y-axis is opposite to IMU y_axis
+
             times.append(t)
             vx_list.append(v_x)
             vy_list.append(v_y)
