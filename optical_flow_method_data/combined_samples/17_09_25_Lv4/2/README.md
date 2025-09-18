@@ -5,4 +5,4 @@ Walk end: 1:46.49 = 106.49
 Description: Moved forward 8m for 5.69s. 
 Average velocity: 1.4 m/s
 Orientation: OF facing lv4 EECE ceiling.
-OF sample rate: 50Hz.
+OF sample rate: 20Hz.
