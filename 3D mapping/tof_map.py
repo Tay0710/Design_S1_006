@@ -103,6 +103,9 @@ def build_points(distances, drone_pos):
     points = []
     for idx, (tx, ty) in cell_angles.items():
         d = distances[idx]
+        # Skip invalid or too-close points
+        if d is None or d < 0.2:  
+            continue
         pt = tof_point_arctan(d, tx, ty, drone_pos)
         if pt:
             points.append(pt)
@@ -118,13 +121,13 @@ def visualize_open3d(points, drone_positions):
     pc.paint_uniform_color([0, 0, 1])
     geoms.append(pc)
     
-    # Mesh reconstruction (Poisson surface)
-    pc.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamKNN(knn=8))
-    mesh, _ = o3d.geometry.TriangleMesh.create_from_point_cloud_poisson(pc, depth=8)
-    bbox = pc.get_axis_aligned_bounding_box()
-    mesh_crop = mesh.crop(bbox)
-    mesh_crop.paint_uniform_color([0.7, 0.7, 0.7])
-    geoms.append(mesh_crop)
+    # # Mesh reconstruction (Poisson surface)
+    # pc.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamKNN(knn=8))
+    # mesh, _ = o3d.geometry.TriangleMesh.create_from_point_cloud_poisson(pc, depth=8)
+    # bbox = pc.get_axis_aligned_bounding_box()
+    # mesh_crop = mesh.crop(bbox)
+    # mesh_crop.paint_uniform_color([0.7, 0.7, 0.7])
+    # geoms.append(mesh_crop)
 
     # Drone trajectory as red line
     traj = o3d.geometry.LineSet()
