@@ -42,6 +42,7 @@
 #define USO 5
 
 #define BOOT_PIN 0
+
 bool mode = false;         // toggled by BOOT button
 unsigned long lastPress = 0;
 const unsigned long debounceDelay = 200; // ms
@@ -55,21 +56,21 @@ TwoWire I2C1 = TwoWire(0); // use hardware I2C port 0
 TwoWire I2C2 = TwoWire(1); // use hardware I2C port 1
 
 // Sensor objects and measurement data
-SparkFun_VL53L5CX sensorS1;
-VL53L5CX_ResultsData measurementDataS1; // Result data class structure, 1356 byes of RAM
-SparkFun_VL53L5CX sensorS2;
-VL53L5CX_ResultsData measurementDataS2;
+SparkFun_VL53L5CX sensorL;
+VL53L5CX_ResultsData measurementDataL; // Result data class structure, 1356 byes of RAM
 SparkFun_VL53L5CX sensorR;
 VL53L5CX_ResultsData measurementDataR;
-SparkFun_VL53L5CX sensorF;
-VL53L5CX_ResultsData measurementDataF;
+SparkFun_VL53L5CX sensorU;
+VL53L5CX_ResultsData measurementDataU;
+SparkFun_VL53L5CX sensorD;
+VL53L5CX_ResultsData measurementDataD;
 
 // Chip select assignment
 // Create SPI buses
 SPIClass vspi(VSPI);   // Optical Flow and IMU
 SPIClass hspi(HSPI);   // SD Card
-Bitcraze_PMW3901 flow(CS1);
-ICM456xx IMU(VSPI, AP_CS2);
+Bitcraze_PMW3901 flow(CSOF);
+ICM456xx IMU(VSPI, CSIMU);
 
 // Global file handles
 File imuFile;
@@ -83,30 +84,33 @@ File tofDFile;  // downwards
 
 // File Names
 const char* imuFileName = "/imu_ICM45686.csv";
-const char* tofFileName = "/4x_tof_L7.csv";
 const char* ofFileName = "/of_PMW3901.csv";
-const char* UltraFileName = "/4xUltra_MB1030.csv";
+const char* UltraFileName = "/Ultra_MB1030.csv";
+const char* tofLFileName = "/L_tof_L7.csv";
+const char* tofRFileName = "/R_tof_L7.csv";
+const char* tofUFileName = "/U_tof_L7.csv";
+const char* tofDFileName = "/D_tof_L7.csv";
 
 // Variables for PMW3901
 char frame[35*35]; //array to hold the framebuffer
-int16_t deltaX,deltaY;
+int16_t deltaX, deltaY;
 
 // Size of ToF image array
-int S1imageResolution = 0; // Same for S2
-int RimageResolution  = 0; // Same for F
+int LimageResolution = 0; // Same for R
+int UimageResolution  = 0; // Same for D
 
 ///////////////////////////////////////////////////////
 // CHECK THAT THESE CHAR SIZES are LARGE ENOUGH !!!!
 //////////////////////////////////////////////////////
 char imuBuf[128];
 char ofBuf[64];
-char ultraBuf[128]; // enough for timestamp + 4 readings
-// ToF data can be recorded all at the same time?
-char tofBuf[1024]; // All 4 ToFs in one buffer
-// char tofS1Buf[384]; // 8x8 resolution, with 4 character + 1 space ~ 384 chars
-// char tofS2Buf[384]; 
-// char tofRBuf[96]; // 4x4 resolution ~ 96 chars (16*5 = 80)
-// char tofFBuf[96];
+char ultraBuf[64];
+// char ultraBuf[128]; // enough for timestamp + 4 readings
+char tofLBuf[384]; // 8x8 resolution, with 4 character + 1 space ~ 384 chars
+char tofRBuf[384]; 
+char tofUBuf[96]; // 4x4 resolution ~ 96 chars (16*5 = 80)
+char tofDBuf[96];
+// char tofBuf[1024]; // All 4 ToFs in one buffer
 
 // IMU - Calibration offsets
 float calibAccelX = 0, calibAccelY = 0, calibAccelZ = 0;
