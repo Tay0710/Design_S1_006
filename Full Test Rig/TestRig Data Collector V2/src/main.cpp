@@ -20,7 +20,7 @@
 #define MISO1 13
 #define CS1 10
 
-#define AP_SDI2 37 // IMU / ICM - PSRAM
+#define AP_SDI2 37 // IMU 
 #define AP_CLK2 36 // SDO = MISO; SDI = MOSI
 #define AP_SDO2 38
 #define AP_CS2 35
@@ -71,22 +71,20 @@ VL53L5CX_ResultsData measurementDataF;
 
 // Chip select assignment
 // Create SPI buses
-SPIClass vspi(VSPI);   // Optical Flow
+SPIClass vspi(VSPI);   // Optical Flow and IMU
 SPIClass hspi(HSPI);   // SD Card
-SPIClass psramSPI(FSPI); // Custom: using Flash/PSRAM bus for IMU
 Bitcraze_PMW3901 flow(CS1);
-ICM456xx IMU(psramSPI, AP_CS2);
+ICM456xx IMU(VSPI, AP_CS2);
 
 // Global file handles
 File imuFile;
 File ofFile;
-File tofFile;
 File UltraFile;
-// For if we do separate ToF files
-// File ToFS1; // side 1
-// File ToFS2; // side 2
-// File ToFR;  // roof
-// File ToFF;  // floor
+// Separate ToF files
+File tofLFile; // left
+File tofRFile; // right
+File tofUFile;  // upwards
+File tofDFile;  // downwards
 
 // File Names
 const char* imuFileName = "/imu_ICM45686.csv";
