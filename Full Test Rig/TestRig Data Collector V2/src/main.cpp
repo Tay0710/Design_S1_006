@@ -15,32 +15,27 @@
 #include <Bitcraze_PMW3901.h>
 
 // Optical flow SPI pins
-#define MOSI1 11 // OF, VSPI
-#define CLK1 12
-#define MISO1 13
-#define CS1 10
+#define VSPI_MOSI 36 // OF and IMU, VSPI
+#define VSPI_CLK 37
+#define VSPI_MISO 35
+#define CSOF 39
+#define CSIMU 38
 
-#define AP_SDI2 37 // IMU 
-#define AP_CLK2 36 // SDO = MISO; SDI = MOSI
-#define AP_SDO2 38
-#define AP_CS2 35
+#define HSPI_CLK 13 // SD Card, HSPI
+#define HSPI_MISO 12
+#define HSPI_MOSI 11
+#define SDCS 10
 
-#define SDCLK 47 // SD Card, HSPI
-#define SDMISO 48
-#define SDMOSI 21
-#define SDCS 39
-
-#define SDA1 8   // 
-#define SCL1 9   // 
-
-#define SDA2 6
-#define SCL2 7
-// ToF inputs. 
-#define PENA 41 // Power enable
-#define RESET 40
+// ToF inputs
+#define SDA1 48  
+#define SCL1 47  
+#define SDA2 2
+#define SCL2 1
+#define PENA 40 // Power enable
+#define RESET 41 // I2C reset
 #define LPN 42
 
-#define US1 14
+#define US1 18
 #define US2 15
 #define US3 16
 #define US4 4
