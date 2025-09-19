@@ -49,8 +49,8 @@ def velocity_calc(wx, wy, h):
 
 def integrate_positions(times, vx_list, vy_list):
     """Integrate velocities into positions using trapezoidal rule."""
-    pos_x = np.zeros(len(times))
-    pos_y = np.zeros(len(times))
+    pos_x = np.zeros(len(times-1))
+    pos_y = np.zeros(len(times-1))
 
     for i in range(1, len(times)):
         dt = times[i] - times[i - 1]
@@ -58,6 +58,18 @@ def integrate_positions(times, vx_list, vy_list):
         pos_y[i] = pos_y[i-1] + 0.5 * dt * (vy_list[i] + vy_list[i-1])
 
     return pos_x, pos_y
+
+def differentiate_velocities(times, vx_list, vy_list):
+    """Differentiate velocities into acceleration using numerical methods."""
+    acc_x = np.zeros(len(times-1))
+    acc_y = np.zeros(len(times-1))
+
+    for i in range(1, len(times)):
+        dt = times[i] - times[i - 1]
+        acc_x[i] = (vx_list[i]-vx_list[i-1])/dt
+        acc_y[i] = (vy_list[i]-vy_list[i-1])/dt
+
+    return acc_x, acc_y
 
 def main():
     angular_rate_path = "../optical_flow_method_data/optical_flow_angular_rates.csv"
@@ -75,7 +87,7 @@ def main():
         reader_angular = csv.DictReader(f_angular)
         reader_height = csv.DictReader(f_height)
         writer = csv.writer(f_out)
-        writer.writerow(["time (s)", "v_x (m/s)", "v_y (m/s)", "pos_x (m)", "pos_y (m)"])
+        writer.writerow(["time (s)", "v_x (m/s)", "v_y (m/s)", "pos_x (m)", "pos_y (m)", "acc_x (m/s^2)", "acc_y (m/s^2)"])
         
         # First read all values into lists
         angular_rows = list(reader_angular)
@@ -110,15 +122,18 @@ def main():
         # Integrate to positions
         pos_x, pos_y = integrate_positions(np.array(times), np.array(vx_list), np.array(vy_list))
 
+        # Differentiate to acceleration
+        acc_x, acc_y = differentiate_velocities(np.array(times), np.array(vx_list), np.array(vy_list))
+
         # Write results with positions
-        for t, vx, vy, px, py in zip(times, vx_list, vy_list, pos_x, pos_y):
-            writer.writerow([f"{t:.6f}", f"{vx:.6f}", f"{vy:.6f}", f"{px:.6f}", f"{py:.6f}"])
+        for t, vx, vy, px, py, ax, ay in zip(times, vx_list, vy_list, pos_x, pos_y, acc_x, acc_y):
+            writer.writerow([f"{t:.6f}", f"{vx:.6f}", f"{vy:.6f}", f"{px:.6f}", f"{py:.6f}", f"{ax:.6f}", f"{ay:.6f}"])
         
         print(f"Wrote {len(times)} rows to {output_path}")    
 
     # === Plot velocities ===
-    plt.figure(figsize=(12, 5))
-    plt.subplot(1, 2, 1)
+    plt.figure(figsize=(16, 5))
+    plt.subplot(1, 3, 1)
     plt.plot(times, vx_list, label="v_x (m/s)", color="blue")
     plt.plot(times, vy_list, label="v_y (m/s)", color="red")
     plt.xlabel("Time (s)")
@@ -128,12 +143,22 @@ def main():
     plt.grid(True)
 
     # === Plot trajectory (XY) ===
-    plt.subplot(1, 2, 2)
+    plt.subplot(1, 3, 2)
     plt.plot(pos_x, pos_y, "-o", markersize=2)
     plt.xlabel("X position (m)")
     plt.ylabel("Y position (m)")
     plt.title("Integrated XY Position")
     plt.axis("equal")
+    plt.grid(True)
+
+        # === Plot trajectory (XY) ===
+    plt.subplot(1, 3, 3)
+    plt.plot(times, acc_x, label="acc_x (m/s^2)", color="blue")
+    plt.plot(times, acc_y, label="acc_y (m/s^2)", color="red")
+    plt.xlabel("Time (s)")
+    plt.ylabel("Acceleration (m/s^2)")
+    plt.title("Optical Flow Differentiated Acceleration")
+    plt.legend()
     plt.grid(True)
 
     plt.tight_layout()
