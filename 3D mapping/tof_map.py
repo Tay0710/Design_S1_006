@@ -1,5 +1,5 @@
 """
-tof_mapping_pipeline.py
+tof_map.py
 -----------------------
 
 Generates a 3D point cloud and mesh of the environment from Time-of-Flight (ToF) sensor data,
