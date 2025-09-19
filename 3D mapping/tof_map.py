@@ -43,13 +43,12 @@ Outputs:
     - Matplotlib 3D plot with labeled points and trajectory
 """
 
-
 import numpy as np
 import pandas as pd
 import open3d as o3d
 import matplotlib.pyplot as plt
 
-def tof_point_arctan(d, theta_x_deg, theta_y_deg, drone_pos=(0,0,0)):
+def tof_point(d, theta_x_deg, theta_y_deg, drone_pos=(0,0,0)):
     """Convert one ToF cell to world coords using arctan method."""
     if d is None:
         return None
@@ -106,7 +105,7 @@ def build_points(distances, drone_pos):
         # Skip invalid or too-close points
         if d is None or d < 0.2:  
             continue
-        pt = tof_point_arctan(d, tx, ty, drone_pos)
+        pt = tof_point(d, tx, ty, drone_pos)
         if pt:
             points.append(pt)
 
