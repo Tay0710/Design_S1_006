@@ -1,3 +1,49 @@
+"""
+tof_mapping_pipeline.py
+-----------------------
+
+Generates a 3D point cloud and mesh of the environment from Time-of-Flight (ToF) sensor data,
+mapped onto drone positions derived from integrated velocity estimates.
+
+Overview:
+    - The ToF sensor outputs distances for a 4×4 grid of zones (D0–D15) at each timestep.
+    - Each zone corresponds to a fixed angular offset in the x–y plane (±30°, ±10°).
+    - For each ToF frame, the drone’s world position is obtained from the trajectory file
+      (xy_velocities_to_world_frame.csv) at the nearest matching timestamp.
+    - Distances are projected into world-frame coordinates using the drone position
+      and the pre-defined angular offsets.
+    - All ToF points are accumulated into a single point cloud representing the mapped scene.
+    - A Poisson mesh is reconstructed from the point cloud for surface approximation.
+    - Two visualisation backends are provided:
+        * Open3D (interactive 3D point cloud + mesh + trajectory)
+        * Matplotlib (3D scatter plot with text labels)
+
+Notes:
+    - The ToF and trajectory CSVs are not timestamp-aligned. Each ToF frame is matched to the
+      first trajectory timestamp that occurs strictly *after* the ToF timestamp.
+    - Distances are expected in millimetres in the ToF CSV and are converted to metres.
+
+Inputs:
+    - xy_velocities_to_world_frame.csv
+        Columns: 
+            time (s), v_world_x, v_world_y, v_world_z,
+            pos_world_x, pos_world_y, pos_world_z
+
+    - download_tof_cropped.csv
+        Columns: 
+            time, D0 … D15
+            (Distances are in mm, invalid entries are "X")
+
+Outputs:
+    - Interactive Open3D window with:
+        * Blue ToF points
+        * Grey mesh reconstruction
+        * Red drone trajectory line
+        * Red sphere marking final drone position
+    - Matplotlib 3D plot with labeled points and trajectory
+"""
+
+
 import numpy as np
 import pandas as pd
 import open3d as o3d
