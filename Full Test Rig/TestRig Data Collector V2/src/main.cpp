@@ -444,7 +444,7 @@ void setup() {
   I2C2.setClock(1000000); 
   Serial.println("Clock Has been Set for I2C's!");
 
-  // Address Reset sequence for ToFL7 sensors.
+  // Address reset sequence for ToFL7 sensors.
   // Activating PWR_EN (Make High). 
   pinMode(PENA, OUTPUT);
   digitalWrite(PENA, HIGH); 
@@ -455,28 +455,27 @@ void setup() {
   delay(100); 
   digitalWrite(RESET, LOW); 
   delay(100); 
-  // Deactivating PWR_EN (Make Low). Reseting Sensors.  
+  // Deactivating PWR_EN (Make Low). Reseting sensors
   digitalWrite(PENA, LOW); 
   delay(100);   
-  digitalWrite(PENA, HIGH); // Make High again.
+  digitalWrite(PENA, HIGH); // Make high again
   delay(100);  
   // Configure LPn pins
   pinMode(LPN, OUTPUT);
-  // Set Sensor 1 LPn low (Deactivate I2C communication). 
+  // Set sensor 1 LPn low (Deactivate I2C communication) 
   digitalWrite(LPN, LOW); // One LPn should be set HIGH permanently
   delay(100); 
 
-  // I2C Bus split: S1 + R on I2C1; S2 + F on I2C2
+  // I2C bus split: L + U on I2C1; R + D on I2C2
   // Have to change the address of the ToFs with no LPN pin attached.
-  // Make R & F the changed Address sensors. 
+  // U + D are the sensors that have their address changed
 
-
-  // Change Sensor Address to 0x30 after calling begin()
-    if (!sensorR.begin()) { 
+  // Change sensor address to 0x30 after calling begin()
+    if (!sensorU.begin()) { 
     Serial.println("Sensor R not found at 0x29!");
     while (1);
   }
-    if (!sensorF.begin()) { 
+    if (!sensorD.begin()) { 
     Serial.println("Sensor F not found at 0x29!");
     while (1);
   }
