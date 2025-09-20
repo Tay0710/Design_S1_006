@@ -121,7 +121,6 @@ unsigned long lastTOFLtime = 0;
 unsigned long lastTOFRtime = 0;
 unsigned long lastTOFUtime = 0;
 unsigned long lastTOFDtime = 0;
-static unsigned long lastUltraTime = 0;
 const unsigned long imuInterval = 250;    // microseconds → ~4000 Hz | Low noise mode max = 6400Hz
 const unsigned long ofInterval = 20000;   // microseconds → ~50 Hz
 const unsigned long tofInterval = int(250000/4);   // microseconds → ~4 Hz // Side Tof should be every 0.25s and Roof/ Floor ToF should be every 0.5s. 
@@ -268,8 +267,8 @@ void logToFL() {
       }
     }
 
-      tofLBuf[idx++] = '\n';
-      tofLFile.write((uint8_t*)tofLBuf, idx);  // write raw bytes
+    tofLBuf[idx++] = '\n';
+    tofLFile.write((uint8_t*)tofLBuf, idx);  // write raw bytes
   }
 }
 
@@ -291,8 +290,8 @@ void logToFR() {
       }
     }
 
-      tofRBuf[idx++] = '\n';
-      tofRFile.write((uint8_t*)tofRBuf, idx);  // write raw bytes
+    tofRBuf[idx++] = '\n';
+    tofRFile.write((uint8_t*)tofRBuf, idx);  // write raw bytes
   }
 }
 
@@ -315,8 +314,8 @@ void logToFU() {
       }
     }
 
-      tofUBuf[idx++] = '\n';
-      tofUFile.write((uint8_t*)tofUBuf, idx);  // write raw bytes
+    tofUBuf[idx++] = '\n';
+    tofUFile.write((uint8_t*)tofUBuf, idx);  // write raw bytes
   }
 }
 
@@ -339,8 +338,8 @@ void logToFD() {
       }
     }
 
-      tofDBuf[idx++] = '\n';
-      tofDFile.write((uint8_t*)tofDBuf, idx);  // write raw bytes
+    tofDBuf[idx++] = '\n';
+    tofDFile.write((uint8_t*)tofDBuf, idx);  // write raw bytes
   }
 }
 
@@ -376,57 +375,37 @@ void logOF() {
 #define pwPin1 14
 volatile unsigned long pulseStartD = 0;
 volatile float pulseWidthD = 0;
-volatile bool ultraReadyD = false;
+volatile bool usReadyD = false;
 
-void US1_ISR() {
+void USD_ISR() {
   // Called when pwPin changes
-  if (digitalRead(pwPin1) == HIGH) {
+  if (digitalRead(USD) == HIGH) {
     // Rising edge
-    pulseStart1 = micros();
-    US_ready1 = false;
+    pulseStartD = micros();
+    usReadyD = false;
   } else {
     // Falling edge
-    unsigned long pulseWidth = micros() - pulseStart1;
-    distanceCm1 = pulseWidth / 57.87;
-    US_ready1 = true;
+    unsigned long pulseWidthD = micros() - pulseStartD;
+    usReadyD = true;
   }
 }
 
 // Log all 4 ultrasonic sensors (US1-US4) to CSV
 void logUltrasonics() {
-    unsigned long now = micros();
-    if (now - lastUltraTime < ultraInterval) return;
-    lastUltraTime = now;
-
-    if (!UltraFile) return;
-
-    int idx = appendTimestamp(ultraBuf, now);
-    ultraBuf[idx++] = ',';  
-
-    // Read 4 sensors and write to buffer
-    float readings[4];
-    int pins[4] = {US1, US2, US3, US4};
-    for (int i = 0; i < 4; i++) {
-        readings[i] = readUltrasonic(pins[i]);
-        if (i > 0) ultraBuf[idx++] = ',';
-        if (readings[i] < 0) {
-            ultraBuf[idx++] = 'X';  // No reading
-        } else {
-            idx += snprintf(ultraBuf + idx, sizeof(ultraBuf) - idx, "%.2f", readings[i]);
-        }
-    }
-    ultraBuf[idx++] = '\n';
+  if (UltraFile && usReadyD) {
+    int idx = appendTimestamp(ultraBuf, pulseStartD + pulseWidthD/2);
+    float distCmD = pulseWidthD / 57.87;
+    idx += snprintf(ultraBuf + idx, sizeof(ultraBuf) - idx, ",%.2f\n", distCmD);
     UltraFile.write((uint8_t*)ultraBuf, idx);
+  }
+  // To do: add similar if statements for 4 other ultrasonics
 }
 
-void setup()
-{
-  
+void setup() {
   Serial.begin(115200);
   delay(1000);
   pinMode(BOOT_PIN, INPUT_PULLUP);
   delay(10);
-
 
   // SPI Setup
   vspi.begin(CLK1, MISO1, MOSI1, CS1);
@@ -458,25 +437,25 @@ void setup()
     while (1);
   }
 
-// 4 ToF sensor code. 
+  // 4 ToF sensor code. 
   I2C1.begin(); // This resets I2C bus to 100kHz
   I2C1.setClock(1000000); //Sensor (L7) has max I2C freq of 1MHz
   I2C2.begin(); 
   I2C2.setClock(1000000); 
   Serial.println("Clock Has been Set for I2C's!");
 
-// Address Reset sequence for ToFL7 sensors.
-// Activating PWR_EN (Make High). 
+  // Address Reset sequence for ToFL7 sensors.
+  // Activating PWR_EN (Make High). 
   pinMode(PENA, OUTPUT);
   digitalWrite(PENA, HIGH); 
   delay(100);   
-// Activating I2C Reset pin to reset the addresses (Pulse High). 
+  // Activating I2C Reset pin to reset the addresses (Pulse High). 
   pinMode(RESET, OUTPUT);
   digitalWrite(RESET, HIGH); 
   delay(100); 
   digitalWrite(RESET, LOW); 
   delay(100); 
-// Deactivating PWR_EN (Make Low). Reseting Sensors.  
+  // Deactivating PWR_EN (Make Low). Reseting Sensors.  
   digitalWrite(PENA, LOW); 
   delay(100);   
   digitalWrite(PENA, HIGH); // Make High again.
