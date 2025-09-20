@@ -391,7 +391,7 @@ void USD_ISR() {
 }
 
 // Log all 4 ultrasonic sensors (US1-US4) to CSV
-void logUltrasonics() {
+void logUltra() {
   if (UltraFile && usReadyD) {
     int idx = appendTimestamp(ultraBuf, pulseStartD + pulseWidthD/2);
     float distCmD = pulseWidthD / 57.87;
@@ -592,14 +592,17 @@ void loop() {
     // --- Open files once when recording starts ---
     if (!imuFile) {
       imuFile = SD.open(imuFileName, FILE_APPEND);
-      tofFile = SD.open(tofFileName, FILE_APPEND);
+      tofUFile = SD.open(tofUFileName, FILE_APPEND);
+      tofDFile = SD.open(tofDFileName, FILE_APPEND);
+      tofLFile = SD.open(tofLFileName, FILE_APPEND);
+      tofRFile = SD.open(tofRFileName, FILE_APPEND);
       ofFile = SD.open(ofFileName, FILE_APPEND);
       UltraFile = SD.open(UltraFileName, FILE_APPEND);
 
-        Serial.println("Opening files for logging...");
-        if (!imuFile || !tofFile || !ofFile) {
-            Serial.println("Failed to open one or more files!");
-        }
+      Serial.println("Opening files for logging...");
+      if (!imuFile || !tofUFile  || !tofDFile|| !tofLFile|| !tofRFile || !ofFile || !UltraFile) {
+          Serial.println("Failed to open one or more files!");
+      }
     }
 
     // --- Write data ---
@@ -609,20 +612,26 @@ void loop() {
     logToFU();   // writes to tofUFile
     logToFD();   // writes to tofDFile
     logOF();    // writes to ofFile
-    logUS1();
+    logUltra();
   } 
   else {
     // --- Close files once when recording stops ---
     if (imuFile) {
-        imuFile.close();
-        imuFile = File(); // reset handle
-        tofFile.close();
-        tofFile = File();
-        ofFile.close();
-        ofFile = File();
-        UltraFile.close();
-        UltraFile = File();
-        Serial.println("Files closed, safe to download.");
+      imuFile.close();
+      imuFile = File(); // reset handle
+      tofUFile.close();
+      tofUFile = File();
+      tofDFile.close();
+      tofDFile = File();
+      tofLFile.close();
+      tofLFile = File();
+      tofRFile.close();
+      tofRFile = File();
+      ofFile.close();
+      ofFile = File();
+      UltraFile.close();
+      UltraFile = File();
+      Serial.println("Files closed, safe to download.");
     }
-    }
+  }
 }
