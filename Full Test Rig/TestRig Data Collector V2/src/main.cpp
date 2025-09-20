@@ -176,169 +176,6 @@ void calibrateIMU(int samples) {
                 duration, samples, (samples * 1000UL) / duration);
 }
 
-void setup()
-{
-  
-  Serial.begin(115200);
-  delay(1000);
-  pinMode(BOOT_PIN, INPUT_PULLUP);
-  delay(10);
-
-
-  // SPI Setup
-  vspi.begin(CLK1, MISO1, MOSI1, CS1);
-  hspi.begin(SDCLK, SDMISO, SDMOSI, SDCS);
-  psramSPI.begin(AP_CLK2, AP_SDO2, AP_SDI2, AP_CS2);
-
-  // ICM45686 Begin - using psramSPI.
-  if (IMU.begin() != 0) {
-    Serial.println("ICM456xx initialization failed");
-    while (1);
-  }
-  // Configure accelerometer and gyro
-  IMU.startAccel(1600, G_rating);     // Max 6400Hz; 100 Hz, ±2/4/8/16/32 g
-  IMU.startGyro(1600, dps_rating);    // 100 Hz, ±15.625/31.25/62.5/125/250/500/1000/
-  delay(100); // Delay needed to ensure proper calibration
-  Serial.println("Do not move drone while calibrating the ICM.");
-  calibrateIMU(2000);
-
-  // PMW3901 begin - using vspi
-  if (!flow.begin()) {
-      Serial.println("PMW3901 initialization failed. Check wiring!");
-      while (1);  // stop if not found
-  }
-  delay(100);
-  flow.enableFrameBuffer(); 
-  // Initialize SD card - using hspi
-  if (!SD.begin(SDCS, hspi)) {
-    Serial.println("SD init failed!");
-    while (1);
-  }
-
-// 4 ToF sensor code. 
-  I2C1.begin(); // This resets I2C bus to 100kHz
-  I2C1.setClock(1000000); //Sensor (L7) has max I2C freq of 1MHz
-  I2C2.begin(); 
-  I2C2.setClock(1000000); 
-  Serial.println("Clock Has been Set for I2C's!");
-
-// Address Reset sequence for ToFL7 sensors.
-// Activating PWR_EN (Make High). 
-  pinMode(PENA, OUTPUT);
-  digitalWrite(PENA, HIGH); 
-  delay(100);   
-// Activating I2C Reset pin to reset the addresses (Pulse High). 
-  pinMode(RESET, OUTPUT);
-  digitalWrite(RESET, HIGH); 
-  delay(100); 
-  digitalWrite(RESET, LOW); 
-  delay(100); 
-// Deactivating PWR_EN (Make Low). Reseting Sensors.  
-  digitalWrite(PENA, LOW); 
-  delay(100);   
-  digitalWrite(PENA, HIGH); // Make High again.
-  delay(100);  
-  // Configure LPn pins
-  pinMode(LPN, OUTPUT);
-  // Set Sensor 1 LPn low (Deactivate I2C communication). 
-  digitalWrite(LPN, LOW); // One LPn should be set HIGH permanently
-  delay(100); 
-
-  // I2C Bus split: S1 + R on I2C1; S2 + F on I2C2
-  // Have to change the address of the ToFs with no LPN pin attached.
-  // Make R & F the changed Address sensors. 
-
-
-  // Change Sensor Address to 0x30 after calling begin()
-    if (!sensorR.begin()) { 
-    Serial.println("Sensor R not found at 0x29!");
-    while (1);
-  }
-    if (!sensorF.begin()) { 
-    Serial.println("Sensor F not found at 0x29!");
-    while (1);
-  }
-  sensorR.setAddress(CHANGE_ADDR);
-  sensorF.setAddress(CHANGE_ADDR);
-  sensorR.setResolution(4 * 4);
-  sensorF.setResolution(4 * 4);
-  // Using 4x4, min frequency is 1Hz and max is 60Hz
-  // Using 8x8, min frequency is 1Hz and max is 15Hz
-  RimageResolution = sensorR.getResolution();
-  Serial.println("Sensor's initialized successfully at 0x30");
-  delay(50);
-
-  // Default Address Sensor initialization - Set Sensor LPn HIGH (Activate I2C communication). 
-  digitalWrite(LPN, HIGH); // Other LPn should still be set HIGH
-  delay(100); 
-
-  if (!sensorS1.begin()) {
-    Serial.println("Sensor S1 not found at 0x29!");
-    while (1);
-  } 
-  if (!sensorS2.begin()) {
-    Serial.println("Sensor S2 not found at 0x29!");
-    while (1);
-  }
-  sensorS1.setResolution(8 * 8);
-  sensorS1.setResolution(8 * 8);
-  S1imageResolution = sensorS1.getResolution();
-  Serial.println("Sensor 1 initialized successfully at 0x29");
-  delay(50);
-
-  // // Set Frequency
-  // sensorR.setRangingFrequency(15);
-  // sensorF.setRangingFrequency(15);
-  // sensorS1.setRangingFrequency(15);
-  // sensorS2.setRangingFrequency(15);
-  // Start ranging on both sensors. 
-  Serial.println("Starting ranging of ToFL7  sensors...");
-  sensorR.startRanging();
-  sensorF.startRanging();
-  sensorS1.startRanging();
-  sensorS2.startRanging();
-  Serial.println("Sensors are now ranging.");
-
-  // Ultrasonics
-  pinMode(US1, INPUT); // Note: Ultrasonics operate on a 49mS cycle.
-  pinMode(US2, INPUT);
-  pinMode(US3, INPUT);
-  pinMode(US4, INPUT);
-  pinMode(USO, INPUT); // USO is for object detection (front of drone). 
-
-  // Init IMU CSV
-  SD.remove(imuFileName);
-  File imu = SD.open(imuFileName, FILE_WRITE);
-  imu.println("time,gyro x,gyro y,gyro z,accel x,accel y,accel z");
-  imu.close();
-  // Init ToF CSV
-  SD.remove(tofFileName);
-  File tof = SD.open(tofFileName, FILE_WRITE);
-  tof.print("time,type");
-  for(int i=0; i<((S1imageResolution)); i++) tof.print(",D"+String(i));
-  tof.println();
-  tof.close();
-  // Init OF CSV
-  SD.remove(ofFileName);
-  File of = SD.open(ofFileName, FILE_WRITE);
-  of.print("time");
-  of.print(",deltaX,deltaY");
-  of.println();
-  of.close();
-  // Init Ultra CSV
-  SD.remove(UltraFileName);
-  File Ultra = SD.open(UltraFileName, FILE_WRITE);
-  Ultra.print("time,US1,US2,US3,US4"); 
-  Ultra.println();
-  Ultra.close();
-
-
-
-
-
-  Serial.println("Finished Setup!");
-}
-
 // Helper: append unsigned long to buffer, returns number of chars
 int appendULong(char* buf, unsigned long val) {
     char temp[11]; // max 10 digits + null
@@ -506,6 +343,164 @@ void logUltrasonics() {
     UltraFile.write((uint8_t*)ultraBuf, idx);
 }
 
+void setup()
+{
+  
+  Serial.begin(115200);
+  delay(1000);
+  pinMode(BOOT_PIN, INPUT_PULLUP);
+  delay(10);
+
+
+  // SPI Setup
+  vspi.begin(CLK1, MISO1, MOSI1, CS1);
+  hspi.begin(SDCLK, SDMISO, SDMOSI, SDCS);
+  psramSPI.begin(AP_CLK2, AP_SDO2, AP_SDI2, AP_CS2);
+
+  // ICM45686 Begin - using psramSPI.
+  if (IMU.begin() != 0) {
+    Serial.println("ICM456xx initialization failed");
+    while (1);
+  }
+  // Configure accelerometer and gyro
+  IMU.startAccel(1600, G_rating);     // Max 6400Hz; 100 Hz, ±2/4/8/16/32 g
+  IMU.startGyro(1600, dps_rating);    // 100 Hz, ±15.625/31.25/62.5/125/250/500/1000/
+  delay(100); // Delay needed to ensure proper calibration
+  Serial.println("Do not move drone while calibrating the ICM.");
+  calibrateIMU(2000);
+
+  // PMW3901 begin - using vspi
+  if (!flow.begin()) {
+      Serial.println("PMW3901 initialization failed. Check wiring!");
+      while (1);  // stop if not found
+  }
+  delay(100);
+  flow.enableFrameBuffer(); 
+  // Initialize SD card - using hspi
+  if (!SD.begin(SDCS, hspi)) {
+    Serial.println("SD init failed!");
+    while (1);
+  }
+
+// 4 ToF sensor code. 
+  I2C1.begin(); // This resets I2C bus to 100kHz
+  I2C1.setClock(1000000); //Sensor (L7) has max I2C freq of 1MHz
+  I2C2.begin(); 
+  I2C2.setClock(1000000); 
+  Serial.println("Clock Has been Set for I2C's!");
+
+// Address Reset sequence for ToFL7 sensors.
+// Activating PWR_EN (Make High). 
+  pinMode(PENA, OUTPUT);
+  digitalWrite(PENA, HIGH); 
+  delay(100);   
+// Activating I2C Reset pin to reset the addresses (Pulse High). 
+  pinMode(RESET, OUTPUT);
+  digitalWrite(RESET, HIGH); 
+  delay(100); 
+  digitalWrite(RESET, LOW); 
+  delay(100); 
+// Deactivating PWR_EN (Make Low). Reseting Sensors.  
+  digitalWrite(PENA, LOW); 
+  delay(100);   
+  digitalWrite(PENA, HIGH); // Make High again.
+  delay(100);  
+  // Configure LPn pins
+  pinMode(LPN, OUTPUT);
+  // Set Sensor 1 LPn low (Deactivate I2C communication). 
+  digitalWrite(LPN, LOW); // One LPn should be set HIGH permanently
+  delay(100); 
+
+  // I2C Bus split: S1 + R on I2C1; S2 + F on I2C2
+  // Have to change the address of the ToFs with no LPN pin attached.
+  // Make R & F the changed Address sensors. 
+
+
+  // Change Sensor Address to 0x30 after calling begin()
+    if (!sensorR.begin()) { 
+    Serial.println("Sensor R not found at 0x29!");
+    while (1);
+  }
+    if (!sensorF.begin()) { 
+    Serial.println("Sensor F not found at 0x29!");
+    while (1);
+  }
+  sensorR.setAddress(CHANGE_ADDR);
+  sensorF.setAddress(CHANGE_ADDR);
+  sensorR.setResolution(4 * 4);
+  sensorF.setResolution(4 * 4);
+  // Using 4x4, min frequency is 1Hz and max is 60Hz
+  // Using 8x8, min frequency is 1Hz and max is 15Hz
+  RimageResolution = sensorR.getResolution();
+  Serial.println("Sensor's initialized successfully at 0x30");
+  delay(50);
+
+  // Default Address Sensor initialization - Set Sensor LPn HIGH (Activate I2C communication). 
+  digitalWrite(LPN, HIGH); // Other LPn should still be set HIGH
+  delay(100); 
+
+  if (!sensorS1.begin()) {
+    Serial.println("Sensor S1 not found at 0x29!");
+    while (1);
+  } 
+  if (!sensorS2.begin()) {
+    Serial.println("Sensor S2 not found at 0x29!");
+    while (1);
+  }
+  sensorS1.setResolution(8 * 8);
+  sensorS1.setResolution(8 * 8);
+  S1imageResolution = sensorS1.getResolution();
+  Serial.println("Sensor 1 initialized successfully at 0x29");
+  delay(50);
+
+  // // Set Frequency
+  // sensorR.setRangingFrequency(15);
+  // sensorF.setRangingFrequency(15);
+  // sensorS1.setRangingFrequency(15);
+  // sensorS2.setRangingFrequency(15);
+  // Start ranging on both sensors. 
+  Serial.println("Starting ranging of ToFL7  sensors...");
+  sensorR.startRanging();
+  sensorF.startRanging();
+  sensorS1.startRanging();
+  sensorS2.startRanging();
+  Serial.println("Sensors are now ranging.");
+
+  // Ultrasonics
+  pinMode(US1, INPUT); // Note: Ultrasonics operate on a 49mS cycle.
+  pinMode(US2, INPUT);
+  pinMode(US3, INPUT);
+  pinMode(US4, INPUT);
+  pinMode(USO, INPUT); // USO is for object detection (front of drone). 
+
+  // Init IMU CSV
+  SD.remove(imuFileName);
+  File imu = SD.open(imuFileName, FILE_WRITE);
+  imu.println("time,gyro x,gyro y,gyro z,accel x,accel y,accel z");
+  imu.close();
+  // Init ToF CSV
+  SD.remove(tofFileName);
+  File tof = SD.open(tofFileName, FILE_WRITE);
+  tof.print("time,type");
+  for(int i=0; i<((S1imageResolution)); i++) tof.print(",D"+String(i));
+  tof.println();
+  tof.close();
+  // Init OF CSV
+  SD.remove(ofFileName);
+  File of = SD.open(ofFileName, FILE_WRITE);
+  of.print("time");
+  of.print(",deltaX,deltaY");
+  of.println();
+  of.close();
+  // Init Ultra CSV
+  SD.remove(UltraFileName);
+  File Ultra = SD.open(UltraFileName, FILE_WRITE);
+  Ultra.print("time,US1,US2,US3,US4"); 
+  Ultra.println();
+  Ultra.close();
+
+  Serial.println("Finished Setup!");
+}
 
 void loop() {
     // --- Handle BOOT button toggle ---
@@ -540,18 +535,17 @@ void loop() {
       logUltrasonics();
   } 
   else {
-
-      // --- Close files once when recording stops ---
-      if (imuFile) {
-          imuFile.close();
-          imuFile = File(); // reset handle
-          tofFile.close();
-          tofFile = File();
-          ofFile.close();
-          ofFile = File();
-          UltraFile.close();
-          UltraFile = File();
-          Serial.println("Files closed, safe to download.");
-      }
+    // --- Close files once when recording stops ---
+    if (imuFile) {
+        imuFile.close();
+        imuFile = File(); // reset handle
+        tofFile.close();
+        tofFile = File();
+        ofFile.close();
+        ofFile = File();
+        UltraFile.close();
+        UltraFile = File();
+        Serial.println("Files closed, safe to download.");
+    }
     }
 }
