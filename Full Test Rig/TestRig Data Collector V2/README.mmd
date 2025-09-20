@@ -3,7 +3,7 @@ Software Notes, to Add:
 
 Hardware Notes:
     Special Case if OF, LoRa, SD Card on same SPI bus. 
-    Is it possible to put the SD card module on the PCB board?
+    Is it possible to put the SD card module on the PCB board? - No Space. 
 
 Steps to record:
     1. Upload code
@@ -33,7 +33,10 @@ CSV files available: (header + values in csv files)
 
     4xUltra_MB1030
         returns:
-            time,US1,US2,US3,US4
+            time,US1,US2,US3,US4*****
+        Instead ?: 
+            time,type,distance  
+                As each sensor return signal will be read at a different time. 
 
 Bug:
     fix code to return Xs if ToF is not ready. 
@@ -45,7 +48,7 @@ Component Notes:
         to 37.5mS if no target is detected. The remainder of the 49mS time (less 4.7mS) is spent adjusting the analog voltage to
         the correct level. When a long distance is measured immediately after a short distance reading, the analog voltage may not
         reach the exact level within one read cycle. 
-                                    During the last 4.7mS, the serial data is sent. 
+            During the last 4.7mS, the serial data is sent. (Serial data is return at 9600 baid rate). 
 
 
 
@@ -62,16 +65,17 @@ Component Notes:
 
 Idea:
 Core 1 handles real-time data, Core 0 handles slower logging and communication.
+? How to split up US and ToFs?
 
-Core 1: IMU, OF, US, SBUS
+Core 1: IMU & OF (On the same SPI bus), US*(Interrupts), SBUS
+    * Is it quick enough?
     Priority: 4,4,3,2??
-    Timing: IMU 
-Core 0: ToF, LoRa, SD Card
+    Timing:  
+Core 0: ToF (on 2 I@C lines), LoRa (interrupt!), SD Card** (as needed bases)
     Priority: 4,4, (4 or 5) 
-    Timing (on cycle ~ 50ms): US(5ms), ToF (~36ms), Idle (~9ms)
-       Idle time (Off cycle): Write to SD Card (Idle), ***Check LoRa (every 1-2s or 1-0.5Hz)
-
-Lets go with normal SPI writing to SD card for the time being, and if this is too slow then explore DMA SPI. 
+    Timing : 
+       ToF (interrupt??), LoRa (Interrupts)-(every 1-2s or 1-0.5Hz)
+**Lets go with normal SPI writing to SD card for the time being, and if this is too slow then explore DMA SPI. 
 
         Example of operations on Core 1. 
                     Time (ms)

@@ -68,7 +68,40 @@ void loop() {
 //       buffer += c;
 //     }
 //   }
+//   // No delay here for maximum sampling speed
 // }
+
+#include <Arduino.h>
+
+void setup() {
+  Serial.begin(115200);                  // Debug
+  Serial1.begin(9600, SERIAL_8N1, 21);   // RX on GPIO21
+  Serial.println("Reading MB1030 TX output...");
+}
+
+void loop() {
+  static String buffer = "";
+
+  while (Serial1.available()) {
+    char c = Serial1.read();
+
+    if (c == '\r') { // End of reading
+      if (buffer.length() == 4 && buffer[0] == 'R') {
+        int distanceInches = buffer.substring(1).toInt();
+        float distanceCm = distanceInches * 2.54;
+
+        Serial.print("Distance: ");
+        Serial.print(distanceInches);
+        Serial.print(" in  |  ");
+        Serial.print(distanceCm, 2);
+        Serial.println(" cm");
+      }
+      buffer = ""; // Reset buffer
+    } else {
+      buffer += c;
+    }
+  }
+}
 
 
 
