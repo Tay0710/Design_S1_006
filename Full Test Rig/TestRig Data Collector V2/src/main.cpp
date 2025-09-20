@@ -122,12 +122,14 @@ float  dps_rating = 250; // 15.625/31.25/62.5/125/250/500/1000/2000/4000 dps
 // Timing control
 unsigned long lastIMUtime = 0;
 unsigned long lastOFtime = 0;
-unsigned long lastTOFtime = 0;
+unsigned long lastTOFLtime = 0;
+unsigned long lastTOFRtime = 0;
+unsigned long lastTOFUtime = 0;
+unsigned long lastTOFDtime = 0;
 static unsigned long lastUltraTime = 0;
 const unsigned long imuInterval = 625;    // microseconds → ~1600 Hz
 const unsigned long ofInterval = 10000;   // microseconds → ~100 Hz
 const unsigned long tofInterval = 250000;   // microseconds → ~4 Hz // Side Tof should be every 0.25s and Roof/ Floor ToF should be every 0.5s. 
-const unsigned long ultraInterval = 50000; // 50 ms → 20 Hz
 
 // const unsigned long S1tofInterval = 250000;
 // const unsigned long S2tofInterval = 250000;
