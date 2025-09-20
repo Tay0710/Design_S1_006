@@ -604,7 +604,6 @@ void loop() {
           Serial.println("Failed to open one or more files!");
       }
     }
-
     // --- Write data ---
     logIMU();   // writes to imuFile
     logToFL();   // writes to tofLFile
