@@ -14,30 +14,26 @@
 #include <SD.h>
 #include <SPI.h>
 #include <ICM45686.h>
-#include <SparkFun_VL53L5CX_Library.h> //http://librarymanager/All#SparkFun_VL53L5CX
 #include <Bitcraze_PMW3901.h>
 
 // Optical flow SPI pins (pins for Owen's ESP32)
-#define OF_CS 15 // Optical Flow CS pin
-#define VSPI_MOSI 13
-#define VSPI_CLK 14
-#define VSPI_MISO 33
-#define HSPI_MOSI 23 // (19)
-#define HSPI_CLK 18
-#define HSPI_MISO 19 // (23)
-#define SD_CS 32  // (36) Example CS pin for SD card
-#define IMU_CS 5  // Example CS pin for SD card
-#define TRIGGER_PIN 25 // (4) use GPIO4 as SWITCH to turn on/off when the esp32 is recording data mode. When pulled LOW, RECORDING Starts. 
+#define VSPI_MOSI 36
+#define VSPI_CLK 37
+#define VSPI_MISO 35
+#define HSPI_MOSI 11 // (19)
+#define HSPI_CLK 13
+#define HSPI_MISO 12 // (23)
+#define SD_CS 10  // (36) Example CS pin for SD card
+#define IMU_CS 38  // Example CS pin for SD card
+#define OF_CS 39 // Optical Flow CS pin
+#define TRIGGER_PIN 8 // (4) use GPIO4 as SWITCH to turn on/off when the esp32 is recording data mode. When pulled LOW, RECORDING Starts. 
 
 #define AP_SSID "ESP32_Frames"
 #define AP_PASSWORD "12345678"
 
-SparkFun_VL53L5CX myImager;
-VL53L5CX_ResultsData measurementData; // Result data class structure, 1356 byes of RAM
-
 // Chip select assignment
 SPIClass hspi(HSPI);
-ICM456xx IMU(hspi, IMU_CS); 
+ICM456xx IMU(SPI, IMU_CS); 
 Bitcraze_PMW3901 flow(OF_CS);
 
 // Variables for PMW3901
@@ -49,12 +45,10 @@ int imageResolution = 0; // Used to pretty print output
 // Web server
 WebServer server(80);
 const char* imuFileName = "/imu_ICM45686.csv";
-const char* tofFileName = "/tof_L7.csv";
 const char* ofFileName = "/of_PMW3901.csv";
 
 // Global file handles
 File imuFile;
-File tofFile;
 File ofFile;
 
 // Calibration offsets
@@ -66,14 +60,11 @@ float  dps_rating = 250; // 15.625/31.25/62.5/125/250/500/1000/2000/4000 dps
 
 // Timing control
 unsigned long lastIMUtime = 0;
-unsigned long lastTOFtime = 0;
 unsigned long lastOFtime = 0;
 const unsigned long imuInterval = 625;    // microseconds → ~1600 Hz
-const unsigned long tofInterval = 250000;   // microseconds → ~4 Hz // Side Tof should be every 0.25s and Roof/ Floor ToF should be every 0.5s. 
-const unsigned long ofInterval = 20000;   // microseconds → ~50 Hz
+const unsigned long ofInterval = 100000;   // microseconds → ~10 Hz
 
 char imuBuf[128];
-char tofBuf[512];
 char ofBuf[64];
 
 // ---- Calibration function ----
@@ -123,19 +114,6 @@ void calibrateIMU(int samples) {
                 duration, samples, (samples * 1000UL) / duration);
 }
 
-uint8_t readRegister(uint8_t reg) {
-  digitalWrite(OF_CS, LOW);
-  SPI.transfer(reg & 0x7F);  // MSB=0 -> read
-  uint8_t val = SPI.transfer(0);
-  digitalWrite(OF_CS, HIGH);
-  return val;
-}
-
-uint16_t readShutter() {
-  uint8_t hi = readRegister(0x0C);   // shutter high byte
-  uint8_t lo = readRegister(0x0B);   // shutter low byte
-  return (uint16_t(hi) << 8) | lo;
-}
 
 void setup()
 {
@@ -193,19 +171,11 @@ void setup()
   imu.println("time,gyro x,gyro y,gyro z,accel x,accel y,accel z");
   imu.close();
 
-  // Init ToF CSV
-  SD.remove(tofFileName);
-  File tof = SD.open(tofFileName, FILE_WRITE);
-  tof.print("time");
-  for(int i=0; i<16; i++) tof.print(",D"+String(i));
-  tof.println();
-  tof.close();
-
   // Init OF CSV
   SD.remove(ofFileName);
   File of = SD.open(ofFileName, FILE_WRITE);
   of.print("time");
-  of.print(",deltaX,deltaY,squal,shutter");
+  of.print(",deltaX,deltaY");
   of.println();
   of.close();
 
@@ -213,7 +183,6 @@ void setup()
   server.on("/", HTTP_GET, []() {
     server.send(200, "text/html",       "<h1>ESP32 Data Logger</h1>"
       "<a href='/download_imu'><button>Download IMU CSV</button></a><br>"
-      "<a href='/download_tof'><button>Download ToF CSV</button></a><br>"
     "<a href='/download_of'><button>Download OF CSV</button></a>");
   });
 
@@ -223,12 +192,6 @@ void setup()
     else server.send(404, "text/plain", "IMU file not found");
   });
 
-  server.on("/download_tof", HTTP_GET, []() {
-    File f = SD.open(tofFileName);
-    if(f) { server.streamFile(f, "text/csv"); f.close(); }
-    else server.send(404, "text/plain", "ToF file not found");
-  });
-
   server.on("/download_of", HTTP_GET, []() {
     File f = SD.open(ofFileName);
     if(f) { server.streamFile(f, "text/csv"); f.close(); }
@@ -236,30 +199,6 @@ void setup()
   });
 
   server.begin();
-
-  Wire.begin(); // This resets I2C bus to 100kHz
-  Wire.setClock(1000000); //Sensor has max I2C freq of 1MHz
-
-  Serial.println("Clock Has been Set for I2C!");
-
- // myImager.setWireMaxPacketSize(128); // Increase default from 32 bytes to 128 - not supported on all platforms. Default is 32 bytes. 
-
-  Serial.println("Initializing sensor board. This can take up to 10s. Please wait.");
-  if (myImager.begin() == false)
-  {
-    Serial.println(F("ToF Sensor not found - check your wiring. Freezing"));
-    while (1)
-      ;
-  }
-
-  myImager.setResolution(4*4); // Enable all 64 pads or 16 pads for 4x4 resolution
-
-  imageResolution = myImager.getResolution(); // Query sensor for current resolution - either 4x4 or 8x8
-
-  // Using 4x4, min frequency is 1Hz and max is 60Hz
-  // Using 8x8, min frequency is 1Hz and max is 15Hz
-  myImager.setRangingFrequency(15);
-  myImager.startRanging();
 
   Serial.println("Trigger LOW to Record data. Trigger HIGH to Stop and Download files.");
 
@@ -347,39 +286,6 @@ int intToStr(int val, char* buf) {
   return i;
 }
 
-void logToF() {
-  unsigned long now = micros();
-  if (now - lastTOFtime < tofInterval) return;  
-  lastTOFtime = now;
-  // Serial.print("entering_tof:");
-  // Serial.printf("%.9f",now/1000000.0);
-  if (!tofFile) return;
-
-  if(myImager.isDataReady() && myImager.getRangingData(&measurementData)) {
-        // Serial.print("      read:");
-        // now = micros();
-        // Serial.printf("%.9f",now/1000000.0);
-        // Serial.println("");
-      int idx = appendTimestamp(tofBuf, now); // write timestamp
-      for(int i = 0; i < imageResolution; i++) { //8x8 = 64; 4x4 = 16
-          tofBuf[idx++] = ',';      
-          const uint8_t stat  = measurementData.target_status[i];
-          if (stat == 5){         
-          idx += intToStr(measurementData.distance_mm[i], tofBuf + idx); // fast int -> string
-          }
-          else{
-            tofBuf[idx++] = 'X';
-          }
-      }
-      tofBuf[idx++] = '\n';
-      tofFile.write((uint8_t*)tofBuf, idx);  // write raw bytes
-  }
-  // Serial.print("       leaving_tof:");
-  // now = micros();
-  // Serial.printf("%.9f",now/1000000.0);
-  // Serial.println("");
-}
-
 void logOF() {
   unsigned long now = micros();
   if (now - lastOFtime < ofInterval) return;  
@@ -397,14 +303,11 @@ void logOF() {
   // Serial.printf("%.9f", now / 1000000.0);
   // Serial.println("");
 
-  uint8_t squal = readRegister(0x07);
-  uint8_t shutt = readShutter();
-
   // Add timestamp
   int idx = appendTimestamp(ofBuf, now);
 
   // Add DeltaX and DeltaY values
-  idx += snprintf(ofBuf + idx, sizeof(ofBuf) - idx, ",%d,%d,%i,%i\n", deltaX, deltaY, squal, shutt);
+  idx += snprintf(ofBuf + idx, sizeof(ofBuf) - idx, ",%d,%d\n", deltaX, deltaY);
   // // Add each pixel value
   // for (int i = 0; i < 1225; i++) {
   //     idx += sprintf(line + idx, ",%d", frame[i]);
@@ -429,19 +332,17 @@ void loop() {
       // --- Open files once when recording starts ---
       if (!imuFile) {
         imuFile = SD.open(imuFileName, FILE_APPEND);
-        tofFile = SD.open(tofFileName, FILE_APPEND);
         ofFile = SD.open(ofFileName, FILE_APPEND);
 
 
           Serial.println("Opening files for logging...");
-          if (!imuFile || !tofFile || !ofFile) {
+          if (!imuFile || !ofFile) {
               Serial.println("Failed to open one or more files!");
           }
       }
 
       // --- Write data ---
       logIMU();   // writes to imuFile
-      logToF();   // writes to tofFile
       logOF();    // writes to ofFile
   } 
   else {
@@ -451,8 +352,6 @@ void loop() {
       if (imuFile) {
           imuFile.close();
           imuFile = File(); // reset handle
-          tofFile.close();
-          tofFile = File();
           ofFile.close();
           ofFile = File();
           Serial.println("Files closed, safe to download.");
