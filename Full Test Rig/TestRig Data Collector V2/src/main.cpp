@@ -33,11 +33,11 @@
 #define RESET 41 // I2C reset
 #define LPN 42
 
-#define US1 18
-#define US2 15
-#define US3 16
-#define US4 4
-#define USO 5
+#define USD 18
+#define USU 15
+#define USL 16
+#define USR 4 // Right-mounted ultrasonic PW pin
+#define USF 5 // Front-mounted ultrasonic PW pin
 
 #define BOOT_PIN 0
 
@@ -124,7 +124,7 @@ unsigned long lastTOFDtime = 0;
 static unsigned long lastUltraTime = 0;
 const unsigned long imuInterval = 250;    // microseconds → ~4000 Hz | Low noise mode max = 6400Hz
 const unsigned long ofInterval = 20000;   // microseconds → ~50 Hz
-const unsigned long tofInterval = 250000;   // microseconds → ~4 Hz // Side Tof should be every 0.25s and Roof/ Floor ToF should be every 0.5s. 
+const unsigned long tofInterval = int(250000/4);   // microseconds → ~4 Hz // Side Tof should be every 0.25s and Roof/ Floor ToF should be every 0.5s. 
 
 // const unsigned long S1tofInterval = 250000;
 // const unsigned long S2tofInterval = 250000;
@@ -178,50 +178,48 @@ void calibrateIMU(int samples) {
 
 // Helper: append unsigned long to buffer, returns number of chars
 int appendULong(char* buf, unsigned long val) {
-    char temp[11]; // max 10 digits + null
-    int i = 0;
-    if(val == 0) {
-        buf[0] = '0';
-        return 1;
-    }
-    while(val > 0) {
-        temp[i++] = '0' + (val % 10);
-        val /= 10;
-    }
-    for(int j = 0; j < i; j++) buf[j] = temp[i - j - 1];
-    return i;
+  char temp[11]; // max 10 digits + null
+  int i = 0;
+  if(val == 0) {
+      buf[0] = '0';
+      return 1;
+  }
+  while(val > 0) {
+      temp[i++] = '0' + (val % 10);
+      val /= 10;
+  }
+  for(int j = 0; j < i; j++) buf[j] = temp[i - j - 1];
+  return i;
 }
 
 // Write timestamp in seconds.microseconds
 int appendTimestamp(char* buf, unsigned long micros_val) {
-    unsigned long seconds = micros_val / 1000000;
-    unsigned long us      = micros_val % 1000000;
-    int idx = 0;
-    idx += appendULong(buf + idx, seconds);
-    buf[idx++] = '.';
-    // Pad microseconds with leading zeros
-    int digits = 6;
-    char temp[6];
-    for(int i = 5; i >= 0; i--) {
-        temp[i] = '0' + (us % 10);
-        us /= 10;
-    }
-    for(int i = 0; i < 6; i++) buf[idx++] = temp[i];
-    return idx;
+  unsigned long seconds = micros_val / 1000000;
+  unsigned long us      = micros_val % 1000000;
+  int idx = 0;
+  idx += appendULong(buf + idx, seconds);
+  buf[idx++] = '.';
+  // Pad microseconds with leading zeros
+  int digits = 6;
+  char temp[6];
+  for(int i = 5; i >= 0; i--) {
+      temp[i] = '0' + (us % 10);
+      us /= 10;
+  }
+  for(int i = 0; i < 6; i++) buf[idx++] = temp[i];
+  return idx;
 }
 
 void logIMU() {
   unsigned long now = micros();
   if (now - lastIMUtime < imuInterval) return;  
   lastIMUtime = now;
-  // Serial.print("entering_imu:");
-  // Serial.printf("%.9f",now/1000000.0);
   if (!imuFile) return; // if file is not open; skip!
 
   inv_imu_sensor_data_t imu_data;
   IMU.getDataFromRegisters(imu_data);
 
-  float gx = imu_data.gyro_data[0]*dps_rating/32768.0 - calibGyroX;
+  float gx = imu_data.gyro_data[0]*dps_rating/32768.0 - calibGyroX; // To do - confirm if max is 32767 or 32768
   float gy = imu_data.gyro_data[1]*dps_rating/32768.0 - calibGyroY;
   float gz = imu_data.gyro_data[2]*dps_rating/32768.0 - calibGyroZ;
   float ax = imu_data.accel_data[0]*G_rating/32768.0 - calibAccelX;
@@ -252,46 +250,114 @@ int intToStr(int val, char* buf) {
   return i;
 }
 
-// Helper to log one ToF sensor in CSV: timestamp,type,D0,D1,...
-void logOneToF(SparkFun_VL53L5CX &sensor, VL53L5CX_ResultsData &data,
-               const char *type, int resolution) {
-    unsigned long now = micros();
-    if (!sensor.isDataReady() || !sensor.getRangingData(&data)) return;
+void logToFL() {
+  unsigned long now = micros();
+  if (!tofLFile) return;
 
-    int idx = appendTimestamp(tofBuf, now); // timestamp
-    tofBuf[idx++] = ',';
+  if(sensorL.isDataReady() && sensorR.getRangingData(&measurementDataL)) {
+    int idx = appendTimestamp(tofLBuf, now); // write timestamp
 
-    // add type string
-    for (const char *p = type; *p; p++) tofBuf[idx++] = *p;
-
-    // add distances
-    for (int i = 0; i < resolution; i++) {
-        tofBuf[idx++] = ',';
-        const uint8_t stat = data.target_status[i];
-        if (stat == 5) {
-            idx += intToStr(data.distance_mm[i], tofBuf + idx);
-        } else {
-            tofBuf[idx++] = 'X';
-        }
+    for(int i = 0; i < LimageResolution; i++) { //8x8 = 64; 4x4 = 16
+      tofLBuf[idx++] = ',';      
+      const uint8_t stat  = measurementDataL.target_status[i];
+      if (stat == 5){         
+      idx += intToStr(measurementDataL.distance_mm[i], tofLBuf + idx); // fast int -> string
+      }
+      else{
+        tofLBuf[idx++] = 'X';
+      }
     }
 
-    tofBuf[idx++] = '\n';
-    tofFile.write((uint8_t*)tofBuf, idx);
+      tofLBuf[idx++] = '\n';
+      tofLFile.write((uint8_t*)tofLBuf, idx);  // write raw bytes
+  }
 }
+
+void logToFR() {
+  unsigned long now = micros();
+  if (!tofRFile) return;
+
+  if(sensorR.isDataReady() && sensorR.getRangingData(&measurementDataR)) {
+    int idx = appendTimestamp(tofRBuf, now); // write timestamp
+
+    for(int i = 0; i < LimageResolution; i++) { //8x8 = 64; 4x4 = 16
+      tofRBuf[idx++] = ',';      
+      const uint8_t stat  = measurementDataR.target_status[i];
+      if (stat == 5){         
+      idx += intToStr(measurementDataR.distance_mm[i], tofRBuf + idx); // fast int -> string
+      }
+      else{
+        tofRBuf[idx++] = 'X';
+      }
+    }
+
+      tofRBuf[idx++] = '\n';
+      tofRFile.write((uint8_t*)tofRBuf, idx);  // write raw bytes
+  }
+}
+
+void logToFU() {
+  unsigned long now = micros();
+  if (!tofUFile) return;
+
+  if(sensorU.isDataReady() && sensorU.getRangingData(&measurementDataU)) {
+
+    int idx = appendTimestamp(tofUBuf, now); // write timestamp
+
+    for(int i = 0; i < UimageResolution; i++) { //8x8 = 64; 4x4 = 16
+      tofUBuf[idx++] = ',';      
+      const uint8_t stat  = measurementDataU.target_status[i];
+      if (stat == 5){         
+      idx += intToStr(measurementDataU.distance_mm[i], tofUBuf + idx); // fast int -> string
+      }
+      else{
+        tofUBuf[idx++] = 'X';
+      }
+    }
+
+      tofUBuf[idx++] = '\n';
+      tofUFile.write((uint8_t*)tofUBuf, idx);  // write raw bytes
+  }
+}
+
+void logToFD() {
+  unsigned long now = micros();
+  if (!tofRFile) return;
+
+  if(sensorD.isDataReady() && sensorD.getRangingData(&measurementDataD)) {
+
+    int idx = appendTimestamp(tofDBuf, now); // write timestamp
+
+    for(int i = 0; i < UimageResolution; i++) { //8x8 = 64; 4x4 = 16
+      tofDBuf[idx++] = ',';      
+      const uint8_t stat  = measurementDataD.target_status[i];
+      if (stat == 5){         
+      idx += intToStr(measurementDataD.distance_mm[i], tofDBuf + idx); // fast int -> string
+      }
+      else{
+        tofDBuf[idx++] = 'X';
+      }
+    }
+
+      tofDBuf[idx++] = '\n';
+      tofDFile.write((uint8_t*)tofDBuf, idx);  // write raw bytes
+  }
+}
+
+volatile int tofInd = 0;
 
 void logToF() {
-    unsigned long now = micros();
-    if (now - lastTOFtime < tofInterval) return;
-    lastTOFtime = now;
-    if (!tofFile) return;
+  unsigned long now = micros();
+  if (now - lastTOFtime < tofInterval) return;
+  lastTOFtime = now;
 
-    // each sensor logs a separate line
-    logOneToF(sensorS1, measurementDataS1, "S1", S1imageResolution);
-    logOneToF(sensorS2, measurementDataS2, "S2", S1imageResolution);
-    logOneToF(sensorR,  measurementDataR,  "R",  RimageResolution);
-    logOneToF(sensorF,  measurementDataF,  "F",  RimageResolution);
+  switch (tofInd) {
+    case 0: logToFD(); tofInd++;
+    case 1: logToFL(); tofInd++;
+    case 2: logToFR(); tofInd++;
+    case 3: logToFU(); tofInd = 0;
+  }
 }
-
 
 void logOF() {
   unsigned long now = micros();
@@ -307,13 +373,23 @@ void logOF() {
   ofFile.write((uint8_t*)ofBuf, idx);
 }
 
+#define pwPin1 14
+volatile unsigned long pulseStartD = 0;
+volatile float pulseWidthD = 0;
+volatile bool ultraReadyD = false;
 
-// Helper to read one ultrasonic sensor in cm
-float readUltrasonic(int pin) {
-    // pulseIn returns pulse width in microseconds
-    unsigned long duration = pulseIn(pin, HIGH, 37500); // 37.5 ms timeout
-    if (duration == 0) return -1.0; // No reading
-    return duration / 57.87;        // Convert to cm (MB1030 formula)
+void US1_ISR() {
+  // Called when pwPin changes
+  if (digitalRead(pwPin1) == HIGH) {
+    // Rising edge
+    pulseStart1 = micros();
+    US_ready1 = false;
+  } else {
+    // Falling edge
+    unsigned long pulseWidth = micros() - pulseStart1;
+    distanceCm1 = pulseWidth / 57.87;
+    US_ready1 = true;
+  }
 }
 
 // Log all 4 ultrasonic sensors (US1-US4) to CSV
@@ -431,7 +507,7 @@ void setup()
   sensorF.setResolution(4 * 4);
   // Using 4x4, min frequency is 1Hz and max is 60Hz
   // Using 8x8, min frequency is 1Hz and max is 15Hz
-  RimageResolution = sensorR.getResolution();
+  UimageResolution = sensorU.getResolution();
   Serial.println("Sensor's initialized successfully at 0x30");
   delay(50);
 
@@ -449,7 +525,7 @@ void setup()
   }
   sensorS1.setResolution(8 * 8);
   sensorS1.setResolution(8 * 8);
-  S1imageResolution = sensorS1.getResolution();
+  LimageResolution = sensorL.getResolution();
   Serial.println("Sensor 1 initialized successfully at 0x29");
   delay(50);
 
@@ -530,9 +606,12 @@ void loop() {
 
       // --- Write data ---
       logIMU();   // writes to imuFile
-      logToF();   // writes to tofFile
+      logToFL();   // writes to tofLFile
+      logToFR();   // writes to tofRFile
+      logToFU();   // writes to tofUFile
+      logToFD();   // writes to tofDFile
       logOF();    // writes to ofFile
-      logUltrasonics();
+      logUS1();
   } 
   else {
     // --- Close files once when recording stops ---
