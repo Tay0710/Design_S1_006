@@ -472,17 +472,17 @@ void setup() {
 
   // Change sensor address to 0x30 after calling begin()
     if (!sensorU.begin()) { 
-    Serial.println("Sensor R not found at 0x29!");
+    Serial.println("Sensor U not found at 0x29!");
     while (1);
   }
     if (!sensorD.begin()) { 
-    Serial.println("Sensor F not found at 0x29!");
+    Serial.println("Sensor D not found at 0x29!");
     while (1);
   }
-  sensorR.setAddress(CHANGE_ADDR);
-  sensorF.setAddress(CHANGE_ADDR);
-  sensorR.setResolution(4 * 4);
-  sensorF.setResolution(4 * 4);
+  sensorU.setAddress(CHANGE_ADDR);
+  sensorD.setAddress(CHANGE_ADDR);
+  sensorU.setResolution(4 * 4);
+  sensorD.setResolution(4 * 4);
   // Using 4x4, min frequency is 1Hz and max is 60Hz
   // Using 8x8, min frequency is 1Hz and max is 15Hz
   UimageResolution = sensorU.getResolution();
@@ -493,16 +493,16 @@ void setup() {
   digitalWrite(LPN, HIGH); // Other LPn should still be set HIGH
   delay(100); 
 
-  if (!sensorS1.begin()) {
-    Serial.println("Sensor S1 not found at 0x29!");
+  if (!sensorL.begin()) {
+    Serial.println("Sensor L not found at 0x29!");
     while (1);
   } 
-  if (!sensorS2.begin()) {
-    Serial.println("Sensor S2 not found at 0x29!");
+  if (!sensorR.begin()) {
+    Serial.println("Sensor R not found at 0x29!");
     while (1);
   }
-  sensorS1.setResolution(8 * 8);
-  sensorS1.setResolution(8 * 8);
+  sensorL.setResolution(8 * 8);
+  sensorR.setResolution(8 * 8);
   LimageResolution = sensorL.getResolution();
   Serial.println("Sensor 1 initialized successfully at 0x29");
   delay(50);
@@ -514,31 +514,51 @@ void setup() {
   // sensorS2.setRangingFrequency(15);
   // Start ranging on both sensors. 
   Serial.println("Starting ranging of ToFL7  sensors...");
+  sensorU.startRanging();
+  sensorD.startRanging();
+  sensorL.startRanging();
   sensorR.startRanging();
-  sensorF.startRanging();
-  sensorS1.startRanging();
-  sensorS2.startRanging();
   Serial.println("Sensors are now ranging.");
 
   // Ultrasonics
-  pinMode(US1, INPUT); // Note: Ultrasonics operate on a 49mS cycle.
-  pinMode(US2, INPUT);
-  pinMode(US3, INPUT);
-  pinMode(US4, INPUT);
-  pinMode(USO, INPUT); // USO is for object detection (front of drone). 
+  pinMode(USD, INPUT); // Note: Ultrasonics operate on a 49mS cycle.
+  // pinMode(USU, INPUT);
+  // pinMode(USL, INPUT);
+  // pinMode(USR, INPUT);
+  // pinMode(USF, INPUT); // USF is for object detection (front of drone). 
 
   // Init IMU CSV
   SD.remove(imuFileName);
   File imu = SD.open(imuFileName, FILE_WRITE);
   imu.println("time,gyro x,gyro y,gyro z,accel x,accel y,accel z");
   imu.close();
-  // Init ToF CSV
-  SD.remove(tofFileName);
-  File tof = SD.open(tofFileName, FILE_WRITE);
-  tof.print("time,type");
-  for(int i=0; i<((S1imageResolution)); i++) tof.print(",D"+String(i));
-  tof.println();
-  tof.close();
+
+  // Init ToF CSVs
+  SD.remove(tofUFileName);
+  File tofU = SD.open(tofUFileName, FILE_WRITE);
+  tofU.print("time,type");
+  for(int i=0; i<((UimageResolution)); i++) tofU.print(",D"+String(i));
+  tofU.println();
+  tofU.close();
+  SD.remove(tofDFileName);
+  File tofD = SD.open(tofDFileName, FILE_WRITE);
+  tofD.print("time,type");
+  for(int i=0; i<((UimageResolution)); i++) tofD.print(",D"+String(i));
+  tofD.println();
+  tofD.close();
+  SD.remove(tofLFileName);
+  File tofL = SD.open(tofLFileName, FILE_WRITE);
+  tofL.print("time,type");
+  for(int i=0; i<((LimageResolution)); i++) tofL.print(",D"+String(i));
+  tofL.println();
+  tofL.close();
+  SD.remove(tofRFileName);
+  File tofR = SD.open(tofRFileName, FILE_WRITE);
+  tofR.print("time,type");
+  for(int i=0; i<((LimageResolution)); i++) tofR.print(",D"+String(i));
+  tofR.println();
+  tofR.close();
+
   // Init OF CSV
   SD.remove(ofFileName);
   File of = SD.open(ofFileName, FILE_WRITE);
@@ -546,7 +566,8 @@ void setup() {
   of.print(",deltaX,deltaY");
   of.println();
   of.close();
-  // Init Ultra CSV
+
+  // Init Ultra CSVs
   SD.remove(UltraFileName);
   File Ultra = SD.open(UltraFileName, FILE_WRITE);
   Ultra.print("time,US1,US2,US3,US4"); 
@@ -567,29 +588,28 @@ void loop() {
     }
   }
 
-
   if (mode) { // if mode is true, start recording
-      // --- Open files once when recording starts ---
-      if (!imuFile) {
-        imuFile = SD.open(imuFileName, FILE_APPEND);
-        tofFile = SD.open(tofFileName, FILE_APPEND);
-        ofFile = SD.open(ofFileName, FILE_APPEND);
-        UltraFile = SD.open(UltraFileName, FILE_APPEND);
+    // --- Open files once when recording starts ---
+    if (!imuFile) {
+      imuFile = SD.open(imuFileName, FILE_APPEND);
+      tofFile = SD.open(tofFileName, FILE_APPEND);
+      ofFile = SD.open(ofFileName, FILE_APPEND);
+      UltraFile = SD.open(UltraFileName, FILE_APPEND);
 
-          Serial.println("Opening files for logging...");
-          if (!imuFile || !tofFile || !ofFile) {
-              Serial.println("Failed to open one or more files!");
-          }
-      }
+        Serial.println("Opening files for logging...");
+        if (!imuFile || !tofFile || !ofFile) {
+            Serial.println("Failed to open one or more files!");
+        }
+    }
 
-      // --- Write data ---
-      logIMU();   // writes to imuFile
-      logToFL();   // writes to tofLFile
-      logToFR();   // writes to tofRFile
-      logToFU();   // writes to tofUFile
-      logToFD();   // writes to tofDFile
-      logOF();    // writes to ofFile
-      logUS1();
+    // --- Write data ---
+    logIMU();   // writes to imuFile
+    logToFL();   // writes to tofLFile
+    logToFR();   // writes to tofRFile
+    logToFU();   // writes to tofUFile
+    logToFD();   // writes to tofDFile
+    logOF();    // writes to ofFile
+    logUS1();
   } 
   else {
     // --- Close files once when recording stops ---
