@@ -1,7 +1,5 @@
 // 
 
-
-// lib's for each of the sensors?
 // Components:
 // IMU, OF, SD Card, 4*ToF, 5*Ultrasonic (4 mapping, 1 obejct detection)
 // Missing SBUS commands
@@ -47,7 +45,6 @@ bool mode = false;         // toggled by BOOT button
 unsigned long lastPress = 0;
 const unsigned long debounceDelay = 200; // ms
 
-
 // VL53L7CX new I2C addresses for 2nd Sensor on I2C bus
 #define CHANGE_ADDR 0x30
 
@@ -79,8 +76,8 @@ File UltraFile;
 // Separate ToF files
 File tofLFile; // left
 File tofRFile; // right
-File tofUFile;  // upwards
-File tofDFile;  // downwards
+File tofUFile; // upwards
+File tofDFile; // downwards
 
 // File Names
 const char* imuFileName = "/imu_ICM45686.csv";
@@ -99,9 +96,7 @@ int16_t deltaX, deltaY;
 int LimageResolution = 0; // Same for R
 int UimageResolution  = 0; // Same for D
 
-///////////////////////////////////////////////////////
-// CHECK THAT THESE CHAR SIZES are LARGE ENOUGH !!!!
-//////////////////////////////////////////////////////
+// Char buffers
 char imuBuf[128];
 char ofBuf[64];
 char ultraBuf[64];
@@ -127,8 +122,8 @@ unsigned long lastTOFRtime = 0;
 unsigned long lastTOFUtime = 0;
 unsigned long lastTOFDtime = 0;
 static unsigned long lastUltraTime = 0;
-const unsigned long imuInterval = 625;    // microseconds → ~1600 Hz
-const unsigned long ofInterval = 10000;   // microseconds → ~100 Hz
+const unsigned long imuInterval = 250;    // microseconds → ~4000 Hz | Low noise mode max = 6400Hz
+const unsigned long ofInterval = 20000;   // microseconds → ~50 Hz
 const unsigned long tofInterval = 250000;   // microseconds → ~4 Hz // Side Tof should be every 0.25s and Roof/ Floor ToF should be every 0.5s. 
 
 // const unsigned long S1tofInterval = 250000;
@@ -155,8 +150,6 @@ void calibrateIMU(int samples) {
     sumGx += imu_data.gyro_data[0];
     sumGy += imu_data.gyro_data[1];
     sumGz += imu_data.gyro_data[2];
-
-    // delay(2); // ~500 Hz - Delay is not required (ignore CHATGPT suggestion)
   }
 
   unsigned long endTime = millis();
@@ -183,7 +176,6 @@ void calibrateIMU(int samples) {
                 duration, samples, (samples * 1000UL) / duration);
 }
 
-
 void setup()
 {
   
@@ -208,7 +200,8 @@ void setup()
   IMU.startGyro(1600, dps_rating);    // 100 Hz, ±15.625/31.25/62.5/125/250/500/1000/
   delay(100); // Delay needed to ensure proper calibration
   Serial.println("Do not move drone while calibrating the ICM.");
-  calibrateIMU(1000);
+  calibrateIMU(2000);
+
   // PMW3901 begin - using vspi
   if (!flow.begin()) {
       Serial.println("PMW3901 initialization failed. Check wiring!");
@@ -222,9 +215,7 @@ void setup()
     while (1);
   }
 
-  /*
-4 ToF sensor code. 
-*/
+// 4 ToF sensor code. 
   I2C1.begin(); // This resets I2C bus to 100kHz
   I2C1.setClock(1000000); //Sensor (L7) has max I2C freq of 1MHz
   I2C2.begin(); 
