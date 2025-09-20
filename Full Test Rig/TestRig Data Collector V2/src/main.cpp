@@ -33,9 +33,9 @@
 #define RESET 41 // I2C reset
 #define LPN 42
 
-#define USD 18
-#define USU 15
-#define USL 16
+#define USD 18 // Downwards-mounted ultrasonic PW pin
+#define USU 15 // Upwards-mounted ultrasonic PW pin
+#define USL 16 // Left-mounted ultrasonic PW pin
 #define USR 4 // Right-mounted ultrasonic PW pin
 #define USF 5 // Front-mounted ultrasonic PW pin
 
