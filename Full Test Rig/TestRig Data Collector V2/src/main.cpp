@@ -64,10 +64,10 @@ VL53L5CX_ResultsData measurementDataD;
 
 // Chip select assignment
 // Create SPI buses
-SPIClass vspi(VSPI);   // Optical Flow and IMU
+// Optical Flow and IMU on SPI
 SPIClass hspi(HSPI);   // SD Card
 Bitcraze_PMW3901 flow(CSOF);
-ICM456xx IMU(VSPI, CSIMU);
+ICM456xx IMU(SPI, CSIMU);
 
 // Global file handles
 File imuFile;
@@ -117,10 +117,7 @@ float  dps_rating = 250; // 15.625/31.25/62.5/125/250/500/1000/2000/4000 dps
 // Timing control
 unsigned long lastIMUtime = 0;
 unsigned long lastOFtime = 0;
-unsigned long lastTOFLtime = 0;
-unsigned long lastTOFRtime = 0;
-unsigned long lastTOFUtime = 0;
-unsigned long lastTOFDtime = 0;
+unsigned long lastTOFtime = 0;
 const unsigned long imuInterval = 250;    // microseconds → ~4000 Hz | Low noise mode max = 6400Hz
 const unsigned long ofInterval = 20000;   // microseconds → ~50 Hz
 const unsigned long tofInterval = int(250000/4);   // microseconds → ~4 Hz // Side Tof should be every 0.25s and Roof/ Floor ToF should be every 0.5s. 
@@ -408,7 +405,7 @@ void setup() {
   delay(10);
 
   // SPI Setup
-  vspi.begin(VSPI_CLK, VSPI_MISO, VSPI_MOSI);
+  SPI.begin(VSPI_CLK, VSPI_MISO, VSPI_MOSI);
   hspi.begin(HSPI_CLK, HSPI_MISO, HSPI_MOSI);
 
   // Initialise ICM45686 - using vspi.
@@ -438,11 +435,9 @@ void setup() {
   }
 
   // Initialise 4 ToF sensors
-  I2C1.begin(); // This resets I2C bus to 100kHz
+  I2C1.begin(SDA1, SCL1); // This resets I2C bus to 100kHz
   I2C1.setClock(1000000); //Sensor (L7) has max I2C freq of 1MHz
-  I2C2.begin(); 
-  I2C2.setClock(1000000); 
-  Serial.println("Clock Has been Set for I2C's!");
+  Serial.println("Clock Has been Set for I2Cs");
 
   // Address reset sequence for ToFL7 sensors.
   // Activating PWR_EN (Make High). 
@@ -466,16 +461,21 @@ void setup() {
   digitalWrite(LPN, LOW); // One LPn should be set HIGH permanently
   delay(100); 
 
-  // I2C bus split: L + U on I2C1; R + D on I2C2
+  // I2C bus split: L + U on I2C2; R + D on I2C1
   // Have to change the address of the ToFs with no LPN pin attached.
   // U + D are the sensors that have their address changed
 
   // Change sensor address to 0x30 after calling begin()
-    if (!sensorU.begin()) { 
+  if (!sensorU.begin(0x29, I2C1)) { 
     Serial.println("Sensor U not found at 0x29!");
     while (1);
   }
-    if (!sensorD.begin()) { 
+
+  I2C2.begin(SDA2, SCL2); 
+  I2C2.setClock(1000000); 
+  delay(100); 
+
+  if (!sensorD.begin(0x29, I2C2)) { 
     Serial.println("Sensor D not found at 0x29!");
     while (1);
   }
