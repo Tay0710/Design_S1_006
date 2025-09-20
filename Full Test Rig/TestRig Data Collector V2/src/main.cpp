@@ -411,7 +411,7 @@ void setup() {
   vspi.begin(VSPI_CLK, VSPI_MISO, VSPI_MOSI);
   hspi.begin(HSPI_CLK, HSPI_MISO, HSPI_MOSI);
 
-  // ICM45686 Begin - using psramSPI.
+  // Initialise ICM45686 - using vspi.
   if (IMU.begin() != 0) {
     Serial.println("ICM456xx initialization failed");
     while (1);
@@ -423,20 +423,21 @@ void setup() {
   Serial.println("Do not move drone while calibrating the ICM.");
   calibrateIMU(2000);
 
-  // PMW3901 begin - using vspi
+  // Initialise PMW3901 - using vspi
   if (!flow.begin()) {
       Serial.println("PMW3901 initialization failed. Check wiring!");
       while (1);  // stop if not found
   }
   delay(100);
   flow.enableFrameBuffer(); 
-  // Initialize SD card - using hspi
+
+  // Initialise SD card - using hspi
   if (!SD.begin(SDCS, hspi)) {
     Serial.println("SD init failed!");
     while (1);
   }
 
-  // 4 ToF sensor code. 
+  // Initialise 4 ToF sensors
   I2C1.begin(); // This resets I2C bus to 100kHz
   I2C1.setClock(1000000); //Sensor (L7) has max I2C freq of 1MHz
   I2C2.begin(); 
