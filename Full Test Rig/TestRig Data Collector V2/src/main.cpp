@@ -408,9 +408,8 @@ void setup() {
   delay(10);
 
   // SPI Setup
-  vspi.begin(CLK1, MISO1, MOSI1, CS1);
-  hspi.begin(SDCLK, SDMISO, SDMOSI, SDCS);
-  psramSPI.begin(AP_CLK2, AP_SDO2, AP_SDI2, AP_CS2);
+  vspi.begin(VSPI_CLK, VSPI_MISO, VSPI_MOSI);
+  hspi.begin(HSPI_CLK, HSPI_MISO, HSPI_MOSI);
 
   // ICM45686 Begin - using psramSPI.
   if (IMU.begin() != 0) {
