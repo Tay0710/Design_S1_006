@@ -287,7 +287,6 @@ void logToFL() {
   }
 }
 
-
 void logToFR() {
   unsigned long now = micros();
   if (!tofFile) return;
@@ -472,10 +471,10 @@ void logToF() {
   if (now - lastTOFtime < tofInterval) return;
 
   switch (tofInd) {
-    case 0: logToFL(); break;
+    case 0: logToFR(); break;
     case 1: logToFU(); break;
     case 2: logToFD(); break;
-    case 3: logToFR(); break;
+    case 3: logToFL(); break;
     default: tofInd = 0; break; // resets if corrupted
   }
 }
@@ -591,7 +590,7 @@ void setup() {
   digitalWrite(LPN, LOW); // One LPn should be set HIGH permanently
   delay(100); 
 
-  // I2C bus split: R + U on I2C_bus2; L + D on I2C_bus1
+  // I2C bus split: L + U on I2C_bus2; R + D on I2C_bus1
   // Have to change the address of the ToFs with no LPN pin attached.
   // U + D are the sensors that have their address changed
 
@@ -621,16 +620,16 @@ void setup() {
   digitalWrite(LPN, HIGH); // Other LPn should still be set HIGH
   delay(100); 
 
-  if (!sensorL.begin(0x29, I2C_bus1)) {
+  if (!sensorR.begin(0x29, I2C_bus1)) {
     Serial.println("Sensor L not found at 0x29!");
     while (1);
   } 
-  if (!sensorR.begin(0x29, I2C_bus2)) {
+  if (!sensorL.begin(0x29, I2C_bus2)) {
     Serial.println("Sensor R not found at 0x29!");
     while (1);
   }
-  sensorL.setResolution(8 * 8);
   sensorR.setResolution(8 * 8);
+  sensorL.setResolution(8 * 8);
   LimageResolution = sensorL.getResolution();
   Serial.println("Sensors L and R initialized successfully at 0x29");
   delay(50);
