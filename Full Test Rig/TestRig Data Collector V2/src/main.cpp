@@ -121,7 +121,12 @@ float  dps_rating = 250; // 15.625/31.25/62.5/125/250/500/1000/2000/4000 dps
 // Timing control
 unsigned long lastIMUtime = 0;
 unsigned long lastOFtime = 0;
-unsigned long lastTOFtime = 0;
+// unsigned long lastTOFtime = 0;
+unsigned long lastTOFLtime = 0;
+unsigned long lastTOFRtime = 0;
+unsigned long lastTOFUtime = 0;
+unsigned long lastTOFDtime = 0;
+
 const unsigned long imuInterval = 250;    // microseconds → ~4000 Hz | Low noise mode max = 6400Hz
 const unsigned long ofInterval = 20000;   // microseconds → ~50 Hz
 const unsigned long tofInterval = int(500000/4);   // microseconds → ~4 Hz // Side Tof should be every 0.25s and Roof/ Floor ToF should be every 0.5s. 
@@ -253,8 +258,8 @@ int intToStr(int val, char* buf) {
 
 void logToFL() {
   unsigned long now = micros();
-  if (now - lastTOFtime < tofInterval) return;
-  lastTOFtime = now;
+  if (now - lastTOFLtime < tofInterval) return;
+  lastTOFLtime = now;
   if (!tofFile) return;
 
   if(sensorL.isDataReady() && sensorL.getRangingData(&measurementDataL)) {
@@ -278,10 +283,11 @@ void logToFL() {
   }
 }
 
+
 void logToFR() {
   unsigned long now = micros();
-  if (now - lastTOFtime < tofInterval) return;
-  lastTOFtime = now;
+  if (now - lastTOFRtime < tofInterval) return;
+  lastTOFRtime = now;
   if (!tofFile) return;
 
   if(sensorR.isDataReady() && sensorR.getRangingData(&measurementDataR)) {
@@ -307,8 +313,8 @@ void logToFR() {
 
 void logToFU() {
   unsigned long now = micros();
-  if (now - lastTOFtime < tofInterval) return;
-  lastTOFtime = now;
+  if (now - lastTOFUtime < tofInterval) return;
+  lastTOFUtime = now;
   if (!tofFile) return;
 
   if(sensorU.isDataReady() && sensorU.getRangingData(&measurementDataU)) {
@@ -334,8 +340,8 @@ void logToFU() {
 
 void logToFD() {
   unsigned long now = micros();
-  if (now - lastTOFtime < tofInterval) return;
-  lastTOFtime = now;
+  if (now - lastTOFDtime < tofInterval) return;
+  lastTOFDtime = now;
   if (!tofFile) return;
 
   if(sensorD.isDataReady() && sensorD.getRangingData(&measurementDataD)) {
