@@ -124,7 +124,7 @@ unsigned long lastOFtime = 0;
 unsigned long lastTOFtime = 0;
 const unsigned long imuInterval = 250;    // microseconds → ~4000 Hz | Low noise mode max = 6400Hz
 const unsigned long ofInterval = 20000;   // microseconds → ~50 Hz
-const unsigned long tofInterval = int(500000/4);   // microseconds → ~4 Hz // Side Tof should be every 0.25s and Roof/ Floor ToF should be every 0.5s. 
+const unsigned long tofInterval = 500000/4;   // microseconds → ~4 Hz // Side Tof should be every 0.25s and Roof/ Floor ToF should be every 0.5s. 
 
 // const unsigned long S1tofInterval = 250000;
 // const unsigned long S2tofInterval = 250000;
