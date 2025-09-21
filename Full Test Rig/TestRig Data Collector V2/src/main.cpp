@@ -253,6 +253,8 @@ int intToStr(int val, char* buf) {
 
 void logToFL() {
   unsigned long now = micros();
+  if (now - lastTOFtime < tofInterval) return;
+  lastTOFtime = now;
   if (!tofFile) return;
 
   if(sensorL.isDataReady() && sensorL.getRangingData(&measurementDataL)) {
@@ -278,6 +280,8 @@ void logToFL() {
 
 void logToFR() {
   unsigned long now = micros();
+  if (now - lastTOFtime < tofInterval) return;
+  lastTOFtime = now;
   if (!tofFile) return;
 
   if(sensorR.isDataReady() && sensorR.getRangingData(&measurementDataR)) {
@@ -303,6 +307,8 @@ void logToFR() {
 
 void logToFU() {
   unsigned long now = micros();
+  if (now - lastTOFtime < tofInterval) return;
+  lastTOFtime = now;
   if (!tofFile) return;
 
   if(sensorU.isDataReady() && sensorU.getRangingData(&measurementDataU)) {
@@ -328,6 +334,8 @@ void logToFU() {
 
 void logToFD() {
   unsigned long now = micros();
+  if (now - lastTOFtime < tofInterval) return;
+  lastTOFtime = now;
   if (!tofFile) return;
 
   if(sensorD.isDataReady() && sensorD.getRangingData(&measurementDataD)) {
@@ -449,15 +457,12 @@ void logToFD() {
 volatile int tofInd = 0;
 
 void logToF() {
-  unsigned long now = micros();
-  if (now - lastTOFtime < tofInterval) return;
-  lastTOFtime = now;
-
   switch (tofInd) {
-    case 0: logToFD(); tofInd++;
-    case 1: logToFL(); tofInd++;
-    case 2: logToFR(); tofInd++;
-    case 3: logToFU(); tofInd = 0;
+    case 0: logToFD(); tofInd++; break;
+    case 1: logToFL(); tofInd++; break;
+    case 2: logToFR(); tofInd++; break;
+    case 3: logToFU(); tofInd = 0; break;
+    default: tofInd = 0; break; // resets if corrupted
   }
 }
 
