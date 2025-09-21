@@ -75,20 +75,22 @@ ICM456xx IMU(SPI, CSIMU);
 File imuFile;
 File ofFile;
 File UltraFile;
+File tofFile;
 // Separate ToF files
-File tofLFile; // left
-File tofRFile; // right
-File tofUFile; // upwards
-File tofDFile; // downwards
+// File tofLFile; // left
+// File tofRFile; // right
+// File tofUFile; // upwards
+// File tofDFile; // downwards
 
 // File Names
 const char* imuFileName = "/imu_ICM45686.csv";
 const char* ofFileName = "/of_PMW3901.csv";
 const char* UltraFileName = "/Ultra_MB1030.csv";
-const char* tofLFileName = "/L_tof_L7.csv";
-const char* tofRFileName = "/R_tof_L7.csv";
-const char* tofUFileName = "/U_tof_L7.csv";
-const char* tofDFileName = "/D_tof_L7.csv";
+const char* tofFileName = "/tof_L7.csv";
+// const char* tofLFileName = "/L_tof_L7.csv";
+// const char* tofRFileName = "/R_tof_L7.csv";
+// const char* tofUFileName = "/U_tof_L7.csv";
+// const char* tofDFileName = "/D_tof_L7.csv";
 
 // Variables for PMW3901
 char frame[35*35]; //array to hold the framebuffer
@@ -122,7 +124,7 @@ unsigned long lastOFtime = 0;
 unsigned long lastTOFtime = 0;
 const unsigned long imuInterval = 250;    // microseconds → ~4000 Hz | Low noise mode max = 6400Hz
 const unsigned long ofInterval = 20000;   // microseconds → ~50 Hz
-const unsigned long tofInterval = int(250000/4);   // microseconds → ~4 Hz // Side Tof should be every 0.25s and Roof/ Floor ToF should be every 0.5s. 
+const unsigned long tofInterval = int(500000/4);   // microseconds → ~4 Hz // Side Tof should be every 0.25s and Roof/ Floor ToF should be every 0.5s. 
 
 // const unsigned long S1tofInterval = 250000;
 // const unsigned long S2tofInterval = 250000;
@@ -251,10 +253,12 @@ int intToStr(int val, char* buf) {
 
 void logToFL() {
   unsigned long now = micros();
-  if (!tofLFile) return;
+  if (!tofFile) return;
 
-  if(sensorL.isDataReady() && sensorR.getRangingData(&measurementDataL)) {
+  if(sensorL.isDataReady() && sensorL.getRangingData(&measurementDataL)) {
     int idx = appendTimestamp(tofLBuf, now); // write timestamp
+
+    idx += snprintf(tofLBuf + idx, sizeof(tofLBuf) - idx, ",L");
 
     for(int i = 0; i < LimageResolution; i++) { //8x8 = 64; 4x4 = 16
       tofLBuf[idx++] = ',';      
@@ -268,16 +272,18 @@ void logToFL() {
     }
 
     tofLBuf[idx++] = '\n';
-    tofLFile.write((uint8_t*)tofLBuf, idx);  // write raw bytes
+    tofFile.write((uint8_t*)tofLBuf, idx);  // write raw bytes
   }
 }
 
 void logToFR() {
   unsigned long now = micros();
-  if (!tofRFile) return;
+  if (!tofFile) return;
 
   if(sensorR.isDataReady() && sensorR.getRangingData(&measurementDataR)) {
     int idx = appendTimestamp(tofRBuf, now); // write timestamp
+
+    idx += snprintf(tofRBuf + idx, sizeof(tofRBuf) - idx, ",R");
 
     for(int i = 0; i < LimageResolution; i++) { //8x8 = 64; 4x4 = 16
       tofRBuf[idx++] = ',';      
@@ -291,17 +297,18 @@ void logToFR() {
     }
 
     tofRBuf[idx++] = '\n';
-    tofRFile.write((uint8_t*)tofRBuf, idx);  // write raw bytes
+    tofFile.write((uint8_t*)tofRBuf, idx);  // write raw bytes
   }
 }
 
 void logToFU() {
   unsigned long now = micros();
-  if (!tofUFile) return;
+  if (!tofFile) return;
 
   if(sensorU.isDataReady() && sensorU.getRangingData(&measurementDataU)) {
-
     int idx = appendTimestamp(tofUBuf, now); // write timestamp
+
+    idx += snprintf(tofUBuf + idx, sizeof(tofUBuf) - idx, ",U");
 
     for(int i = 0; i < UimageResolution; i++) { //8x8 = 64; 4x4 = 16
       tofUBuf[idx++] = ',';      
@@ -315,17 +322,18 @@ void logToFU() {
     }
 
     tofUBuf[idx++] = '\n';
-    tofUFile.write((uint8_t*)tofUBuf, idx);  // write raw bytes
+    tofFile.write((uint8_t*)tofUBuf, idx);  // write raw bytes
   }
 }
 
 void logToFD() {
   unsigned long now = micros();
-  if (!tofRFile) return;
+  if (!tofFile) return;
 
   if(sensorD.isDataReady() && sensorD.getRangingData(&measurementDataD)) {
-
     int idx = appendTimestamp(tofDBuf, now); // write timestamp
+
+    idx += snprintf(tofDBuf + idx, sizeof(tofDBuf) - idx, ",D");
 
     for(int i = 0; i < UimageResolution; i++) { //8x8 = 64; 4x4 = 16
       tofDBuf[idx++] = ',';      
@@ -339,9 +347,104 @@ void logToFD() {
     }
 
     tofDBuf[idx++] = '\n';
-    tofDFile.write((uint8_t*)tofDBuf, idx);  // write raw bytes
+    tofFile.write((uint8_t*)tofDBuf, idx);  // write raw bytes
   }
 }
+
+// Functions for separate ToF files
+// void logToFL() {
+//   unsigned long now = micros();
+//   if (!tofLFile) return;
+
+//   if(sensorL.isDataReady() && sensorL.getRangingData(&measurementDataL)) {
+//     int idx = appendTimestamp(tofLBuf, now); // write timestamp
+
+//     for(int i = 0; i < LimageResolution; i++) { //8x8 = 64; 4x4 = 16
+//       tofLBuf[idx++] = ',';      
+//       const uint8_t stat  = measurementDataL.target_status[i];
+//       if (stat == 5){         
+//       idx += intToStr(measurementDataL.distance_mm[i], tofLBuf + idx); // fast int -> string
+//       }
+//       else{
+//         tofLBuf[idx++] = 'X';
+//       }
+//     }
+
+//     tofLBuf[idx++] = '\n';
+//     tofLFile.write((uint8_t*)tofLBuf, idx);  // write raw bytes
+//   }
+// }
+
+// void logToFR() {
+//   unsigned long now = micros();
+//   if (!tofRFile) return;
+
+//   if(sensorR.isDataReady() && sensorR.getRangingData(&measurementDataR)) {
+//     int idx = appendTimestamp(tofRBuf, now); // write timestamp
+
+//     for(int i = 0; i < LimageResolution; i++) { //8x8 = 64; 4x4 = 16
+//       tofRBuf[idx++] = ',';      
+//       const uint8_t stat  = measurementDataR.target_status[i];
+//       if (stat == 5){         
+//       idx += intToStr(measurementDataR.distance_mm[i], tofRBuf + idx); // fast int -> string
+//       }
+//       else{
+//         tofRBuf[idx++] = 'X';
+//       }
+//     }
+
+//     tofRBuf[idx++] = '\n';
+//     tofRFile.write((uint8_t*)tofRBuf, idx);  // write raw bytes
+//   }
+// }
+
+// void logToFU() {
+//   unsigned long now = micros();
+//   if (!tofUFile) return;
+
+//   if(sensorU.isDataReady() && sensorU.getRangingData(&measurementDataU)) {
+
+//     int idx = appendTimestamp(tofUBuf, now); // write timestamp
+
+//     for(int i = 0; i < UimageResolution; i++) { //8x8 = 64; 4x4 = 16
+//       tofUBuf[idx++] = ',';      
+//       const uint8_t stat  = measurementDataU.target_status[i];
+//       if (stat == 5){         
+//       idx += intToStr(measurementDataU.distance_mm[i], tofUBuf + idx); // fast int -> string
+//       }
+//       else{
+//         tofUBuf[idx++] = 'X';
+//       }
+//     }
+
+//     tofUBuf[idx++] = '\n';
+//     tofUFile.write((uint8_t*)tofUBuf, idx);  // write raw bytes
+//   }
+// }
+
+// void logToFD() {
+//   unsigned long now = micros();
+//   if (!tofRFile) return;
+
+//   if(sensorD.isDataReady() && sensorD.getRangingData(&measurementDataD)) {
+
+//     int idx = appendTimestamp(tofDBuf, now); // write timestamp
+
+//     for(int i = 0; i < UimageResolution; i++) { //8x8 = 64; 4x4 = 16
+//       tofDBuf[idx++] = ',';      
+//       const uint8_t stat  = measurementDataD.target_status[i];
+//       if (stat == 5){         
+//       idx += intToStr(measurementDataD.distance_mm[i], tofDBuf + idx); // fast int -> string
+//       }
+//       else{
+//         tofDBuf[idx++] = 'X';
+//       }
+//     }
+
+//     tofDBuf[idx++] = '\n';
+//     tofDFile.write((uint8_t*)tofDBuf, idx);  // write raw bytes
+//   }
+// }
 
 volatile int tofInd = 0;
 
@@ -538,31 +641,38 @@ void setup() {
   imu.println("time,gyro x,gyro y,gyro z,accel x,accel y,accel z");
   imu.close();
 
-  // Init ToF CSVs
-  SD.remove(tofUFileName);
-  File tofU = SD.open(tofUFileName, FILE_WRITE);
-  tofU.print("time,type");
-  for(int i=0; i<((UimageResolution)); i++) tofU.print(",D"+String(i));
-  tofU.println();
-  tofU.close();
-  SD.remove(tofDFileName);
-  File tofD = SD.open(tofDFileName, FILE_WRITE);
-  tofD.print("time,type");
-  for(int i=0; i<((UimageResolution)); i++) tofD.print(",D"+String(i));
-  tofD.println();
-  tofD.close();
-  SD.remove(tofLFileName);
-  File tofL = SD.open(tofLFileName, FILE_WRITE);
-  tofL.print("time,type");
-  for(int i=0; i<((LimageResolution)); i++) tofL.print(",D"+String(i));
-  tofL.println();
-  tofL.close();
-  SD.remove(tofRFileName);
-  File tofR = SD.open(tofRFileName, FILE_WRITE);
-  tofR.print("time,type");
-  for(int i=0; i<((LimageResolution)); i++) tofR.print(",D"+String(i));
-  tofR.println();
-  tofR.close();
+  // Init ToF CSV/s
+  SD.remove(tofFileName);
+  File tof = SD.open(tofFileName, FILE_WRITE);
+  tof.print("time,type");
+  for(int i=0; i<((LimageResolution)); i++) tof.print(",D"+String(i));
+  tof.println();
+  tof.close();
+  // For separate CSVs
+  // SD.remove(tofUFileName);
+  // File tofU = SD.open(tofUFileName, FILE_WRITE);
+  // tofU.print("time");
+  // for(int i=0; i<((UimageResolution)); i++) tofU.print(",D"+String(i));
+  // tofU.println();
+  // tofU.close();
+  // SD.remove(tofDFileName);
+  // File tofD = SD.open(tofDFileName, FILE_WRITE);
+  // tofD.print("time");
+  // for(int i=0; i<((UimageResolution)); i++) tofD.print(",D"+String(i));
+  // tofD.println();
+  // tofD.close();
+  // SD.remove(tofLFileName);
+  // File tofL = SD.open(tofLFileName, FILE_WRITE);
+  // tofL.print("time");
+  // for(int i=0; i<((LimageResolution)); i++) tofL.print(",D"+String(i));
+  // tofL.println();
+  // tofL.close();
+  // SD.remove(tofRFileName);
+  // File tofR = SD.open(tofRFileName, FILE_WRITE);
+  // tofR.print("time");
+  // for(int i=0; i<((LimageResolution)); i++) tofR.print(",D"+String(i));
+  // tofR.println();
+  // tofR.close();
 
   // Init OF CSV
   SD.remove(ofFileName);
@@ -575,7 +685,7 @@ void setup() {
   // Init Ultra CSVs
   SD.remove(UltraFileName);
   File Ultra = SD.open(UltraFileName, FILE_WRITE);
-  Ultra.print("time,US1,US2,US3,US4"); 
+  Ultra.print("time,distance"); 
   Ultra.println();
   Ultra.close();
 
@@ -597,24 +707,25 @@ void loop() {
     // --- Open files once when recording starts ---
     if (!imuFile) {
       imuFile = SD.open(imuFileName, FILE_APPEND);
-      tofUFile = SD.open(tofUFileName, FILE_APPEND);
-      tofDFile = SD.open(tofDFileName, FILE_APPEND);
-      tofLFile = SD.open(tofLFileName, FILE_APPEND);
-      tofRFile = SD.open(tofRFileName, FILE_APPEND);
+      tofFile = SD.open(tofFileName, FILE_APPEND);
+      // tofUFile = SD.open(tofUFileName, FILE_APPEND);
+      // tofDFile = SD.open(tofDFileName, FILE_APPEND);
+      // tofLFile = SD.open(tofLFileName, FILE_APPEND);
+      // tofRFile = SD.open(tofRFileName, FILE_APPEND);
       ofFile = SD.open(ofFileName, FILE_APPEND);
       UltraFile = SD.open(UltraFileName, FILE_APPEND);
 
       Serial.println("Opening files for logging...");
-      if (!imuFile || !tofUFile  || !tofDFile|| !tofLFile|| !tofRFile || !ofFile || !UltraFile) {
+      if (!imuFile || !tofFile  || !ofFile || !UltraFile) {
           Serial.println("Failed to open one or more files!");
       }
+      // if (!imuFile || !tofUFile  || !tofDFile|| !tofLFile|| !tofRFile || !ofFile || !UltraFile) {
+      //     Serial.println("Failed to open one or more files!");
+      // }
     }
     // --- Write data ---
     logIMU();   // writes to imuFile
-    logToFL();   // writes to tofLFile
-    logToFR();   // writes to tofRFile
-    logToFU();   // writes to tofUFile
-    logToFD();   // writes to tofDFile
+    logToF();   // writes to tofLFile
     logOF();    // writes to ofFile
     logUltra();
   } 
@@ -623,14 +734,16 @@ void loop() {
     if (imuFile) {
       imuFile.close();
       imuFile = File(); // reset handle
-      tofUFile.close();
-      tofUFile = File();
-      tofDFile.close();
-      tofDFile = File();
-      tofLFile.close();
-      tofLFile = File();
-      tofRFile.close();
-      tofRFile = File();
+      tofFile.close();
+      tofFile = File();
+      // tofUFile.close();
+      // tofUFile = File();
+      // tofDFile.close();
+      // tofDFile = File();
+      // tofLFile.close();
+      // tofLFile = File();
+      // tofRFile.close();
+      // tofRFile = File();
       ofFile.close();
       ofFile = File();
       UltraFile.close();
