@@ -257,7 +257,6 @@ int intToStr(int val, char* buf) {
 }
 
 volatile int tofInd = 0;
-volatile unsigned long delayStart = 0;
 
 void logToFL() {
   unsigned long now = micros();
@@ -285,10 +284,7 @@ void logToFL() {
 
     tofLBuf[idx++] = '\n';
     tofFile.write((uint8_t*)tofLBuf, idx);  // write raw bytes
-    Serial.println((delayEnd - delayStart)/1000000.0);
-    delayStart = 0;
   }
-  else if (delayStart == 0) delayStart = micros();
 }
 
 
