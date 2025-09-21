@@ -33,9 +33,9 @@
 #define RESET 41 // I2C reset
 #define LPN 42
 
-#define USD 18 // Downwards-mounted ultrasonic PW pin
+#define USD 16 // Downwards-mounted ultrasonic PW pin
 #define USU 15 // Upwards-mounted ultrasonic PW pin
-#define USL 16 // Left-mounted ultrasonic PW pin
+#define USL 18 // Left-mounted ultrasonic PW pin
 #define USR 4 // Right-mounted ultrasonic PW pin
 #define USF 5 // Front-mounted ultrasonic PW pin
 
@@ -256,13 +256,20 @@ int intToStr(int val, char* buf) {
   return i;
 }
 
+volatile int tofInd = 0;
+volatile unsigned long delayStart = 0;
+
 void logToFL() {
   unsigned long now = micros();
   if (now - lastTOFtime < tofInterval) return;
-  lastTOFtime = now;
+  
   if (!tofFile) return;
 
   if(sensorL.isDataReady() && sensorL.getRangingData(&measurementDataL)) {
+    unsigned long delayEnd = now;
+    lastTOFtime = now;
+    tofInd++;
+
     int idx = appendTimestamp(tofLBuf, now); // write timestamp
 
     idx += snprintf(tofLBuf + idx, sizeof(tofLBuf) - idx, ",L");
@@ -280,17 +287,23 @@ void logToFL() {
 
     tofLBuf[idx++] = '\n';
     tofFile.write((uint8_t*)tofLBuf, idx);  // write raw bytes
+    Serial.println((delayEnd - delayStart)/1000000.0);
+    delayStart = 0;
   }
+  else if (delayStart == 0) delayStart = micros();
 }
 
 
 void logToFR() {
   unsigned long now = micros();
   if (now - lastTOFtime < tofInterval) return;
-  lastTOFtime = now;
+  
   if (!tofFile) return;
 
   if(sensorR.isDataReady() && sensorR.getRangingData(&measurementDataR)) {
+    lastTOFtime = now;
+    tofInd = 0;
+
     int idx = appendTimestamp(tofRBuf, now); // write timestamp
 
     idx += snprintf(tofRBuf + idx, sizeof(tofRBuf) - idx, ",R");
@@ -314,10 +327,13 @@ void logToFR() {
 void logToFU() {
   unsigned long now = micros();
   if (now - lastTOFtime < tofInterval) return;
-  lastTOFtime = now;
+
   if (!tofFile) return;
 
   if(sensorU.isDataReady() && sensorU.getRangingData(&measurementDataU)) {
+    lastTOFtime = now;
+    tofInd++;
+
     int idx = appendTimestamp(tofUBuf, now); // write timestamp
 
     idx += snprintf(tofUBuf + idx, sizeof(tofUBuf) - idx, ",U");
@@ -341,10 +357,13 @@ void logToFU() {
 void logToFD() {
   unsigned long now = micros();
   if (now - lastTOFtime < tofInterval) return;
-  lastTOFtime = now;
+
   if (!tofFile) return;
 
   if(sensorD.isDataReady() && sensorD.getRangingData(&measurementDataD)) {
+    lastTOFtime = now;
+    tofInd++;
+
     int idx = appendTimestamp(tofDBuf, now); // write timestamp
 
     idx += snprintf(tofDBuf + idx, sizeof(tofDBuf) - idx, ",D");
@@ -460,14 +479,12 @@ void logToFD() {
 //   }
 // }
 
-volatile int tofInd = 0;
-
 void logToF() {
   switch (tofInd) {
-    case 0: logToFD(); tofInd++; break;
-    case 1: logToFL(); tofInd++; break;
-    case 2: logToFR(); tofInd++; break;
-    case 3: logToFU(); tofInd = 0; break;
+    case 0: logToFL(); break;
+    case 1: logToFU(); break;
+    case 2: logToFD(); break;
+    case 3: logToFR(); break;
     default: tofInd = 0; break; // resets if corrupted
   }
 }
@@ -488,7 +505,7 @@ void logOF() {
 
 #define pwPin1 14
 volatile unsigned long pulseStartD = 0;
-volatile float pulseWidthD = 0;
+volatile unsigned long pulseWidthD = 0;
 volatile bool usReadyD = false;
 
 void USD_ISR() {
@@ -496,21 +513,22 @@ void USD_ISR() {
   if (digitalRead(USD) == HIGH) {
     // Rising edge
     pulseStartD = micros();
-    usReadyD = false;
   } else {
     // Falling edge
-    unsigned long pulseWidthD = micros() - pulseStartD;
+    pulseWidthD = micros() - pulseStartD;
     usReadyD = true;
   }
 }
 
 // Log all 4 ultrasonic sensors (US1-US4) to CSV
 void logUltra() {
-  if (UltraFile && usReadyD) {
+  if (!UltraFile) return;
+  if (usReadyD) {
     int idx = appendTimestamp(ultraBuf, pulseStartD + pulseWidthD/2);
     float distCmD = pulseWidthD / 57.87;
     idx += snprintf(ultraBuf + idx, sizeof(ultraBuf) - idx, ",%.2f\n", distCmD);
     UltraFile.write((uint8_t*)ultraBuf, idx);
+    usReadyD = false;
   }
   // To do: add similar if statements for 4 other ultrasonics
 }
@@ -582,7 +600,7 @@ void setup() {
   digitalWrite(LPN, LOW); // One LPn should be set HIGH permanently
   delay(100); 
 
-  // I2C bus split: L + U on I2C_bus2; R + D on I2C_bus1
+  // I2C bus split: R + U on I2C_bus2; L + D on I2C_bus1
   // Have to change the address of the ToFs with no LPN pin attached.
   // U + D are the sensors that have their address changed
 
@@ -645,6 +663,8 @@ void setup() {
   // pinMode(USL, INPUT);
   // pinMode(USR, INPUT);
   // pinMode(USF, INPUT); // USF is for object detection (front of drone). 
+
+  attachInterrupt(digitalPinToInterrupt(USD), USD_ISR, CHANGE);
 
   // Init IMU CSV
   SD.remove(imuFileName);
