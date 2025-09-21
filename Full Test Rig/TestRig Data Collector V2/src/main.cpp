@@ -43,7 +43,7 @@
 
 bool mode = false;         // toggled by BOOT button
 unsigned long lastPress = 0;
-const unsigned long debounceDelay = 200; // ms
+const unsigned long debounceDelay = 500; // ms
 
 // VL53L7CX new I2C addresses for 2nd Sensor on I2C bus
 #define CHANGE_ADDR 0x30
