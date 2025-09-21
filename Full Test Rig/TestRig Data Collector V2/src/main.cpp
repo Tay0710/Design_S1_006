@@ -261,8 +261,6 @@ volatile unsigned long delayStart = 0;
 
 void logToFL() {
   unsigned long now = micros();
-  if (now - lastTOFtime < tofInterval) return;
-  
   if (!tofFile) return;
 
   if(sensorL.isDataReady() && sensorL.getRangingData(&measurementDataL)) {
@@ -296,8 +294,6 @@ void logToFL() {
 
 void logToFR() {
   unsigned long now = micros();
-  if (now - lastTOFtime < tofInterval) return;
-  
   if (!tofFile) return;
 
   if(sensorR.isDataReady() && sensorR.getRangingData(&measurementDataR)) {
@@ -326,8 +322,6 @@ void logToFR() {
 
 void logToFU() {
   unsigned long now = micros();
-  if (now - lastTOFtime < tofInterval) return;
-
   if (!tofFile) return;
 
   if(sensorU.isDataReady() && sensorU.getRangingData(&measurementDataU)) {
@@ -356,8 +350,6 @@ void logToFU() {
 
 void logToFD() {
   unsigned long now = micros();
-  if (now - lastTOFtime < tofInterval) return;
-
   if (!tofFile) return;
 
   if(sensorD.isDataReady() && sensorD.getRangingData(&measurementDataD)) {
@@ -480,6 +472,9 @@ void logToFD() {
 // }
 
 void logToF() {
+  unsigned long now = micros();
+  if (now - lastTOFtime < tofInterval) return;
+
   switch (tofInd) {
     case 0: logToFL(); break;
     case 1: logToFU(); break;
