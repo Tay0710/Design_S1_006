@@ -129,7 +129,7 @@ unsigned long lastTOFtime = 0;
 
 const unsigned long imuInterval = 250;    // microseconds → ~4000 Hz | Low noise mode max = 6400Hz
 const unsigned long ofInterval = 20000;   // microseconds → ~50 Hz
-const unsigned long tofInterval = 500000/4;   // microseconds → ~4 Hz // Side Tof should be every 0.25s and Roof/ Floor ToF should be every 0.5s. 
+const unsigned long tofInterval = 25000/4;   // microseconds → ~40 Hz // Side Tof should be every 0.25s and Roof/ Floor ToF should be every 0.5s. 
 
 // const unsigned long S1tofInterval = 250000;
 // const unsigned long S2tofInterval = 250000;
@@ -571,10 +571,10 @@ void setup() {
 
   // Initialise 4 ToF sensors
   I2C_bus1.begin(SDA1, SCL1); // This resets I2C bus to 100kHz
-  I2C_bus1.setClock(1000000); //Sensor (L7) has max I2C freq of 1MHz
+  I2C_bus1.setClock(400000); //Sensor (L7) has max I2C freq of 1MHz
   delay(100);
   I2C_bus2.begin(SDA2, SCL2); 
-  I2C_bus2.setClock(1000000); 
+  I2C_bus2.setClock(400000); 
   // Serial.println(I2C_bus2.getClock());
   Serial.println("Clock Has been Set for I2Cs");
 
@@ -645,10 +645,10 @@ void setup() {
   delay(50);
 
   // // Set Frequency
-  // sensorR.setRangingFrequency(15);
-  // sensorF.setRangingFrequency(15);
-  // sensorS1.setRangingFrequency(15);
-  // sensorS2.setRangingFrequency(15);
+  sensorU.setRangingFrequency(15);
+  sensorD.setRangingFrequency(15);
+  sensorL.setRangingFrequency(15);
+  sensorR.setRangingFrequency(15);
   // Start ranging on both sensors. 
   Serial.println("Starting ranging of ToFL7  sensors...");
   sensorU.startRanging();
