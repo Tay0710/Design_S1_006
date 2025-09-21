@@ -49,8 +49,10 @@ const unsigned long debounceDelay = 200; // ms
 #define CHANGE_ADDR 0x30
 
 // Declaring the two I2C buses
-TwoWire I2C1 = TwoWire(0); // use hardware I2C port 0
-TwoWire I2C2 = TwoWire(1); // use hardware I2C port 1
+// #define I2C_bus1 Wire
+// #define I2C_bus2 Wire1
+TwoWire I2C_bus1 = TwoWire(0); // use hardware I2C port 0
+TwoWire I2C_bus2 = TwoWire(1); // use hardware I2C port 1
 
 // Sensor objects and measurement data
 SparkFun_VL53L5CX sensorL;
@@ -146,6 +148,7 @@ void calibrateIMU(int samples) {
     sumGx += imu_data.gyro_data[0];
     sumGy += imu_data.gyro_data[1];
     sumGz += imu_data.gyro_data[2];
+    delay(1);
   }
 
   unsigned long endTime = millis();
@@ -435,8 +438,12 @@ void setup() {
   }
 
   // Initialise 4 ToF sensors
-  I2C1.begin(SDA1, SCL1); // This resets I2C bus to 100kHz
-  I2C1.setClock(1000000); //Sensor (L7) has max I2C freq of 1MHz
+  I2C_bus1.begin(SDA1, SCL1); // This resets I2C bus to 100kHz
+  I2C_bus1.setClock(1000000); //Sensor (L7) has max I2C freq of 1MHz
+  delay(100);
+  I2C_bus2.begin(SDA2, SCL2); 
+  I2C_bus2.setClock(1000000); 
+  // Serial.println(I2C_bus2.getClock());
   Serial.println("Clock Has been Set for I2Cs");
 
   // Address reset sequence for ToFL7 sensors.
@@ -461,24 +468,22 @@ void setup() {
   digitalWrite(LPN, LOW); // One LPn should be set HIGH permanently
   delay(100); 
 
-  // I2C bus split: L + U on I2C2; R + D on I2C1
+  // I2C bus split: L + U on I2C_bus2; R + D on I2C_bus1
   // Have to change the address of the ToFs with no LPN pin attached.
   // U + D are the sensors that have their address changed
 
   // Change sensor address to 0x30 after calling begin()
-  if (!sensorU.begin(0x29, I2C1)) { 
+  if (!sensorD.begin(0x29, I2C_bus1)) { 
+    Serial.println("Sensor D not found at 0x29!");
+    while (1);
+  } 
+  Serial.println("Sensor D good");
+
+  if (!sensorU.begin(0x29, I2C_bus2)) { 
     Serial.println("Sensor U not found at 0x29!");
     while (1);
   }
-
-  I2C2.begin(SDA2, SCL2); 
-  I2C2.setClock(1000000); 
-  delay(100); 
-
-  if (!sensorD.begin(0x29, I2C2)) { 
-    Serial.println("Sensor D not found at 0x29!");
-    while (1);
-  }
+  Serial.println("Sensor U good");
   sensorU.setAddress(CHANGE_ADDR);
   sensorD.setAddress(CHANGE_ADDR);
   sensorU.setResolution(4 * 4);
@@ -493,18 +498,18 @@ void setup() {
   digitalWrite(LPN, HIGH); // Other LPn should still be set HIGH
   delay(100); 
 
-  if (!sensorL.begin()) {
+  if (!sensorL.begin(0x29, I2C_bus1)) {
     Serial.println("Sensor L not found at 0x29!");
     while (1);
   } 
-  if (!sensorR.begin()) {
+  if (!sensorR.begin(0x29, I2C_bus2)) {
     Serial.println("Sensor R not found at 0x29!");
     while (1);
   }
   sensorL.setResolution(8 * 8);
   sensorR.setResolution(8 * 8);
   LimageResolution = sensorL.getResolution();
-  Serial.println("Sensor 1 initialized successfully at 0x29");
+  Serial.println("Sensors L and R initialized successfully at 0x29");
   delay(50);
 
   // // Set Frequency
