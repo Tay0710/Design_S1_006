@@ -537,8 +537,8 @@ void setup() {
     while (1);
   }
   // Configure accelerometer and gyro
-  IMU.startAccel(1600, G_rating);     // Max 6400Hz; 100 Hz, ±2/4/8/16/32 g
-  IMU.startGyro(1600, dps_rating);    // 100 Hz, ±15.625/31.25/62.5/125/250/500/1000/
+  IMU.startAccel(4000, G_rating);     // Max 6400Hz; 100 Hz, ±2/4/8/16/32 g
+  IMU.startGyro(4000, dps_rating);    // 100 Hz, ±15.625/31.25/62.5/125/250/500/1000/
   delay(100); // Delay needed to ensure proper calibration
   Serial.println("Do not move drone while calibrating the ICM.");
   calibrateIMU(2000);
@@ -647,10 +647,12 @@ void setup() {
 
   // Ultrasonics
   pinMode(USD, INPUT); // Note: Ultrasonics operate on a 49mS cycle.
-  // pinMode(USU, INPUT);
+  pinMode(USU, OUTPUT);
   // pinMode(USL, INPUT);
   // pinMode(USR, INPUT);
   // pinMode(USF, INPUT); // USF is for object detection (front of drone). 
+
+  digitalWrite(USU, HIGH);
 
   attachInterrupt(digitalPinToInterrupt(USD), USD_ISR, CHANGE);
 
@@ -709,6 +711,7 @@ void setup() {
   Ultra.close();
 
   Serial.println("Finished Setup!");
+  digitalWrite(USU, LOW);
 }
 
 void loop() {
