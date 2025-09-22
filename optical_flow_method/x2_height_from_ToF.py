@@ -82,27 +82,22 @@ def calculate_height(D5, D6, D9, D10, last_height):
 def main(input_path):
     output_path = "../optical_flow_method_data/ToF_heights.csv"
 
-    # Load CSV (skip header)
-    data = np.genfromtxt(input_path, delimiter=",", skip_header=1)
-
-    # First column is time
-    times = data[:, 0]
     last_height = 0.0  # initial fallback value
 
-    # Grab only the requested columns
-    d5 = data[:, 5]
-    d6 = data[:, 6]
-    d9 = data[:, 9]
-    d10 = data[:, 10]
-
-    with open(output_path, "w", newline="") as f_out:
+    with open(input_path, "r") as f_in, open(output_path, "w", newline="") as f_out:
+        reader = csv.DictReader(f_in)  # handles "time,type,D0...D63"
         writer = csv.writer(f_out)
         writer.writerow(["time", "height"])
 
-        for t, v5, v6, v9, v10 in zip(times, d5, d6, d9, d10):
-            h = calculate_height(v5, v6, v9, v10, last_height)
-            last_height = h  # update last known height
+        for row in reader:
+            if row["type"] != "D":   # only process type D rows
+                continue
+
+            t = float(row["time"])
+            h = calculate_height(row["D5"], row["D6"], row["D9"], row["D10"], last_height)
+            last_height = h
             writer.writerow([f"{t:.6f}", f"{h:.6f}"])
+
             
 if __name__ == "__main__":
     main()
