@@ -293,7 +293,7 @@ void logToFR() {
 
   if(sensorR.isDataReady() && sensorR.getRangingData(&measurementDataR)) {
     lastTOFtime = now;
-    tofInd = 0;
+    tofInd++;
 
     int idx = appendTimestamp(tofRBuf, now); // write timestamp
 
@@ -470,7 +470,7 @@ void logToF() {
   unsigned long now = micros();
   if (now - lastTOFtime < tofInterval) return;
 
-  switch (tofInd) {
+  switch (tofInd % 4) {
     case 0: logToFR(); break;
     case 1: logToFU(); break;
     case 2: logToFD(); break;
