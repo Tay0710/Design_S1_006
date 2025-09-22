@@ -117,6 +117,51 @@ def build_points_up(distances, drone_pos):
             points.append(pt)
     return points
 
+def build_points_side(distances, drone_pos, orientation):
+    """
+    Convert one side-facing ToF row (8×8) into 64 3D points.
+    orientation = "L" (left) or "R" (right).
+    """
+    fov = 90.0
+    pitch = fov / 7.0  # ~12.857 degrees between pixels
+    
+    points = []
+    # 8x8 distances
+    for row in range(8):
+        for col in range(8):
+            idx = row * 8 + col
+            d = distances[idx]
+            if d is None or d < 0.2:
+                continue
+
+            # angles relative to center of array
+            theta_x = (col - 3.5) * pitch
+            theta_y = (row - 3.5) * pitch
+
+            # project in local sensor frame
+            local = tof_point(d, theta_x, theta_y, (0,0,0))
+            if not local:
+                continue
+
+            lx, ly, lz = local
+
+            # Orientation adjustment
+            if orientation == "L":
+                # left sensor looks -Y
+                pt = (drone_pos[0] + lx,
+                      drone_pos[1] - lz,   # use -Z as sideways axis
+                      drone_pos[2] + ly)   # keep Y as vertical
+            elif orientation == "R":
+                # right sensor looks +Y
+                pt = (drone_pos[0] + lx,
+                      drone_pos[1] + lz,   # +Z sideways
+                      drone_pos[2] + ly)
+            else:
+                continue
+
+            points.append(pt)
+
+    return points
 
 def visualize_open3d(points, drone_positions):
     geoms = []
@@ -190,7 +235,7 @@ def main():
     traj_time = traj["time (s)"].values
     tof_time = tof["time"].values
 
-    # Convert drone trajectory positions
+    # Build full drone trajectory positions (for red path and marker)
     for i in range(len(traj)):
         drone_pos = (
             traj["pos_world_x"].iloc[i],
@@ -199,11 +244,11 @@ def main():
         )
         drone_positions.append(drone_pos)
 
-    # For each ToF frame (type D only), find the next trajectory timestamp after it
+    # For each ToF frame, project points depending on type
     for i in range(len(tof)):
         t_type = tof["type"].iloc[i]
-        if t_type not in ["D", "U"]:
-            continue  # skip L/R/etc
+        if t_type not in ["D", "U", "L", "R"]:
+            continue  # skip others
 
         tof_t = tof_time[i]
         match_idx = np.searchsorted(traj_time, tof_t, side="right")
@@ -216,19 +261,30 @@ def main():
             traj["pos_world_z"].iloc[match_idx],
         )
 
-        distances = [
-            None if str(d) == "X" else float(d) / 1000.0
-            for d in tof.iloc[i, 2:18]  # D0–D15
-        ]
+        if t_type in ["D", "U"]:
+            distances = [
+                None if str(d) == "X" else float(d) / 1000.0
+                for d in tof.iloc[i, 2:18]  # D0–D15
+            ]
+            if t_type == "D":
+                pts = build_points_down(distances, drone_pos)
+            else:
+                pts = build_points_up(distances, drone_pos)
 
-        if t_type == "D":
-            pts = build_points_down(distances, drone_pos)
-        elif t_type == "U":
-            pts = build_points_up(distances, drone_pos)
+        elif t_type in ["L", "R"]:
+            distances = [
+                None if str(d) == "X" else float(d) / 1000.0
+                for d in tof.iloc[i, 2:66]  # D0–D63
+            ]
+            pts = build_points_side(distances, drone_pos, orientation=t_type)
 
         all_points.extend(pts)
 
     # Visualise
+    if len(all_points) == 0:
+        print("⚠️ No ToF points were generated, skipping visualisation.")
+        return
+
     visualize_open3d(np.array(all_points), drone_positions)
     visualize_matplotlib(all_points, drone_positions)
 
