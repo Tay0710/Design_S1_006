@@ -75,41 +75,48 @@ def tof_point(d, theta_x_deg, theta_y_deg, drone_pos=(0,0,0)):
         drone_pos[2] - z_local
     )
 
-def build_points(distances, drone_pos):
-    """Convert one ToF row into 16 3D points."""
+def build_points_down(distances, drone_pos):
+    """Convert one downward ToF row into 16 3D points (sensor facing floor)."""
     cell_angles = {
-        3:  (-30, -30),
-        2:  (-10, -30),
-        1:  (10,  -30),
-        0:  (30,  -30),
-
-        7:  (-30, -10),
-        6:  (-10, -10),
-        5:  (10,  -10),
-        4:  (30,  -10),
-
-        11: (-30,  10),
-        10: (-10,  10),
-        9:  (10,   10),
-        8:  (30,   10),
-
-        15: (-30,  30),
-        14: (-10,  30),
-        13: (10,   30),
-        12: (30,   30),
+        3:  (-30, -30), 2: (-10, -30), 1: (10, -30), 0: (30, -30),
+        7:  (-30, -10), 6: (-10, -10), 5: (10, -10), 4: (30, -10),
+        11: (-30,  10), 10:(-10, 10),  9:(10, 10),   8:(30, 10),
+        15: (-30,  30), 14:(-10, 30), 13:(10, 30),  12:(30, 30),
     }
-
     points = []
     for idx, (tx, ty) in cell_angles.items():
         d = distances[idx]
-        # Skip invalid or too-close points
-        if d is None or d < 0.2:  
+        if d is None or d < 0.2:
             continue
         pt = tof_point(d, tx, ty, drone_pos)
         if pt:
             points.append(pt)
-
     return points
+
+def build_points_up(distances, drone_pos):
+    """Convert one upward ToF row into 16 3D points (sensor facing ceiling)."""
+    cell_angles = {
+        3:  (-30, -30), 2: (-10, -30), 1: (10, -30), 0: (30, -30),
+        7:  (-30, -10), 6: (-10, -10), 5: (10, -10), 4: (30, -10),
+        11: (-30,  10), 10:(-10, 10),  9:(10, 10),   8:(30, 10),
+        15: (-30,  30), 14:(-10, 30), 13:(10, 30),  12:(30, 30),
+    }
+    points = []
+    for idx, (tx, ty) in cell_angles.items():
+        d = distances[idx]
+        if d is None or d < 0.2:
+            continue
+        # same xy projection but flip z to go "up"
+        local = tof_point(d, tx, ty, (0,0,0))
+        if local:
+            pt = (
+                drone_pos[0] + (local[0] - 0),
+                drone_pos[1] + (local[1] - 0),
+                drone_pos[2] + abs(local[2])  # force z above drone
+            )
+            points.append(pt)
+    return points
+
 
 def visualize_open3d(points, drone_positions):
     geoms = []
@@ -175,7 +182,7 @@ def visualize_matplotlib(points, drone_positions):
 def main():
     # Load trajectory + ToF data
     traj = pd.read_csv("../optical_flow_method_data/xy_velocities_to_world_frame.csv")
-    tof = pd.read_csv("../optical_flow_method_data/combined_samples/17_09_25_MILC/6_lyco_lab_2/download_tof_cropped.csv")  # <-- adjust filename
+    tof = pd.read_csv("../optical_flow_method_data/combined_samples/22_09_25_MILC/1_rectangle/download_tof_cropped.csv")  # <-- adjust filename
 
     all_points = []
     drone_positions = []
@@ -192,10 +199,14 @@ def main():
         )
         drone_positions.append(drone_pos)
 
-    # For each ToF frame, find the next trajectory timestamp after it
+    # For each ToF frame (type D only), find the next trajectory timestamp after it
     for i in range(len(tof)):
+        t_type = tof["type"].iloc[i]
+        if t_type not in ["D", "U"]:
+            continue  # skip L/R/etc
+
         tof_t = tof_time[i]
-        match_idx = np.searchsorted(traj_time, tof_t, side="right")  # first traj time > tof time
+        match_idx = np.searchsorted(traj_time, tof_t, side="right")
         if match_idx >= len(traj):
             continue
 
@@ -205,8 +216,16 @@ def main():
             traj["pos_world_z"].iloc[match_idx],
         )
 
-        distances = [None if str(d)=="X" else float(d)/1000.0 for d in tof.iloc[i,1:17]]
-        pts = build_points(distances, drone_pos)
+        distances = [
+            None if str(d) == "X" else float(d) / 1000.0
+            for d in tof.iloc[i, 2:18]  # D0–D15
+        ]
+
+        if t_type == "D":
+            pts = build_points_down(distances, drone_pos)
+        elif t_type == "U":
+            pts = build_points_up(distances, drone_pos)
+
         all_points.extend(pts)
 
     # Visualise
