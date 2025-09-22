@@ -227,7 +227,7 @@ def visualize_matplotlib(points, drone_positions):
 def main():
     # Load trajectory + ToF data
     traj = pd.read_csv("../optical_flow_method_data/xy_velocities_to_world_frame.csv")
-    tof = pd.read_csv("../optical_flow_method_data/combined_samples/22_09_25_MILC/1_rectangle/download_tof_cropped.csv")  # <-- adjust filename
+    tof = pd.read_csv("../optical_flow_method_data/combined_samples/22_09_25_MILC/2_rectangle/download_tof_cropped.csv")  # <-- adjust filename
 
     all_points = []
     drone_positions = []
