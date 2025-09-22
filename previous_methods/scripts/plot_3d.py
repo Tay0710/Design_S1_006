@@ -39,7 +39,7 @@ if __name__ == '__main__':
         [0, 1, 1]     # Bottom - cyan
     ]
     
-    DATA_FILE = '../sensor_logs/left_right_lines.txt'
+    DATA_FILE = '../sensor_logs/3D Test Data/left_right_lines.txt'
     timestamps, positions, yaws, distance_sets = read_file(DATA_FILE)
 
     all_points = []
