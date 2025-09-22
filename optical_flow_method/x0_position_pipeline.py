@@ -102,14 +102,17 @@ def cut_data(stage_0_input_path, stage_1_input_path, stage_2_input_path, stage_5
 
 def main():
     t0 = time.time()
-    stage_0_input_path = "../optical_flow_method_data/combined_samples/17_09_25_MILC/6_lyco_lab_2/data_times.csv"
-    stage_1_input_path = "../optical_flow_method_data/combined_samples/17_09_25_MILC/6_lyco_lab_2/download_of.csv"
-    stage_2_input_path = "../optical_flow_method_data/combined_samples/17_09_25_MILC/6_lyco_lab_2/download_tof.csv"
-    stage_5_and_7_input_path = "../optical_flow_method_data/combined_samples/17_09_25_MILC/6_lyco_lab_2/download_imu.csv"
 
-    stage_1_input_path_cropped = "../optical_flow_method_data/combined_samples/17_09_25_MILC/6_lyco_lab_2/download_of_cropped.csv"
-    stage_2_input_path_cropped = "../optical_flow_method_data/combined_samples/17_09_25_MILC/6_lyco_lab_2/download_tof_cropped.csv"
-    stage_5_and_7_input_path_cropped = "../optical_flow_method_data/combined_samples/17_09_25_MILC/6_lyco_lab_2/download_imu_cropped.csv"
+    data_name = "MILC_carpet/s2/"
+
+    stage_0_input_path = "../optical_flow_method_data/combined_samples/" + data_name + "data_times.csv"
+    stage_1_input_path = "../optical_flow_method_data/combined_samples/" + data_name + "download_of.csv"
+    stage_2_input_path = "../optical_flow_method_data/combined_samples/" + data_name + "download_tof.csv"
+    stage_5_and_7_input_path = "../optical_flow_method_data/combined_samples/" + data_name + "download_imu.csv"
+
+    stage_1_input_path_cropped = "../optical_flow_method_data/combined_samples/" + data_name + "download_of_cropped.csv"
+    stage_2_input_path_cropped = "../optical_flow_method_data/combined_samples/" + data_name + "download_tof_cropped.csv"
+    stage_5_and_7_input_path_cropped = "../optical_flow_method_data/combined_samples/" + data_name + "download_imu_cropped.csv"
 
     cut_data(stage_0_input_path, stage_1_input_path, stage_2_input_path, stage_5_and_7_input_path, stage_1_input_path_cropped, stage_2_input_path_cropped, stage_5_and_7_input_path_cropped)
 
@@ -131,11 +134,11 @@ def main():
     print("\n=== Stage 6: convert the velocities to world frame ===")
     convert_to_world_frame()
     
-    print("\n=== Stage 7: IMU acceleration integration to position ===")
-    imu_integration_to_position(stage_5_and_7_input_path_cropped)
+    # print("\n=== Stage 7: IMU acceleration integration to position ===")
+    # imu_integration_to_position(stage_5_and_7_input_path_cropped)
     
-    print("\n=== Stage 8: estimator (EFK) ===")
-    estimator()
+    # print("\n=== Stage 8: estimator (EFK) ===")
+    # estimator()
 
     print(f"\nPipeline complete in {time.time() - t0:.2f}s")
 

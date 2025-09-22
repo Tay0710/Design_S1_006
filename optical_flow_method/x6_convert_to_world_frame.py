@@ -63,6 +63,9 @@ def match_rotation_matrices_times(rot_mats, times_v, times_mat):
                 rot_mats_matched.append(rot_mats[index])
                 break
             index = index + 1
+    # If last OF reading is after IMU reading (i.e. 1 missing rot_mat)
+    if len(rot_mats_matched) < len(times_v):
+        rot_mats_matched.append(rot_mats[-1])
     return rot_mats_matched
 
 def rotate_to_world(rot_mats, v_body3):
