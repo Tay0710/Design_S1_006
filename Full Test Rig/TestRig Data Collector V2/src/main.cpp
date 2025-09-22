@@ -1,5 +1,3 @@
-// 
-
 // Components:
 // IMU, OF, SD Card, 4*ToF, 5*Ultrasonic (4 mapping, 1 obejct detection)
 // Missing SBUS commands
