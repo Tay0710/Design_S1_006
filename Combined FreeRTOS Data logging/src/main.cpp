@@ -502,14 +502,28 @@ void ofTask(void *pvParameters) {
 void sdTask(void *pvParameters) {
     for (;;) {
         if (digitalRead(BOOT_PIN) == LOW) {  // pressed
+          if(millis() - lastPress > debounceDelay){
+            mode = !mode;   // toggle mode
+            Serial.print("Mode toggled to: ");
+            Serial.println(mode);
+            lastPress = millis();   
+          }
+        }
+      
+        if(mode) {
             if (!imuFile) {
                 imuFile = SD.open(imuFileName, FILE_APPEND);
                 tofFile = SD.open(tofFileName, FILE_APPEND);
                 ofFile = SD.open(ofFileName, FILE_APPEND);
                 UltraFile = SD.open(UltraFileName, FILE_APPEND);
                 Serial.println("Files opened for logging");
+
+                if (!imuFile || !tofFile  || !ofFile || !UltraFile) {
+                  Serial.println("Failed to open one or more files!");
+                }
+              }
             }
-        } else {
+         else {
             if (imuFile) {  // files are open
                 imuFile.close(); imuFile = File();
                 tofFile.close(); tofFile = File();
@@ -668,10 +682,12 @@ void setup() {
 
   // Ultrasonics
   pinMode(USD, INPUT); // Note: Ultrasonics operate on a 49mS cycle.
-  // pinMode(USU, INPUT);
+  pinMode(USU, OUTPUT);
   // pinMode(USL, INPUT);
   // pinMode(USR, INPUT);
   // pinMode(USF, INPUT); // USF is for object detection (front of drone). 
+
+  digitalWrite(USU, HIGH);
 
   // Init IMU CSV
   SD.remove(imuFileName);
@@ -720,6 +736,8 @@ void setup() {
   // xTaskCreatePinnedToCore(IdleTaskC1, "Idle_C1", 1024, NULL, Idle_C1_TASK_PRIORITY, NULL, 1);
 
   Serial.println("Finished Setup!");
+  digitalWrite(USU, LOW);
+
 }
 
 void loop() {
