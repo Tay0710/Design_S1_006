@@ -15,6 +15,8 @@
 SX1262 radio = new Module(RADIO_CS_PIN, RADIO_DIO1_PIN, RADIO_RST_PIN, RADIO_BUSY_PIN);
 
 void drawMain(); // Function declaration
+void drawInstructions();
+
 
 // save transmission state between loops
 static int transmissionState = RADIOLIB_ERR_NONE;
@@ -140,19 +142,25 @@ void setup()
 
     // Setup up failsafe button
     pinMode(BOOT_BUTTON, INPUT); // Pulled up on PCB
-    attachInterrupt(digitalPinToInterrupt(BOOT_BUTTON), interruptCallback, FALLING);
+    
 
+    
+    // Print instructions to screen
+    drawInstructions();
+
+    // Wait for start button to be pressed
+    while(digitalRead(BOOT_BUTTON)) {
+    }
+
+    attachInterrupt(digitalPinToInterrupt(BOOT_BUTTON), interruptCallback, FALLING);
 
     // start transmitting the first packet
     Serial.print(F("Radio Sending first packet ... "));
 
     // you can transmit C-string or Arduino string up to
     // 256 characters long
-    transmissionState = radio.startTransmit("First packet");
+    transmissionState = radio.startTransmit("#0");
 
-    delay(1000);
-
-    drawMain();
 }
 
 void loop()
@@ -197,6 +205,23 @@ void loop()
     }
 }
 
+void drawInstructions()
+{
+    if (u8g2) {
+        u8g2->clearBuffer();
+        u8g2->drawRFrame(0, 0, 128, 64, 5);
+
+        u8g2->setFont(u8g2_font_pxplusibmvga9_mr);
+        u8g2->setCursor(15, 20);
+        u8g2->print("Press the");
+        u8g2->setCursor(15, 35);
+        u8g2->print("button to");
+        u8g2->setCursor(15, 50);
+        u8g2->print("start!");
+
+        u8g2->sendBuffer();
+    }
+}
 
 void drawMain()
 {
@@ -204,18 +229,13 @@ void drawMain()
         u8g2->clearBuffer();
         u8g2->drawRFrame(0, 0, 128, 64, 5);
 
-        u8g2->setFont(u8g2_font_pxplusibmvga8_mr);
-        u8g2->setCursor(22, 25);
+        u8g2->setFont(u8g2_font_pxplusibmvga9_mr);
+        u8g2->setCursor(22, 37);
         u8g2->print("TX:");
-        u8g2->setCursor(22, 40);
-        u8g2->print("STATE:");
 
-        u8g2->setFont(u8g2_font_crox1h_tr);
-        u8g2->setCursor( U8G2_HOR_ALIGN_RIGHT(payload.c_str()) - 21, 25 );
+        u8g2->setFont(u8g2_font_crox2h_tr);
+        u8g2->setCursor( U8G2_HOR_ALIGN_RIGHT(payload.c_str()) - 21, 37);
         u8g2->print(payload);
-        String state = transmissionState == RADIOLIB_ERR_NONE ? "NONE" : String(transmissionState);
-        u8g2->setCursor( U8G2_HOR_ALIGN_RIGHT(state.c_str()) -  21, 40 );
-        u8g2->print(state);
         u8g2->sendBuffer();
     }
 }
