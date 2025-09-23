@@ -20,8 +20,8 @@
 #define TOF_TASK_PRIORITY      3
 #define OF_TASK_PRIORITY       6
 #define SD_TASK_PRIORITY       7
-#define Idle_C0_TASK_PRIORITY  0
-#define Idle_C1_TASK_PRIORITY  0
+// #define Idle_C0_TASK_PRIORITY  0
+// #define Idle_C1_TASK_PRIORITY  0
 
 // Stack size (adjust based on function memory usage)
 #define STACK_SIZE 4096
@@ -56,8 +56,8 @@
 #define USF 5 // Front-mounted ultrasonic PW pin
 
 // Idle pins for monitoring core activity (optional)
-#define Idle_C0_PIN  2  // example GPIO for Core 0 idle
-#define Idle_C1_PIN  4  // example GPIO for Core 1 idle
+// #define Idle_C0_PIN  2  // example GPIO for Core 0 idle
+// #define Idle_C1_PIN  4  // example GPIO for Core 1 idle
 
 // Boot button
 #define BOOT_PIN 0
@@ -65,6 +65,9 @@
 bool mode = false;         // toggled by BOOT button
 unsigned long lastPress = 0;
 const unsigned long debounceDelay = 200; // ms
+
+// Mutex for SD card access
+SemaphoreHandle_t sdMutex;
 
 // VL53L7CX new I2C addresses for 2nd Sensor on I2C bus
 #define CHANGE_ADDR 0x30
@@ -255,14 +258,18 @@ void logIMU() {
 
   int idx = appendTimestamp(imuBuf, now);
   idx += snprintf(imuBuf + idx, sizeof(imuBuf) - idx, ",%.9f,%.9f,%.9f,%.9f,%.9f,%.9f\n", gx, gy, gz, ax, ay, az);
-  imuFile.write((uint8_t*)imuBuf, idx);
+  // --- Mutex protect just the write ---
+  if (xSemaphoreTake(sdMutex, portMAX_DELAY) == pdTRUE) {
+      imuFile.write((uint8_t*)imuBuf, idx);
+      xSemaphoreGive(sdMutex);
+  }
 }
 
 // Task: Log IMU
 void imuTask(void *pvParameters) {
     for (;;) {
         logIMU();                          // your existing function
-        vTaskDelay(pdMS_TO_TICKS(imuInterval/1000)); // delay in microseconds
+        vTaskDelay(1); // task delay for 1 ms. 
     }
 }
 
@@ -309,7 +316,11 @@ void logToFL() {
     }
 
     tofLBuf[idx++] = '\n';
+  // --- Mutex protect just the write ---
+    if (xSemaphoreTake(sdMutex, portMAX_DELAY) == pdTRUE) {
     tofFile.write((uint8_t*)tofLBuf, idx);  // write raw bytes
+    xSemaphoreGive(sdMutex);
+    }
   }
 }
 
@@ -337,7 +348,12 @@ void logToFR() {
     }
 
     tofRBuf[idx++] = '\n';
-    tofFile.write((uint8_t*)tofRBuf, idx);  // write raw bytes
+    
+      // --- Mutex protect just the write ---
+    if (xSemaphoreTake(sdMutex, portMAX_DELAY) == pdTRUE) {
+      tofFile.write((uint8_t*)tofRBuf, idx);  // write raw bytes
+      xSemaphoreGive(sdMutex);
+    }
   }
 }
 
@@ -364,7 +380,11 @@ void logToFU() {
     }
 
     tofUBuf[idx++] = '\n';
-    tofFile.write((uint8_t*)tofUBuf, idx);  // write raw bytes
+          // --- Mutex protect just the write ---
+    if (xSemaphoreTake(sdMutex, portMAX_DELAY) == pdTRUE) {
+      tofFile.write((uint8_t*)tofUBuf, idx);  // write raw bytes
+      xSemaphoreGive(sdMutex);
+    }
   }
 }
 
@@ -391,7 +411,11 @@ void logToFD() {
     }
 
     tofDBuf[idx++] = '\n';
-    tofFile.write((uint8_t*)tofDBuf, idx);  // write raw bytes
+          // --- Mutex protect just the write ---
+    if (xSemaphoreTake(sdMutex, portMAX_DELAY) == pdTRUE) {
+      tofFile.write((uint8_t*)tofDBuf, idx);  // write raw bytes
+      xSemaphoreGive(sdMutex);
+    }
   }
 }
 
@@ -428,7 +452,12 @@ void logOF() {
   int idx = appendTimestamp(ofBuf, now);
   // Add DeltaX and DeltaY values
   idx += snprintf(ofBuf + idx, sizeof(ofBuf) - idx, ",%d,%d\n", deltaX, deltaY);
-  ofFile.write((uint8_t*)ofBuf, idx);
+
+  // --- Mutex protect just the write ---
+  if (xSemaphoreTake(sdMutex, portMAX_DELAY) == pdTRUE) {
+    ofFile.write((uint8_t*)ofBuf, idx);
+    xSemaphoreGive(sdMutex);
+  }
 }
 
 // Task: Log Optical Flow
@@ -439,34 +468,34 @@ void ofTask(void *pvParameters) {
     }
 }
 
-#define pwPin1 14
-volatile unsigned long pulseStartD = 0;
-volatile float pulseWidthD = 0;
-volatile bool usReadyD = false;
+// #define pwPin1 14
+// volatile unsigned long pulseStartD = 0;
+// volatile float pulseWidthD = 0;
+// volatile bool usReadyD = false;
 
-void USD_ISR() {
-  // Called when pwPin changes
-  if (digitalRead(USD) == HIGH) {
-    // Rising edge
-    pulseStartD = micros();
-    usReadyD = false;
-  } else {
-    // Falling edge
-    unsigned long pulseWidthD = micros() - pulseStartD;
-    usReadyD = true;
-  }
-}
+// void USD_ISR() {
+//   // Called when pwPin changes
+//   if (digitalRead(USD) == HIGH) {
+//     // Rising edge
+//     pulseStartD = micros();
+//     usReadyD = false;
+//   } else {
+//     // Falling edge
+//     unsigned long pulseWidthD = micros() - pulseStartD;
+//     usReadyD = true;
+//   }
+// }
 
-// Log all 4 ultrasonic sensors (US1-US4) to CSV
-void logUltra() {
-  if (UltraFile && usReadyD) {
-    int idx = appendTimestamp(ultraBuf, pulseStartD + pulseWidthD/2);
-    float distCmD = pulseWidthD / 57.87;
-    idx += snprintf(ultraBuf + idx, sizeof(ultraBuf) - idx, ",%.2f\n", distCmD);
-    UltraFile.write((uint8_t*)ultraBuf, idx);
-  }
-  // To do: add similar if statements for 4 other ultrasonics
-}
+// // Log all 4 ultrasonic sensors (US1-US4) to CSV
+// void logUltra() {
+//   if (UltraFile && usReadyD) {
+//     int idx = appendTimestamp(ultraBuf, pulseStartD + pulseWidthD/2);
+//     float distCmD = pulseWidthD / 57.87;
+//     idx += snprintf(ultraBuf + idx, sizeof(ultraBuf) - idx, ",%.2f\n", distCmD);
+//     UltraFile.write((uint8_t*)ultraBuf, idx);
+//   }
+//   // To do: add similar if statements for 4 other ultrasonics
+// }
 
 
 // Task: Handle SD card open/close
@@ -494,23 +523,23 @@ void sdTask(void *pvParameters) {
 }
 
 
-void IdleTaskC0(void *pvParameters) {
-  pinMode(Idle_C0_PIN, OUTPUT);
-  while (1) {
-    digitalWrite(Idle_C0_PIN, HIGH);  // core is idle
-    taskYIELD();  // optional, yield to other tasks
-    digitalWrite(Idle_C0_PIN, LOW);   // brief low for measurement
-  }
-}
+// void IdleTaskC0(void *pvParameters) {
+//   pinMode(Idle_C0_PIN, OUTPUT);
+//   while (1) {
+//     digitalWrite(Idle_C0_PIN, HIGH);  // core is idle
+//     taskYIELD();  // optional, yield to other tasks
+//     digitalWrite(Idle_C0_PIN, LOW);   // brief low for measurement
+//   }
+// }
 
-void IdleTaskC1(void *pvParameters) {
-  pinMode(Idle_C1_PIN, OUTPUT);
-  while (1) {
-    digitalWrite(Idle_C1_PIN, HIGH);  // core is idle
-    taskYIELD();
-    digitalWrite(Idle_C1_PIN, LOW);   
-  }
-}
+// void IdleTaskC1(void *pvParameters) {
+//   pinMode(Idle_C1_PIN, OUTPUT);
+//   while (1) {
+//     digitalWrite(Idle_C1_PIN, HIGH);  // core is idle
+//     taskYIELD();
+//     digitalWrite(Idle_C1_PIN, LOW);   
+//   }
+// }
 
 
 void setup() {
@@ -673,60 +702,26 @@ void setup() {
   Ultra.println();
   Ultra.close();
 
+
+  sdMutex = xSemaphoreCreateMutex();
+  if (sdMutex == NULL) {
+      Serial.println("Failed to create SD mutex!");
+      while (1);
+  }
+
+
   // Create tasks
   xTaskCreatePinnedToCore(imuTask, "IMU_Task", STACK_SIZE, NULL, IMU_TASK_PRIORITY, NULL, 1);
   xTaskCreatePinnedToCore(tofTask, "ToF_Task", STACK_SIZE, NULL, TOF_TASK_PRIORITY, NULL, 0);
   xTaskCreatePinnedToCore(ofTask, "OF_Task", STACK_SIZE, NULL, OF_TASK_PRIORITY, NULL, 1);
   xTaskCreate(sdTask, "SD_Task", STACK_SIZE, NULL, SD_TASK_PRIORITY, NULL);
 
-  xTaskCreatePinnedToCore(IdleTaskC0, "Idle_C0", 1024, NULL, Idle_C0_TASK_PRIORITY, NULL, 0);
-  xTaskCreatePinnedToCore(IdleTaskC1, "Idle_C1", 1024, NULL, Idle_C1_TASK_PRIORITY, NULL, 1);
+  // xTaskCreatePinnedToCore(IdleTaskC0, "Idle_C0", 1024, NULL, Idle_C0_TASK_PRIORITY, NULL, 0);
+  // xTaskCreatePinnedToCore(IdleTaskC1, "Idle_C1", 1024, NULL, Idle_C1_TASK_PRIORITY, NULL, 1);
 
   Serial.println("Finished Setup!");
 }
 
 void loop() {
-    // --- Handle BOOT button toggle ---
-  if (digitalRead(BOOT_PIN) == LOW) {  // pressed (active LOW)
-    if (millis() - lastPress > debounceDelay) {
-      mode = !mode;   // toggle mode
-      Serial.print("Mode toggled to: ");
-      Serial.println(mode);
-      lastPress = millis();
-    }
-  }
-
-  if (mode) { // if mode is true, start recording
-    // --- Open files once when recording starts ---
-    if (!imuFile) {
-      imuFile = SD.open(imuFileName, FILE_APPEND);
-      tofFile = SD.open(tofFileName, FILE_APPEND);
-      ofFile = SD.open(ofFileName, FILE_APPEND);
-      UltraFile = SD.open(UltraFileName, FILE_APPEND);
-
-      Serial.println("Opening files for logging...");
-      if (!imuFile || !tofFile  || !ofFile || !UltraFile) {
-          Serial.println("Failed to open one or more files!");
-      }
-    }
-    // --- Write data ---
-    logIMU();   // writes to imuFile
-    logToF();   // writes to tofLFile
-    logOF();    // writes to ofFile
-    logUltra();
-  } 
-  else {
-    // --- Close files once when recording stops ---
-    if (imuFile) {
-      imuFile.close();
-      imuFile = File(); // reset handle
-      tofFile.close();
-      tofFile = File();
-      ofFile.close();
-      ofFile = File();
-      UltraFile.close();
-      UltraFile = File();
-      Serial.println("Files closed, safe to download.");
-    }
-  }
+  
 }
