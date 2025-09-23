@@ -104,8 +104,9 @@ def find_room_height(roof_rows, height_rows):
     return average_height
 
 def z_position_calc(roof_rows, height_rows, average_height):
-    pos_z_h = height_rows
+    pos_z_h = []
     pos_z_r = []
+    pos_z_avg = []
 
     # TODO: what happens if there is an obstacle above and below
 
@@ -113,12 +114,19 @@ def z_position_calc(roof_rows, height_rows, average_height):
     # 1. if total height is significantly less than average height (add a threshold)??
     # but this wont really happen due to extrapolation... the only way we can fix this is by saving autonomous commands
 
+    # Assume no obstacles on the floor or roof for now
 
-    for row_r in roof_rows:
-        h = average_height - float(row_r["height"])/1000
-        pos_z_r.append(h)
+    for row_r, row_h in zip(roof_rows, height_rows):
+        h_r = average_height - float(row_r["height"])/1000
+        pos_z_r.append(h_r)
 
-    return pos_z_h, pos_z_r
+        h_h = float(row_h["height"])/1000
+        pos_z_h.append(h_h)
+
+        h_avg = (h_h + h_r)/2
+        pos_z_avg.append(h_avg)
+
+    return pos_z_h, pos_z_r, pos_z_avg
     
 
 def main():
@@ -142,7 +150,7 @@ def main():
         reader_height = csv.DictReader(f_height)
         reader_roof = csv.DictReader(f_roof)
         writer = csv.writer(f_out)
-        writer.writerow(["time (s)", "v_x (m/s)", "v_y (m/s)", "pos_x (m)", "pos_y (m)", "acc_x (m/s^2)", "acc_y (m/s^2)"])
+        writer.writerow(["time (s)", "v_x (m/s)", "v_y (m/s)", "pos_x (m)", "pos_y (m)", "pos_z (m)", "acc_x (m/s^2)", "acc_y (m/s^2)"])
         
         # First read all values into lists
         angular_rows = list(reader_angular)
@@ -198,13 +206,16 @@ def main():
             times_2.append(t)
             total_height_list.append(total_height)
 
+        average_height = find_room_height(roof_rows, height_rows)
+        pos_z_h, pos_z_r, pos_z_avg = z_position_calc(roof_rows, height_rows, average_height)
+
         # Write results with positions
-        for t, vx, vy, px, py, ax, ay in zip(times, vx_list, vy_list, pos_x, pos_y, acc_x, acc_y):
-            writer.writerow([f"{t:.6f}", f"{vx:.6f}", f"{vy:.6f}", f"{px:.6f}", f"{py:.6f}", f"{ax:.6f}", f"{ay:.6f}"])
+        for t, vx, vy, px, py, pz, ax, ay in zip(times, vx_list, vy_list, pos_x, pos_y, pos_z_avg, acc_x, acc_y):
+            writer.writerow([f"{t:.6f}", f"{vx:.6f}", f"{vy:.6f}", f"{px:.6f}", f"{py:.6f}", f"{pz:.6f}", f"{ax:.6f}", f"{ay:.6f}"])
         
         print(f"Wrote {len(times)} rows to {output_path}")    
 
-    average_height = find_room_height(roof_rows, height_rows)
+    
 
     # === Plot velocities ===
     plt.figure(figsize=(12, 12))
@@ -240,10 +251,10 @@ def main():
     plt.subplot(2, 2, 4)
     plt.plot(times_2, total_height_list, label="Total height", color="blue")
     plt.axhline(y=average_height, color='blue', linestyle='--', label='Average height')
-    plt.plot(times_2, total_height_list, label="Z position (m)", color="red")
+    plt.plot(times_2, pos_z_h, label="Z position (m) - From Bottom ", color="red")
+    plt.plot(times_2, pos_z_r, label="Z position (m) - From Top" , color="green")
+    plt.plot(times_2, pos_z_avg, label="Z position (m) - Average" , color="black", linestyle='--')
 
-
-    # plt.plot(times, acc_y, label="acc_y (m/s^2)", color="red")
     plt.xlabel("Time (s)")
     plt.ylabel("Total Height (m)")
     plt.title("ToF Heights")
