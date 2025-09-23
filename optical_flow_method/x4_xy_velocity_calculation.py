@@ -71,27 +71,83 @@ def differentiate_velocities(times, vx_list, vy_list):
 
     return acc_x, acc_y
 
+def find_room_height(roof_rows, height_rows):
+    sum = 0
+    length = 0
+    start = 0
+    averaging_period = 5 # in seconds
+
+    for row_r, row_h in zip(roof_rows, height_rows):
+            # read in both timestamps
+            t_r = float(row_r["time"])
+            t_h = float(row_h["time"])
+
+            # only proceed if timestamps match (allow noise for now)
+            if round(t_r, 6) != round(t_h, 6):
+                continue
+
+            if length == 0:
+                start = t_r
+            
+            # Break out of for loop after the averaging period ends
+            if round(t_r, 6) > start + averaging_period:
+                break
+            
+            t = t_r
+            total_height = float(row_r["height"]) + float(row_h["height"])
+            total_height /= 1000 # convert to m from mm
+
+            sum += total_height
+            length += 1
+
+    average_height = sum/length
+    return average_height
+
+def z_position_calc(roof_rows, height_rows, average_height):
+    pos_z_h = height_rows
+    pos_z_r = []
+
+    # TODO: what happens if there is an obstacle above and below
+
+
+    # 1. if total height is significantly less than average height (add a threshold)??
+    # but this wont really happen due to extrapolation... the only way we can fix this is by saving autonomous commands
+
+
+    for row_r in roof_rows:
+        h = average_height - float(row_r["height"])/1000
+        pos_z_r.append(h)
+
+    return pos_z_h, pos_z_r
+    
+
 def main():
     angular_rate_path = "../optical_flow_method_data/optical_flow_angular_rates.csv"
     height_path = "../optical_flow_method_data/ToF_heights_interp.csv"
     output_path = "../optical_flow_method_data/xy_velocities.csv"
+    roof_path = "../optical_flow_method_data/ToF_roof_interp.csv"
     
     times = []
     vx_list = []
     vy_list = []
+    times_2 = []
+    total_height_list = []
 
     with open(angular_rate_path, "r") as f_angular, \
         open(height_path, "r") as f_height, \
+        open(roof_path, "r") as f_roof, \
         open(output_path, "w", newline="") as f_out:
         
         reader_angular = csv.DictReader(f_angular)
         reader_height = csv.DictReader(f_height)
+        reader_roof = csv.DictReader(f_roof)
         writer = csv.writer(f_out)
         writer.writerow(["time (s)", "v_x (m/s)", "v_y (m/s)", "pos_x (m)", "pos_y (m)", "acc_x (m/s^2)", "acc_y (m/s^2)"])
         
         # First read all values into lists
         angular_rows = list(reader_angular)
         height_rows = list(reader_height)
+        roof_rows = list(reader_roof)
         
         for row_a, row_h in zip(angular_rows, height_rows):
             # read in both timestamps
@@ -125,15 +181,34 @@ def main():
         # Differentiate to acceleration
         acc_x, acc_y = differentiate_velocities(np.array(times), np.array(vx_list), np.array(vy_list))
 
+        # Average the height of the room inthe first 5 seconds (assume drone is kept still in the first 5 seconds)
+        for row_r, row_h in zip(roof_rows, height_rows):
+            # read in both timestamps
+            t_r = float(row_r["time"])
+            t_h = float(row_h["time"])
+
+            # only proceed if timestamps match (allow noise for now)
+            if round(t_r, 6) != round(t_h, 6):
+                continue
+            
+            t = t_r
+            total_height = float(row_r["height"]) + float(row_h["height"])
+            total_height /= 1000 # convert to m from mm
+
+            times_2.append(t)
+            total_height_list.append(total_height)
+
         # Write results with positions
         for t, vx, vy, px, py, ax, ay in zip(times, vx_list, vy_list, pos_x, pos_y, acc_x, acc_y):
             writer.writerow([f"{t:.6f}", f"{vx:.6f}", f"{vy:.6f}", f"{px:.6f}", f"{py:.6f}", f"{ax:.6f}", f"{ay:.6f}"])
         
         print(f"Wrote {len(times)} rows to {output_path}")    
 
+    average_height = find_room_height(roof_rows, height_rows)
+
     # === Plot velocities ===
-    plt.figure(figsize=(16, 5))
-    plt.subplot(1, 3, 1)
+    plt.figure(figsize=(12, 12))
+    plt.subplot(2, 2, 1)
     plt.plot(times, vx_list, label="v_x (m/s)", color="blue")
     plt.plot(times, vy_list, label="v_y (m/s)", color="red")
     plt.xlabel("Time (s)")
@@ -143,7 +218,7 @@ def main():
     plt.grid(True)
 
     # === Plot trajectory (XY) ===
-    plt.subplot(1, 3, 2)
+    plt.subplot(2, 2, 2)
     plt.plot(pos_x, pos_y, "-o", markersize=2)
     plt.xlabel("X position (m)")
     plt.ylabel("Y position (m)")
@@ -151,8 +226,8 @@ def main():
     plt.axis("equal")
     plt.grid(True)
 
-        # === Plot trajectory (XY) ===
-    plt.subplot(1, 3, 3)
+    # === Plot trajectory (XY) ===
+    plt.subplot(2, 2, 3)
     plt.plot(times, acc_x, label="acc_x (m/s^2)", color="blue")
     plt.plot(times, acc_y, label="acc_y (m/s^2)", color="red")
     plt.xlabel("Time (s)")
@@ -160,6 +235,21 @@ def main():
     plt.title("Optical Flow Differentiated Acceleration")
     plt.legend()
     plt.grid(True)
+
+    # === Plot height of map (Z) === 
+    plt.subplot(2, 2, 4)
+    plt.plot(times_2, total_height_list, label="Total height", color="blue")
+    plt.axhline(y=average_height, color='blue', linestyle='--', label='Average height')
+    plt.plot(times_2, total_height_list, label="Z position (m)", color="red")
+
+
+    # plt.plot(times, acc_y, label="acc_y (m/s^2)", color="red")
+    plt.xlabel("Time (s)")
+    plt.ylabel("Total Height (m)")
+    plt.title("ToF Heights")
+    plt.legend()
+    plt.grid(True)
+
 
     plt.tight_layout()
     plt.show()

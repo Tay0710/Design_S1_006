@@ -69,28 +69,69 @@ def interpolate_heights(height_times, heights, of_times, output_path):
 
     return of_times, h_interp
 
-def plot_heights(original_times, original_heights, interp_times, interp_heights):
-    plt.figure(figsize=(10, 5))
-    plt.plot(original_times, original_heights, "o-", label="Original ToF samples", markersize=6)
-    plt.plot(interp_times, interp_heights, "x", label="Interpolated at OF times", markersize=6, color="red")
-    plt.xlabel("Time (s)")
-    plt.ylabel("Height (mm)")
-    plt.title("Height Interpolation at Optical Flow Timestamps")
-    plt.legend()
-    plt.grid(True)
+def plot_heights(original_times_h, original_times_r, original_heights, original_roof, interp_times_h, interp_times_r, interp_heights, interp_roof):
+
+    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 10), sharex=True)
+
+    # Top plot
+    ax1.plot(original_times_h, original_heights, "o-", label="Original ToF samples", markersize=6)
+    ax1.plot(interp_times_h, interp_heights, "x", label="Interpolated at OF times", markersize=6, color="red")
+    ax1.set_xlabel("Time (s)")
+    ax1.set_ylabel("Height (mm)")
+    ax1.set_title("Height Interpolation at Optical Flow Timestamps - Floor")
+    ax1.legend()
+    ax1.grid(True)
+
+    # Bottom plot
+    ax2.plot(original_times_r, original_roof, "o-", label="Original ToF samples", markersize=6)
+    ax2.plot(interp_times_r, interp_roof, "x", label="Interpolated at OF times", markersize=6, color="red")
+    ax2.set_xlabel("Time (s)")
+    ax2.set_ylabel("Height (mm)")
+    ax2.set_title("Height Interpolation at Optical Flow Timestamps - Roof")
+    ax2.legend()
+    ax2.grid(True)
+
+    # Adjust spacing
+    plt.tight_layout()
+
+    # Show the plot
     plt.show()
+
+
+    # plt.figure(figsize=(10, 5))
+    # plt.plot(original_times, original_heights, "o-", label="Original ToF samples", markersize=6)
+    # plt.plot(interp_times, interp_heights, "x", label="Interpolated at OF times", markersize=6, color="red")
+    # plt.xlabel("Time (s)")
+    # plt.ylabel("Height (mm)")
+    # plt.title("Height Interpolation at Optical Flow Timestamps")
+
+    # # include roof oomn subplot
+
+    # plt.legend()
+    # plt.grid(True)
+    # plt.show()
 
 def main():
     height_path = "../optical_flow_method_data/ToF_heights.csv"
     angular_rate_path = "../optical_flow_method_data/optical_flow_angular_rates.csv"
-    output_path = "../optical_flow_method_data/ToF_heights_interp.csv"
+    output_path_h = "../optical_flow_method_data/ToF_heights_interp.csv"
 
+    roof_path = "../optical_flow_method_data/ToF_roof.csv"
+    output_path_r = "../optical_flow_method_data/ToF_roof_interp.csv"
+
+
+    # Interpolate distance from floor
     t_h, h_vals = load_heights(height_path)
     t_of = load_of_times(angular_rate_path)
-    of_times, h_interp = interpolate_heights(t_h, h_vals, t_of, output_path)
+    of_times_1, h_interp = interpolate_heights(t_h, h_vals, t_of, output_path_h)
+
+    # interpolate distance from roof
+    t_r, r_vals = load_heights(roof_path)
+    of_times_2, r_interp = interpolate_heights(t_r, r_vals, t_of, output_path_r)
 
     # Plot results
-    plot_heights(t_h, h_vals, of_times, h_interp)
+    plot_heights(t_h, t_r, h_vals, r_vals, of_times_1, of_times_2, h_interp, r_interp)
+
 
 if __name__ == "__main__":
     main()

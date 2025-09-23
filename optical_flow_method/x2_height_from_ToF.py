@@ -98,6 +98,24 @@ def main(input_path):
             last_height = h
             writer.writerow([f"{t:.6f}", f"{h:.6f}"])
 
+    output_path = "../optical_flow_method_data/ToF_roof.csv"
+
+    last_roof = 0
+
+    with open(input_path, "r") as f_in, open(output_path, "w", newline="") as f_out:
+        reader = csv.DictReader(f_in)  # handles "time,type,D0...D63"
+        writer = csv.writer(f_out)
+        writer.writerow(["time", "height"])
+
+        for row in reader:
+            if row["type"] != "U":   # only process type U rows
+                continue
+
+            t = float(row["time"])
+            h = calculate_height(row["D5"], row["D6"], row["D9"], row["D10"], last_roof)
+            last_height = h
+            writer.writerow([f"{t:.6f}", f"{h:.6f}"])
+
             
 if __name__ == "__main__":
     main()
