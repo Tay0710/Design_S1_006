@@ -1,7 +1,7 @@
-# 23_09_25_Lv4 1_L_cards
+# 23_09_25_Lv4 2_L_cards_2
 
-Walk start: 46.98
-Walk end: 1:06.28 = 66.28
+Walk start: 1:00:18 = 60.18
+Walk end: 1:21.17 = 81.17
 Description: Walked in an L-shape, turning right
-Orientation: OF facing the carpet of ELEC lv4 with a high density of cards splayed on the floor
+Orientation: OF facing the carpet of ELEC lv4 with a high density of cards splayed on the floor. Holding the test rig higher
 OF sample rate: 50Hz
