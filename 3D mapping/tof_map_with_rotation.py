@@ -1,5 +1,5 @@
 """
-tof_map.py
+tof_map_with_rotation.py
 -----------------------
 
 Generates a 3D point cloud and mesh of the environment from Time-of-Flight (ToF) sensor data,
@@ -43,14 +43,12 @@ import matplotlib.pyplot as plt
 
 # === Load rotation matrices ===
 def load_rotation_matrices(rot_csv):
-    """Load rotation matrices CSV and reshape into (N, 3, 3)."""
     rot = np.loadtxt(rot_csv, delimiter=",", skiprows=1, usecols=range(1,10))
     times = np.loadtxt(rot_csv, delimiter=",", skiprows=1, usecols=(0,))
     return times, rot.reshape(-1, 3, 3)
 
 # === ToF projection into body frame ===
 def tof_point_body(d, theta_x_deg, theta_y_deg):
-    """Convert one ToF cell to body-frame vector (no translation)."""
     if d is None:
         return None
 
@@ -73,7 +71,6 @@ def tof_point_body(d, theta_x_deg, theta_y_deg):
     return np.array([x_local, y_local, -z_local])  # -z so that "down" is negative
 
 def build_points_down(distances):
-    """Convert one downward ToF row into 16 body-frame vectors."""
     cell_angles = {
         3:  (-30, -30), 2: (-10, -30), 1: (10, -30), 0: (30, -30),
         7:  (-30, -10), 6: (-10, -10), 5: (10, -10), 4: (30, -10),
@@ -91,7 +88,6 @@ def build_points_down(distances):
     return points
 
 def build_points_up(distances):
-    """Convert one upward ToF row into 16 body-frame vectors."""
     cell_angles = {
         3:  (-30, -30), 2: (-10, -30), 1: (10, -30), 0: (30, -30),
         7:  (-30, -10), 6: (-10, -10), 5: (10, -10), 4: (30, -10),
@@ -110,10 +106,6 @@ def build_points_up(distances):
     return points
 
 def build_points_side(distances, orientation):
-    """
-    Convert one side-facing ToF 8×8 into 64 body-frame vectors.
-    orientation = "L" (left) or "R" (right).
-    """
     fov = 90.0
     pitch = fov / 7.0  # ~12.857 degrees per pixel
     points = []
@@ -138,7 +130,6 @@ def build_points_side(distances, orientation):
 
 # === Rotation into world frame ===
 def rotate_point_to_world(local_vec, rot_mat, drone_pos):
-    """Rotate local ToF vector into world frame and translate by drone pos."""
     world_vec = rot_mat @ local_vec
     return (
         drone_pos[0] + world_vec[0],
@@ -191,7 +182,6 @@ def visualize_matplotlib(points, drone_positions):
     ax.legend()
     plt.show()
 
-# === Main ===
 def main():
     # Load trajectory + ToF + rotation data
     traj = pd.read_csv("../optical_flow_method_data/xy_velocities_to_world_frame.csv")
