@@ -70,11 +70,11 @@ def match_rotation_matrices_times(rot_mats, times_v, times_mat):
         rot_mats_matched.append(rot_mats[-1])
     return rot_mats_matched
 
-def rotate_to_world(rot_mats, v_body3):
+def rotate_to_world(rot_mats, vector):
     """Rotate body-frame velocities into world frame."""
-    v_world = np.zeros_like(v_body3)
-    for i in range(len(v_body3)):
-        v_world[i] = rot_mats[i] @ v_body3[i]
+    v_world = np.zeros_like(vector)
+    for i in range(len(vector)):
+        v_world[i] = rot_mats[i] @ vector[i]
         v_world[i, 2] = 0.0   # force z-velocity to 0 for every sample
     return v_world
 
@@ -84,7 +84,9 @@ def integrate_velocity(times, v_world):
     for i in range(1, len(times)):
         dt = times[i] - times[i - 1]
         pos_world[i] = pos_world[i - 1] + 0.5 * dt * (v_world[i] + v_world[i - 1])
-    return pos_world
+    return 
+
+def rotate_z_position(rot_mats, )
 
 def save_results(times, v_world, pos_world, output_csv):
     """Save world-frame velocities and positions to CSV."""
