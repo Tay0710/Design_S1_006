@@ -25,6 +25,7 @@
 
 // Stack size (adjust based on function memory usage)
 #define STACK_SIZE 4096
+#define STACK_SIZE_TOF 8192 // larger stack for ToF task
 
 
 // Optical flow SPI pins
@@ -709,10 +710,10 @@ void setup() {
   delay(50);
 
   // // Set Frequency
-  sensorU.setRangingFrequency(10);
-  sensorD.setRangingFrequency(10);
-  sensorL.setRangingFrequency(10);
-  sensorR.setRangingFrequency(10);
+  sensorU.setRangingFrequency(15);
+  sensorD.setRangingFrequency(15);
+  sensorL.setRangingFrequency(15);
+  sensorR.setRangingFrequency(15);
   // Start ranging on both sensors. 
   Serial.println("Starting ranging of ToFL7  sensors...");
   delay(50);
@@ -781,10 +782,10 @@ void setup() {
   xTaskCreate(sdTask, "SD_Task", STACK_SIZE, NULL, SD_TASK_PRIORITY, NULL);
 
   //  xTaskCreatePinnedToCore(tofTask, "ToF_Task", STACK_SIZE, NULL, TOF_TASK_PRIORITY, NULL, 0);
-  xTaskCreatePinnedToCore(tofLTask, "ToF_L", STACK_SIZE, NULL, TOF_TASK_PRIORITY, NULL, 0);
-  xTaskCreatePinnedToCore(tofRTask, "ToF_R", STACK_SIZE, NULL, TOF_TASK_PRIORITY, NULL, 0);
-  xTaskCreatePinnedToCore(tofUTask, "ToF_U", STACK_SIZE, NULL, TOF_TASK_PRIORITY, NULL, 0);
-  xTaskCreatePinnedToCore(tofDTask, "ToF_D", STACK_SIZE, NULL, TOF_TASK_PRIORITY, NULL, 0);
+  xTaskCreatePinnedToCore(tofLTask, "ToF_L", STACK_SIZE_TOF, NULL, TOF_TASK_PRIORITY, NULL, 0);
+  xTaskCreatePinnedToCore(tofRTask, "ToF_R", STACK_SIZE_TOF, NULL, TOF_TASK_PRIORITY, NULL, 0);
+  xTaskCreatePinnedToCore(tofUTask, "ToF_U", STACK_SIZE_TOF, NULL, TOF_TASK_PRIORITY, NULL, 0);
+  xTaskCreatePinnedToCore(tofDTask, "ToF_D", STACK_SIZE_TOF, NULL, TOF_TASK_PRIORITY, NULL, 0);
 
 
   // xTaskCreatePinnedToCore(IdleTaskC0, "Idle_C0", 1024, NULL, Idle_C0_TASK_PRIORITY, NULL, 0);
