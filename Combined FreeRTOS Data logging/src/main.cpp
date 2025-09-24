@@ -783,8 +783,8 @@ void setup() {
   //  xTaskCreatePinnedToCore(tofTask, "ToF_Task", STACK_SIZE, NULL, TOF_TASK_PRIORITY, NULL, 0);
   xTaskCreatePinnedToCore(tofLTask, "ToF_L", STACK_SIZE, NULL, TOF_TASK_PRIORITY, NULL, 0);
   xTaskCreatePinnedToCore(tofRTask, "ToF_R", STACK_SIZE, NULL, TOF_TASK_PRIORITY, NULL, 0);
-  xTaskCreatePinnedToCore(tofUTask, "ToF_U", STACK_SIZE, NULL, TOF_TASK_PRIORITY, NULL, 1);
-  xTaskCreatePinnedToCore(tofDTask, "ToF_D", STACK_SIZE, NULL, TOF_TASK_PRIORITY, NULL, 1);
+  xTaskCreatePinnedToCore(tofUTask, "ToF_U", STACK_SIZE, NULL, TOF_TASK_PRIORITY, NULL, 0);
+  xTaskCreatePinnedToCore(tofDTask, "ToF_D", STACK_SIZE, NULL, TOF_TASK_PRIORITY, NULL, 0);
 
 
   // xTaskCreatePinnedToCore(IdleTaskC0, "Idle_C0", 1024, NULL, Idle_C0_TASK_PRIORITY, NULL, 0);
