@@ -129,10 +129,10 @@ char imuBuf[128];
 char ofBuf[64];
 char ultraBuf[64];
 // char ultraBuf[128]; // enough for timestamp + 4 readings
-char tofLBuf[384]; // 8x8 resolution, with 4 character + 1 space ~ 384 chars
-char tofRBuf[384]; 
-char tofUBuf[96]; // 4x4 resolution ~ 96 chars (16*5 = 80)
-char tofDBuf[96];
+char tofLBuf[512]; // 8x8 resolution, with 4 character + 1 space ~ 384 chars
+char tofRBuf[512]; 
+char tofUBuf[128]; // 4x4 resolution ~ 96 chars (16*5 = 80)
+char tofDBuf[128];
 // char tofBuf[1024]; // All 4 ToFs in one buffer
 
 // IMU - Calibration offsets
@@ -145,15 +145,15 @@ float  dps_rating = 250; // 15.625/31.25/62.5/125/250/500/1000/2000/4000 dps
 // Timing control
 unsigned long lastIMUtime = 0;
 unsigned long lastOFtime = 0;
-unsigned long lastTOFtime = 0;
-// unsigned long lastTOFLtime = 0;
-// unsigned long lastTOFRtime = 0;
-// unsigned long lastTOFUtime = 0;
-// unsigned long lastTOFDtime = 0;
+// unsigned long lastTOFtime = 0;
+unsigned long lastTOFLtime = 0;
+unsigned long lastTOFRtime = 0;
+unsigned long lastTOFUtime = 0;
+unsigned long lastTOFDtime = 0;
 
 const unsigned long imuInterval = 250;    // microseconds → ~4000 Hz | Low noise mode max = 6400Hz
-const unsigned long ofInterval = 20000;   // microseconds → ~50 Hz
-const unsigned long tofInterval = 500000/4;   // microseconds → ~4 Hz // Side Tof should be every 0.25s and Roof/ Floor ToF should be every 0.5s. 
+const unsigned long ofInterval = 18200;   // 18200 = ~55Hz, microseconds → ~50 Hz
+const unsigned long tofInterval = 100000; // 500000/4;   // microseconds → ~4 Hz // Side Tof should be every 0.25s and Roof/ Floor ToF should be every 0.5s. 
 
 // const unsigned long S1tofInterval = 250000;
 // const unsigned long S2tofInterval = 250000;
@@ -244,7 +244,7 @@ void logIMU() {
   unsigned long now = micros();
   if (now - lastIMUtime < imuInterval) return;  
   lastIMUtime = now;
-  if (!imuFile) return; // if file is not open; skip!
+  if (!mode) return; // if file is not open; skip!
 
   inv_imu_sensor_data_t imu_data;
   IMU.getDataFromRegisters(imu_data);
@@ -259,9 +259,11 @@ void logIMU() {
   int idx = appendTimestamp(imuBuf, now);
   idx += snprintf(imuBuf + idx, sizeof(imuBuf) - idx, ",%.9f,%.9f,%.9f,%.9f,%.9f,%.9f\n", gx, gy, gz, ax, ay, az);
   // --- Mutex protect just the write ---
-  if (xSemaphoreTake(sdMutex, portMAX_DELAY) == pdTRUE) {
-      imuFile.write((uint8_t*)imuBuf, idx);
-      xSemaphoreGive(sdMutex);
+  if (sdMutex != NULL) {
+    if (xSemaphoreTake(sdMutex, portMAX_DELAY) == pdTRUE) {
+        if(imuFile) imuFile.write((uint8_t*)imuBuf, idx);
+        xSemaphoreGive(sdMutex);
+    }
   }
 }
 
@@ -269,7 +271,7 @@ void logIMU() {
 void imuTask(void *pvParameters) {
     for (;;) {
         logIMU();                          // your existing function
-        vTaskDelay(1); // task delay for 1 ms. 
+        vTaskDelay(2); // task delay for 1 ms. (now 2ms) 
     }
 }
 
@@ -295,9 +297,9 @@ int intToStr(int val, char* buf) {
 
 void logToFL() {
   unsigned long now = micros();
-  if (now - lastTOFtime < tofInterval) return;
-  lastTOFtime = now;
-  if (!tofFile) return;
+  if (now - lastTOFLtime < tofInterval) return;
+  lastTOFLtime = now;
+  if (!mode) return;
 
   if(sensorL.isDataReady() && sensorL.getRangingData(&measurementDataL)) {
     int idx = appendTimestamp(tofLBuf, now); // write timestamp
@@ -316,20 +318,22 @@ void logToFL() {
     }
 
     tofLBuf[idx++] = '\n';
-  // --- Mutex protect just the write ---
-    if (xSemaphoreTake(sdMutex, portMAX_DELAY) == pdTRUE) {
-    tofFile.write((uint8_t*)tofLBuf, idx);  // write raw bytes
-    xSemaphoreGive(sdMutex);
-    }
+
+    if (sdMutex != NULL){
+      if (xSemaphoreTake(sdMutex, portMAX_DELAY) == pdTRUE) {
+        if(tofFile)tofFile.write((uint8_t*)tofLBuf, idx);  // write raw bytes
+      xSemaphoreGive(sdMutex);
+      }
+    }    
   }
 }
 
 
 void logToFR() {
   unsigned long now = micros();
-  if (now - lastTOFtime < tofInterval) return;
-  lastTOFtime = now;
-  if (!tofFile) return;
+  if (now - lastTOFRtime < tofInterval) return;
+  lastTOFRtime = now;
+  if (!mode) return;
 
   if(sensorR.isDataReady() && sensorR.getRangingData(&measurementDataR)) {
     int idx = appendTimestamp(tofRBuf, now); // write timestamp
@@ -348,20 +352,21 @@ void logToFR() {
     }
 
     tofRBuf[idx++] = '\n';
-    
-      // --- Mutex protect just the write ---
-    if (xSemaphoreTake(sdMutex, portMAX_DELAY) == pdTRUE) {
-      tofFile.write((uint8_t*)tofRBuf, idx);  // write raw bytes
+
+    if (sdMutex != NULL){
+      if (xSemaphoreTake(sdMutex, portMAX_DELAY) == pdTRUE) {
+        if(tofFile)tofFile.write((uint8_t*)tofRBuf, idx);  // write raw bytes
       xSemaphoreGive(sdMutex);
-    }
+      }
+    }    
   }
 }
 
 void logToFU() {
   unsigned long now = micros();
-  if (now - lastTOFtime < tofInterval) return;
-  lastTOFtime = now;
-  if (!tofFile) return;
+  if (now - lastTOFUtime < tofInterval) return;
+  lastTOFUtime = now;
+  if (!mode) return;
 
   if(sensorU.isDataReady() && sensorU.getRangingData(&measurementDataU)) {
     int idx = appendTimestamp(tofUBuf, now); // write timestamp
@@ -381,18 +386,20 @@ void logToFU() {
 
     tofUBuf[idx++] = '\n';
           // --- Mutex protect just the write ---
-    if (xSemaphoreTake(sdMutex, portMAX_DELAY) == pdTRUE) {
-      tofFile.write((uint8_t*)tofUBuf, idx);  // write raw bytes
+    if (sdMutex != NULL){
+      if (xSemaphoreTake(sdMutex, portMAX_DELAY) == pdTRUE) {
+        if(tofFile)tofFile.write((uint8_t*)tofUBuf, idx);  // write raw bytes
       xSemaphoreGive(sdMutex);
+      }
     }
   }
 }
 
 void logToFD() {
   unsigned long now = micros();
-  if (now - lastTOFtime < tofInterval) return;
-  lastTOFtime = now;
-  if (!tofFile) return;
+  if (now - lastTOFDtime < tofInterval) return;
+  lastTOFDtime = now;
+  if (!mode) return;
 
   if(sensorD.isDataReady() && sensorD.getRangingData(&measurementDataD)) {
     int idx = appendTimestamp(tofDBuf, now); // write timestamp
@@ -412,33 +419,65 @@ void logToFD() {
 
     tofDBuf[idx++] = '\n';
           // --- Mutex protect just the write ---
-    if (xSemaphoreTake(sdMutex, portMAX_DELAY) == pdTRUE) {
-      tofFile.write((uint8_t*)tofDBuf, idx);  // write raw bytes
+
+    if (sdMutex != NULL){
+      if (xSemaphoreTake(sdMutex, portMAX_DELAY) == pdTRUE) {
+        if(tofFile) tofFile.write((uint8_t*)tofDBuf, idx); // write raw bytes
       xSemaphoreGive(sdMutex);
-    }
+      }
+    }          
   }
 }
 
 
-volatile int tofInd = 0;
+// volatile int tofInd = 0;
 
-void logToF() {
-  switch (tofInd) {
-    case 0: logToFD(); tofInd++; break;
-    case 1: logToFL(); tofInd++; break;
-    case 2: logToFR(); tofInd++; break;
-    case 3: logToFU(); tofInd = 0; break;
-    default: tofInd = 0; break; // resets if corrupted
-  }
-}
+// void logToF() {
+//   switch (tofInd) {
+//     case 0: logToFD(); tofInd++; break;
+//     case 1: logToFL(); tofInd++; break;
+//     case 2: logToFR(); tofInd++; break;
+//     case 3: logToFU(); tofInd = 0; break;
+//     default: tofInd = 0; break; // resets if corrupted
+//   }
+// }
 
-// Task: Log ToF
-void tofTask(void *pvParameters) {
+// // Task: Log ToF
+// void tofTask(void *pvParameters) {
+//     for (;;) {
+//         logToF();
+//         vTaskDelay(pdMS_TO_TICKS(tofInterval/1000));
+//     }
+// }
+
+void tofLTask(void *pvParameters) {
     for (;;) {
-        logToF();
-        vTaskDelay(pdMS_TO_TICKS(tofInterval/1000));
+        logToFL();
+        vTaskDelay(pdMS_TO_TICKS(tofInterval / 1000)); // or smaller if faster updates needed
     }
 }
+
+void tofRTask(void *pvParameters) {
+    for (;;) {
+        logToFR();
+        vTaskDelay(pdMS_TO_TICKS(tofInterval / 1000));
+    }
+}
+
+void tofUTask(void *pvParameters) {
+    for (;;) {
+        logToFU();
+        vTaskDelay(pdMS_TO_TICKS(tofInterval / 1000));
+    }
+}
+
+void tofDTask(void *pvParameters) {
+    for (;;) {
+        logToFD();
+        vTaskDelay(pdMS_TO_TICKS(tofInterval / 1000));
+    }
+}
+
 
 
 void logOF() {
@@ -446,7 +485,7 @@ void logOF() {
   if (now - lastOFtime < ofInterval) return;  
   lastOFtime = now;
 
-  if (!ofFile) return;
+  if (!mode) return;
   // flow.readFrameBuffer(frame);
   flow.readMotionCount(&deltaX, &deltaY);
   int idx = appendTimestamp(ofBuf, now);
@@ -454,9 +493,11 @@ void logOF() {
   idx += snprintf(ofBuf + idx, sizeof(ofBuf) - idx, ",%d,%d\n", deltaX, deltaY);
 
   // --- Mutex protect just the write ---
-  if (xSemaphoreTake(sdMutex, portMAX_DELAY) == pdTRUE) {
-    ofFile.write((uint8_t*)ofBuf, idx);
-    xSemaphoreGive(sdMutex);
+  if (sdMutex != NULL) {
+    if (xSemaphoreTake(sdMutex, portMAX_DELAY) == pdTRUE) {
+      if(ofFile ) ofFile.write((uint8_t*)ofBuf, idx);
+      xSemaphoreGive(sdMutex);
+    }
   }
 }
 
@@ -594,10 +635,10 @@ void setup() {
 
   // Initialise 4 ToF sensors
   I2C_bus1.begin(SDA1, SCL1); // This resets I2C bus to 100kHz
-  I2C_bus1.setClock(1000000); //Sensor (L7) has max I2C freq of 1MHz
+  I2C_bus1.setClock(400000); //Sensor (L7) has max I2C freq of 1MHz, using 400kHz
   delay(100);
   I2C_bus2.begin(SDA2, SCL2); 
-  I2C_bus2.setClock(1000000); 
+  I2C_bus2.setClock(400000); 
   // Serial.println(I2C_bus2.getClock());
   Serial.println("Clock Has been Set for I2Cs");
 
@@ -605,23 +646,23 @@ void setup() {
   // Activating PWR_EN (Make High). 
   pinMode(PENA, OUTPUT);
   digitalWrite(PENA, HIGH); 
-  delay(100);   
+  delay(200);   
   // Activating I2C Reset pin to reset the addresses (Pulse High). 
   pinMode(RESET, OUTPUT);
   digitalWrite(RESET, HIGH); 
-  delay(100); 
+  delay(200); 
   digitalWrite(RESET, LOW); 
-  delay(100); 
+  delay(300); 
   // Deactivating PWR_EN (Make Low). Reseting sensors
   digitalWrite(PENA, LOW); 
-  delay(100);   
+  delay(300);   
   digitalWrite(PENA, HIGH); // Make high again
-  delay(100);  
+  delay(300);  
   // Configure LPn pins
   pinMode(LPN, OUTPUT);
   // Set sensor 1 LPn low (Deactivate I2C communication) 
   digitalWrite(LPN, LOW); // One LPn should be set HIGH permanently
-  delay(100); 
+  delay(200); 
 
   // I2C bus split: L + U on I2C_bus2; R + D on I2C_bus1
   // Have to change the address of the ToFs with no LPN pin attached.
@@ -668,16 +709,24 @@ void setup() {
   delay(50);
 
   // // Set Frequency
-  sensorU.setRangingFrequency(15);
-  sensorD.setRangingFrequency(15);
-  sensorL.setRangingFrequency(15);
-  sensorR.setRangingFrequency(15);
+  sensorU.setRangingFrequency(10);
+  sensorD.setRangingFrequency(10);
+  sensorL.setRangingFrequency(10);
+  sensorR.setRangingFrequency(10);
   // Start ranging on both sensors. 
   Serial.println("Starting ranging of ToFL7  sensors...");
+  delay(50);
   sensorU.startRanging();
+  delay(50);
+  Serial.println("Quarter way there...");
   sensorD.startRanging();
+  delay(50);
+  Serial.println("Haflway there...");
   sensorL.startRanging();
+  delay(50);
+  Serial.println("Almost there...");
   sensorR.startRanging();
+  delay(50);
   Serial.println("Sensors are now ranging.");
 
   // Ultrasonics
@@ -728,9 +777,15 @@ void setup() {
 
   // Create tasks
   xTaskCreatePinnedToCore(imuTask, "IMU_Task", STACK_SIZE, NULL, IMU_TASK_PRIORITY, NULL, 1);
-  xTaskCreatePinnedToCore(tofTask, "ToF_Task", STACK_SIZE, NULL, TOF_TASK_PRIORITY, NULL, 0);
   xTaskCreatePinnedToCore(ofTask, "OF_Task", STACK_SIZE, NULL, OF_TASK_PRIORITY, NULL, 1);
   xTaskCreate(sdTask, "SD_Task", STACK_SIZE, NULL, SD_TASK_PRIORITY, NULL);
+
+  //  xTaskCreatePinnedToCore(tofTask, "ToF_Task", STACK_SIZE, NULL, TOF_TASK_PRIORITY, NULL, 0);
+  xTaskCreatePinnedToCore(tofLTask, "ToF_L", STACK_SIZE, NULL, TOF_TASK_PRIORITY, NULL, 0);
+  xTaskCreatePinnedToCore(tofRTask, "ToF_R", STACK_SIZE, NULL, TOF_TASK_PRIORITY, NULL, 0);
+  xTaskCreatePinnedToCore(tofUTask, "ToF_U", STACK_SIZE, NULL, TOF_TASK_PRIORITY, NULL, 1);
+  xTaskCreatePinnedToCore(tofDTask, "ToF_D", STACK_SIZE, NULL, TOF_TASK_PRIORITY, NULL, 1);
+
 
   // xTaskCreatePinnedToCore(IdleTaskC0, "Idle_C0", 1024, NULL, Idle_C0_TASK_PRIORITY, NULL, 0);
   // xTaskCreatePinnedToCore(IdleTaskC1, "Idle_C1", 1024, NULL, Idle_C1_TASK_PRIORITY, NULL, 1);
