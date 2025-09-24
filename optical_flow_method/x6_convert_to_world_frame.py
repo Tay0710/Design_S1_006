@@ -49,10 +49,10 @@ def load_body_velocities(vel_csv):
     vel_df = pd.read_csv(vel_csv)
     times = vel_df["time (s)"].values
     v_body = vel_df[["v_x (m/s)", "v_y (m/s)"]].values
-    z_pos_body = vel_df[["pos_z (m)"]]
-    z_pos_body3 = np.hstack([np.zeros((len(v_body), 2)), z_pos_body])
+    z_body = vel_df[["pos_z (m)"]]
+    z_body3 = np.hstack([np.zeros((len(v_body), 2)), z_body])
     v_body3 = np.hstack([v_body, np.zeros((len(v_body), 1))])  # add z=0
-    return times, v_body3, z_pos_body3
+    return times, v_body3, z_body3
 
 def match_rotation_matrices_times(rot_mats, times_v, times_mat):
     """Pick closest rotation matrix and store into new np.arr."""
@@ -86,7 +86,9 @@ def integrate_velocity(times, v_world):
         pos_world[i] = pos_world[i - 1] + 0.5 * dt * (v_world[i] + v_world[i - 1])
     return 
 
-def rotate_z_position(rot_mats, )
+def rotate_z_position(rot_mats, z_body3):
+    """Rotate z postion to world and removes x and y components."""
+    z_rotated = rotate_to_world(rot_mats, z_body3)
 
 def save_results(times, v_world, pos_world, output_csv):
     """Save world-frame velocities and positions to CSV."""
@@ -156,6 +158,7 @@ def main():
 
     # Rotate + integrate
     v_world = rotate_to_world(rot_mats_matched, v_body3)
+    z_pos_world = rotate_to_world(rot_mat)
     pos_world = integrate_velocity(times_v, v_world)
 
     # Save and plot
