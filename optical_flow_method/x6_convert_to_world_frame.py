@@ -45,12 +45,13 @@ def load_rotation_matrices(rot_csv):
     return times, rot.reshape(-1, 3, 3)
 
 def load_body_velocities(vel_csv):
-    """Load body-frame velocities and timestamps from CSV."""
+    """Load body-frame velocities, z-position and timestamps from CSV."""
     vel_df = pd.read_csv(vel_csv)
     times = vel_df["time (s)"].values
     v_body = vel_df[["v_x (m/s)", "v_y (m/s)"]].values
+    z_pos_body = vel_df[["pos_z (m)"]]
     v_body3 = np.hstack([v_body, np.zeros((len(v_body), 1))])  # add z=0
-    return times, v_body3
+    return times, v_body3, z_pos
 
 def match_rotation_matrices_times(rot_mats, times_v, times_mat):
     """Pick closest rotation matrix and store into new np.arr."""
@@ -145,7 +146,7 @@ def main():
 
     # Load data
     times_mat, rot_mats = load_rotation_matrices(rot_csv)
-    times_v, v_body3 = load_body_velocities(vel_csv)
+    times_v, v_body3, z_pos_body = load_body_velocities(vel_csv)
 
     # Match rotation matrix to times from velocity
     rot_mats_matched = match_rotation_matrices_times(rot_mats, times_v, times_mat)
