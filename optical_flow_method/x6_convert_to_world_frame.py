@@ -89,6 +89,8 @@ def integrate_velocity(times, v_world):
 def rotate_z_position(rot_mats, z_body3):
     """Rotate z postion to world and removes x and y components."""
     z_rotated = rotate_to_world(rot_mats, z_body3)
+    z_world = z_rotated[:,2]
+    return z_world
 
 def save_results(times, v_world, pos_world, output_csv):
     """Save world-frame velocities and positions to CSV."""
@@ -151,15 +153,18 @@ def main():
 
     # Load data
     times_mat, rot_mats = load_rotation_matrices(rot_csv)
-    times_v, v_body3, z_pos_body3 = load_body_velocities(vel_csv)
+    times_v, v_body3, z_body3 = load_body_velocities(vel_csv)
 
     # Match rotation matrix to times from velocity
     rot_mats_matched = match_rotation_matrices_times(rot_mats, times_v, times_mat)
 
     # Rotate + integrate
     v_world = rotate_to_world(rot_mats_matched, v_body3)
-    z_pos_world = rotate_to_world(rot_mat)
     pos_world = integrate_velocity(times_v, v_world)
+
+    # Add z position
+    z_world = rotate_z_position(rot_mats_matched, z_body3)
+    pos_world[:,2] = z_world
 
     # Save and plot
     save_results(times_v, v_world, pos_world, output_csv)
