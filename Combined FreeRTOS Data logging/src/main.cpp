@@ -668,10 +668,10 @@ void setup() {
   delay(50);
 
   // // Set Frequency
-  // sensorR.setRangingFrequency(15);
-  // sensorF.setRangingFrequency(15);
-  // sensorS1.setRangingFrequency(15);
-  // sensorS2.setRangingFrequency(15);
+  sensorU.setRangingFrequency(15);
+  sensorD.setRangingFrequency(15);
+  sensorL.setRangingFrequency(15);
+  sensorR.setRangingFrequency(15);
   // Start ranging on both sensors. 
   Serial.println("Starting ranging of ToFL7  sensors...");
   sensorU.startRanging();
