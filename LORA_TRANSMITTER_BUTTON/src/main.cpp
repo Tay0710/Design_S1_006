@@ -10,6 +10,7 @@
 #define CONFIG_RADIO_BW             125.0
 
 #define BOOT_BUTTON 0
+#define RED_BUTTON 42
 
 // Define radio object
 SX1262 radio = new Module(RADIO_CS_PIN, RADIO_DIO1_PIN, RADIO_RST_PIN, RADIO_BUSY_PIN);
@@ -141,18 +142,18 @@ void setup()
 
 
     // Setup up failsafe button
-    pinMode(BOOT_BUTTON, INPUT); // Pulled up on PCB
-    
+    pinMode(RED_BUTTON, INPUT); // Pulled down on PCB
+
 
     
     // Print instructions to screen
     drawInstructions();
 
     // Wait for start button to be pressed
-    while(digitalRead(BOOT_BUTTON)) {
+    while(!digitalRead(RED_BUTTON)) {
     }
 
-    attachInterrupt(digitalPinToInterrupt(BOOT_BUTTON), interruptCallback, FALLING);
+    attachInterrupt(digitalPinToInterrupt(RED_BUTTON), interruptCallback, RISING);
 
     // start transmitting the first packet
     Serial.print(F("Radio Sending first packet ... "));
