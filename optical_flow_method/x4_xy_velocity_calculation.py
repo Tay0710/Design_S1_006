@@ -107,9 +107,9 @@ def z_position_calc(roof_rows, height_rows, average_height):
     pos_z_h = []
     pos_z_r = []
     pos_z_avg = []
+    altitude_thresh = 0.05 # 5cm
 
     # TODO: what happens if there is an obstacle above and below
-
 
     # 1. if total height is significantly less than average height (add a threshold)??
     # but this wont really happen due to extrapolation... the only way we can fix this is by saving autonomous commands
@@ -123,11 +123,15 @@ def z_position_calc(roof_rows, height_rows, average_height):
         h_h = float(row_h["height"])/1000
         pos_z_h.append(h_h)
 
-        h_avg = (h_h + h_r)/2
+        total_height = float(row_r["height"]) + float(row_h["height"])
+        if (total_height/1000 - average_height < -altitude_thresh):
+            h_avg = h_r
+        else:
+            h_avg = (h_h + h_r)/2
         pos_z_avg.append(h_avg)
 
     return pos_z_h, pos_z_r, pos_z_avg
-    
+
 
 def main():
     angular_rate_path = "../optical_flow_method_data/optical_flow_angular_rates.csv"
