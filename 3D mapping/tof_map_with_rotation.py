@@ -185,7 +185,7 @@ def visualize_matplotlib(points, drone_positions):
 def main():
     # Load trajectory + ToF + rotation data
     traj = pd.read_csv("../optical_flow_method_data/xy_velocities_to_world_frame.csv")
-    tof = pd.read_csv("../optical_flow_method_data/combined_samples/22_09_25_MILC/7_lyco_lab/download_tof_cropped.csv")
+    tof = pd.read_csv("../optical_flow_method_data/combined_samples/26_09_25_Lv4/2_mixed_straight/download_tof_cropped.csv")
     times_mat, rot_mats = load_rotation_matrices("../optical_flow_method_data/rotation_matrices.csv")
 
     all_points = []
