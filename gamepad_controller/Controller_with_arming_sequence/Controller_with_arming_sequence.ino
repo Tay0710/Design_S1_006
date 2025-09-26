@@ -16,6 +16,13 @@
 #include "soc/soc.h"             // disable brownout problems
 #include "soc/rtc_cntl_reg.h"    // disable brownout problems
 
+#include <Arduino.h>
+
+// Ultrasonic Variables
+#define pwPin1 25 // GPIO pin
+volatile unsigned long pulseStart1 = 0;
+volatile float distanceCm1 = 0;
+volatile bool US_ready1 = false;
 
 // Using UART2 on ESP32
 #define RX_PIN 16
@@ -337,6 +344,21 @@ void onDisconnect(void* arg, AsyncClient* client) {
   sendTimer.detach();  // Pause timer
 }
 
+// Ultrasonic Interupt Function
+void US1_ISR() {
+  // Called when pwPin changes
+  if (digitalRead(pwPin1) == HIGH) {
+    // Rising edge
+    pulseStart1 = micros();
+    US_ready1 = false;
+  } else {
+    // Falling edge
+    unsigned long pulseWidth = micros() - pulseStart1;
+    distanceCm1 = pulseWidth / 57.87;
+    US_ready1 = true;
+  }
+}
+
 // Arduino setup function. Runs in CPU 1
 void setup() {
   WRITE_PERI_REG(RTC_CNTL_BROWN_OUT_REG, 0); //disable brownout detector
@@ -408,12 +430,22 @@ void setup() {
 
   // client->onDisconnect(&onDisconnect, client);  // when disconnected
 
+  // Ultrasonic Interrupt Setup
+  pinMode(pwPin1, INPUT_PULLUP);
+  attachInterrupt(digitalPinToInterrupt(pwPin1), US1_ISR, CHANGE);
 
   Serial.println(" --- Setup Complete --- ");
 }
 
 // Arduino loop function. Runs in CPU 1.
 void loop() {
+
+  if (US_ready1) {
+    // Serial.print("US1 Distance: ");
+    // Serial.print(distanceCm1, 2);
+    // Serial.println(" cm");
+    US_ready1 = false; // Current distance of ultrasonic is saved in: distanceCm1
+  } 
 
   currentMillis = millis();
 
