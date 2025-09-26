@@ -25,6 +25,7 @@ volatile float distanceCm1 = 0;
 volatile bool US_ready1 = false;
 float CurrentDistance = 0;
 float Olddistance = 0;
+int lastCorrectionTime = 0;
 
 // Using UART2 on ESP32
 #define RX_PIN 16
@@ -468,7 +469,7 @@ void loop() {
 
     // Gentle correction if not moving too fast
     if (DeltaDistance < 1.0 && DeltaDistance > -1.0) {
-      rcChannels[THROTTLE] -= error * Kp;
+      rcChannels[THROTTLE] += error * Kp;
     }
 
     // Safety bounds
@@ -480,9 +481,9 @@ void loop() {
     }
 
     // Reset timer
-    lastCorrectionTime = now;
+    lastCorrectionTime = currentMillis;
   }
-}
+
 
 
   // This call fetches all the controllers' data.
@@ -519,6 +520,9 @@ void loop() {
   //     vTaskDelay(1);
 
   if (currentMillis > sbusTime) {
+    rcChannels[THROTTLE] = min(THROTTLE_MAX, rcChannels[THROTTLE]);
+    rcChannels[THROTTLE] = max(THROTTLE_MIN, rcChannels[THROTTLE]);
+
     sbusPreparePacket(sbusPacket, rcChannels, false, false);
     Serial1.write(sbusPacket, SBUS_PACKET_LENGTH);
     // printSBUSChannel(rcChannels);
