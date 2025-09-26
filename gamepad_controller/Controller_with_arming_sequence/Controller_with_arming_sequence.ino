@@ -54,10 +54,10 @@ bool armingSequenceFlag = false;
 #define SBUS_MAX 1600 // 2115, switched to 2110
 
 #define THROTTLE_MIN 890
-#define THROTTLE_MID 1500
-#define THROTTLE_MAX 2110 // shrink range of throttle
+#define THROTTLE_MID 1150
+#define THROTTLE_MAX 1410 // shrink range of throttle
 
-#define DPAD_INCREMENT 3
+#define DPAD_INCREMENT 2
 
 // Constants for Wifi
 #define SSID "ESP-TEST-DJ"
@@ -67,6 +67,14 @@ bool armingSequenceFlag = false;
 
 #define TCP_PORT 7050
 #define DNS_PORT 53
+
+const int debounceDelay  = 100;
+
+int currentThrottle = 0;
+bool hoverFlag = false;
+
+int lastPress = 0;
+
 
 // This callback gets called any time a new gamepad is connected.
 // Up to 4 gamepads can be connected at the same time.
@@ -184,11 +192,23 @@ void processGamepad(ControllerPtr ctl) {
 
   // Map throttle values
   // NOTE: may require non-linear mapping
-  if (ctl->axisY() <= AXIS_L_NEUTRAL_Y) {
-    rcChannels[THROTTLE] = (int)map(ctl->axisY(), AXIS_L_NEUTRAL_Y, AXIS_UP, THROTTLE_MID, THROTTLE_MAX);
-  } else {
-    rcChannels[THROTTLE] = (int)map(ctl->axisY(), AXIS_L_NEUTRAL_Y, AXIS_DOWN, THROTTLE_MID, THROTTLE_MIN);
-  }
+  // Press A to keep throttle value constant 
+  // if ((ctl->buttons() & 0x0002) && (millis() - lastPress) > debounceDelay)
+  // {
+  //   lastPress = millis();
+  //   rcChannels[THROTTLE] = currentThrottle;
+  //   hoverFlag = !hoverFlag;
+
+  // }
+  // else if (ctl->axisY() <= AXIS_L_NEUTRAL_Y && !hoverFlag) {
+  //   currentThrottle = (int)map(ctl->axisY(), AXIS_L_NEUTRAL_Y, AXIS_UP, THROTTLE_MID, THROTTLE_MAX);
+  //   rcChannels[THROTTLE] = currentThrottle;
+  // } else if (!hoverFlag) {
+  //   currentThrottle = (int)map(ctl->axisY(), AXIS_L_NEUTRAL_Y, AXIS_DOWN, THROTTLE_MID, THROTTLE_MIN);
+  //   rcChannels[THROTTLE] = currentThrottle;
+  // }
+
+
   // Serial.print("axis l - y: ");
   // Serial.print(ctl->axisY());
   // Serial.print("\t throttle: ");
@@ -238,11 +258,14 @@ void processGamepad(ControllerPtr ctl) {
 
   // Dpad: up = 0x01 = 0b00000001, down = 0x02 = 0b00000010, left = 0x08 = 0b00001000, right = 0x04 = 0b00000100
   // Map pitch to Dpad
-  if(ctl->dpad() & 0x01 && rcChannels[PITCH] > SBUS_MIN) {
-    rcChannels[PITCH] = rcChannels[PITCH] - DPAD_INCREMENT;
+  if(ctl->dpad() & 0x02 && rcChannels[THROTTLE] > THROTTLE_MIN) {
+    // rcChannels[PITCH] = rcChannels[PITCH] - DPAD_INCREMENT;
+    rcChannels[THROTTLE] = rcChannels[THROTTLE] - DPAD_INCREMENT;
   }
-  if(ctl->dpad() & 0x02 && rcChannels[PITCH] < SBUS_MAX) {
-    rcChannels[PITCH] = rcChannels[PITCH] + DPAD_INCREMENT;
+  if(ctl->dpad() & 0x01 && rcChannels[THROTTLE] < THROTTLE_MAX) {
+    // rcChannels[PITCH] = rcChannels[PITCH] + DPAD_INCREMENT;
+    rcChannels[THROTTLE] = rcChannels[THROTTLE] + DPAD_INCREMENT;
+
   }
   if(ctl->dpad() & 0x08 && rcChannels[ROLL] > SBUS_MIN) {
     rcChannels[ROLL] = rcChannels[ROLL] - DPAD_INCREMENT;
@@ -250,6 +273,7 @@ void processGamepad(ControllerPtr ctl) {
   if(ctl->dpad() & 0x04 && rcChannels[ROLL] < SBUS_MAX) {
     rcChannels[ROLL] = rcChannels[ROLL] + DPAD_INCREMENT;
   }
+
 
   // Arming sequence code
   // Start arming sequence if Y button is pressed
