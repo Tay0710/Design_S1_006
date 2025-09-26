@@ -23,6 +23,8 @@
 volatile unsigned long pulseStart1 = 0;
 volatile float distanceCm1 = 0;
 volatile bool US_ready1 = false;
+float = CurrentDistance = 0;
+float Olddistance = 0;
 
 // Using UART2 on ESP32
 #define RX_PIN 16
@@ -442,10 +444,35 @@ void loop() {
 
   if (US_ready1) {
     // Serial.print("US1 Distance: ");
+    CurrentDistance = round(distanceCm1 * 100) / 100; 
     // Serial.print(distanceCm1, 2);
     // Serial.println(" cm");
     US_ready1 = false; // Current distance of ultrasonic is saved in: distanceCm1
   } 
+  
+  float DeltaDistance = Olddistance - CurrentDistance;
+  Olddistance = CurrentDistance;
+
+    // --- Hover controller ---
+  float targetHeight = 100.0;      // Desired hover height in cm
+  float error = CurrentDistance - targetHeight; // +ve = too high, -ve = too low
+
+  // Proportional gain factor (tune this)
+  float Kp = 0.1;  
+
+  // Only apply correction if drone isn’t already moving too fast
+  if (DeltaDistance < 1.0 && DeltaDistance > -1.0) {
+    rcChannels[THROTTLE] -= error * Kp;
+  }
+
+  // Hard limits (safety)
+  if (CurrentDistance > 120.00 && DeltaDistance < 1.00){
+    rcChannels[THROTTLE] += 1
+  }  
+  if (CurrentDistance < 80.00 && DeltaDistance > -1.00){ // could add: || DeltaDistance > 20.00 ; To try prevent too rapid movements
+    rcChannels[THROTTLE] += -1
+  }
+
 
   currentMillis = millis();
 
