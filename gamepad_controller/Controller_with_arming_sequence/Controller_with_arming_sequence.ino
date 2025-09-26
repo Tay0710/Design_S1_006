@@ -23,7 +23,7 @@
 volatile unsigned long pulseStart1 = 0;
 volatile float distanceCm1 = 0;
 volatile bool US_ready1 = false;
-float = CurrentDistance = 0;
+float CurrentDistance = 0;
 float Olddistance = 0;
 
 // Using UART2 on ESP32
@@ -441,6 +441,7 @@ void setup() {
 
 // Arduino loop function. Runs in CPU 1.
 void loop() {
+  currentMillis = millis();
 
   if (US_ready1) {
     // Serial.print("US1 Distance: ");
@@ -460,21 +461,29 @@ void loop() {
   // Proportional gain factor (tune this)
   float Kp = 0.1;  
 
-  // Only apply correction if drone isn’t already moving too fast
-  if (DeltaDistance < 1.0 && DeltaDistance > -1.0) {
-    rcChannels[THROTTLE] -= error * Kp;
+  // Timing check (500 ms = 0.5 sec)
+  if (currentMillis - lastCorrectionTime >= 500) {
+
+    // --- Throttle logic ---
+
+    // Gentle correction if not moving too fast
+    if (DeltaDistance < 1.0 && DeltaDistance > -1.0) {
+      rcChannels[THROTTLE] -= error * Kp;
+    }
+
+    // Safety bounds
+    if (CurrentDistance > 120.00 && DeltaDistance < 1.00) {
+      rcChannels[THROTTLE] += 1;
+    }
+    if (CurrentDistance < 80.00 && DeltaDistance > -1.00) {
+      rcChannels[THROTTLE] -= 1;
+    }
+
+    // Reset timer
+    lastCorrectionTime = now;
   }
+}
 
-  // Hard limits (safety)
-  if (CurrentDistance > 120.00 && DeltaDistance < 1.00){
-    rcChannels[THROTTLE] += 1
-  }  
-  if (CurrentDistance < 80.00 && DeltaDistance > -1.00){ // could add: || DeltaDistance > 20.00 ; To try prevent too rapid movements
-    rcChannels[THROTTLE] += -1
-  }
-
-
-  currentMillis = millis();
 
   // This call fetches all the controllers' data.
   // Call this function in your main loop.
