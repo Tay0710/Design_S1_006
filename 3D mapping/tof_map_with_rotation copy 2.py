@@ -74,7 +74,7 @@ def tof_point_body_2(d, theta_x_deg, theta_y_deg):
     if d is None:
         return None
 
-    pitch = -np.deg2rad(theta_y_deg)
+    pitch = np.deg2rad(theta_y_deg) # inverted angles in y direction so don't need to negate again
     yaw =  -np.deg2rad(theta_x_deg)
 
     rot_mat = np.array([[np.cos(yaw)*np.cos(pitch), np.sin(yaw)*np.cos(pitch), -np.sin(pitch)],
@@ -95,10 +95,10 @@ def build_points_down(distances):
     #     15: (-30,  30), 14:(-10, 30), 13:(10, 30),  12:(30, 30),
     # }
     cell_angles = {
-        3:  (-22.5, -22.5), 2: (-7.5, -22.5), 1: (7.5, -22.5), 0: (22.5, -22.5),
-        7:  (-22.5, -7.5), 6: (-7.5, -7.5), 5: (7.5, -7.5), 4: (22.5, -7.5),
-        11: (-22.5,  7.5), 10:(-7.5, 7.5),  9:(7.5, 7.5),   8:(22.5, 7.5),
-        15: (-22.5,  22.5), 14:(-7.5, 22.5), 13:(7.5, 22.5),  12:(22.5, 22.5),
+        12:  (-22.5, 22.5), 13: (-7.5, 22.5), 14: (7.5, 22.5), 15: (22.5, 22.5),
+        8:  (-22.5, 7.5), 9: (-7.5, 7.5), 10: (7.5, 7.5), 11: (22.5, 7.5),
+        4: (-22.5,  -7.5), 5:(-7.5, -7.5),  6:(7.5, -7.5),   7:(22.5, -7.5),
+        0: (-22.5,  -22.5), 1:(-7.5, -22.5), 2:(7.5, -22.5),  3:(22.5, -22.5),
     }
     points = []
     for idx, (tx, ty) in cell_angles.items():
@@ -109,7 +109,7 @@ def build_points_down(distances):
         if pt is not None:
             lx, ly, lz = pt
 
-            pt = np.array([ly, lx, lz])
+            pt = np.array([-ly, -lx, lz])
             points.append(pt)
     return points
 
@@ -207,7 +207,7 @@ def visualize_matplotlib(points, drone_positions):
     ax.plot(drone_positions[:,0], drone_positions[:,1], drone_positions[:,2], c="red", label="Drone trajectory")
     ax.scatter(drone_positions[-1,0], drone_positions[-1,1], drone_positions[-1,2],
                c="red", s=100, marker="o", label="Drone (final)")
-    ax.text(drone_positions[-1,0], drone_positions[-1,1], drone_positions[-1,2],
+    ax.text(drone_positions[-1,0], drone_positions[-1,1], drone_positions[-1,2], 
             f"Drone {tuple(drone_positions[-1])}", color="red")
 
     ax.set_xlabel("X (m)")
