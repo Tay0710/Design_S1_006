@@ -68,46 +68,57 @@ def tof_point_body(d, theta_x_deg, theta_y_deg):
     z_local = d * np.cos(theta_r)
 
     # sensor faces forward: +x, sideways: +y, vertical: +z
-    return np.array([x_local, y_local, -z_local])  # -z so that "down" is negative
+    return np.array([x_local, y_local, z_local])  # -z so that "down" is negative
 
 def build_points_down(distances):
-    cell_angles = {
-        3:  (-30, -30), 2: (-10, -30), 1: (10, -30), 0: (30, -30),
-        7:  (-30, -10), 6: (-10, -10), 5: (10, -10), 4: (30, -10),
-        11: (-30,  10), 10:(-10, 10),  9:(10, 10),   8:(30, 10),
-        15: (-30,  30), 14:(-10, 30), 13:(10, 30),  12:(30, 30),
-    }
+    # cell_angles = {
+    #     3:  (-30, 30), 2: (-10, 30), 1: (10, 30), 0: (30, 30),
+    #     7:  (-30, 10), 6: (-10, 10), 5: (10, 10), 4: (30, 10),
+    #     11: (-30, -10), 10:(-10, -10),  9:(10, -10),  8:(30, -10),
+    #     15: (-30, -30), 14:(-10, -30), 13:(10, -30),  12:(30, -30),
+    # }
+    fov = 60.0
+    pitch = fov / 3.0  # 20 degrees between each pixel
     points = []
-    for idx, (tx, ty) in cell_angles.items():
-        d = distances[idx]
-        if d is None or d < 0.2:
-            continue
-        pt = tof_point_body(d, tx, ty)
-        if pt is not None:
+    for row in range(4):
+        for col in range(4):
+            idx = row * 4 + col
+            d = distances[idx]
+            if d is None or d < 0.2:
+                continue
+            theta_x = -(col - 1.5) * pitch
+            theta_y = -(row - 1.5) * pitch
+            local = tof_point_body(d, theta_x, theta_y)
+            if local is None:
+                continue
+            lx, ly, lz = local
+            pt = np.array([-ly, -lx, -lz])
             points.append(pt)
     return points
 
 def build_points_up(distances):
-    cell_angles = {
-        3:  (-30, -30), 2: (-10, -30), 1: (10, -30), 0: (30, -30),
-        7:  (-30, -10), 6: (-10, -10), 5: (10, -10), 4: (30, -10),
-        11: (-30,  10), 10:(-10, 10),  9:(10, 10),   8:(30, 10),
-        15: (-30,  30), 14:(-10, 30), 13:(10, 30),  12:(30, 30),
-    }
+    fov = 60.0
+    pitch = fov / 3.0  # 20 degrees between each pixel
     points = []
-    for idx, (tx, ty) in cell_angles.items():
-        d = distances[idx]
-        if d is None or d < 0.2:
-            continue
-        local = tof_point_body(d, tx, ty)
-        if local is not None:
-            local[2] = abs(local[2])  # flip Z to go upward
-            points.append(local)
+    for row in range(4):
+        for col in range(4):
+            idx = row * 4 + col
+            d = distances[idx]
+            if d is None or d < 0.2:
+                continue
+            theta_x = -(col - 1.5) * pitch
+            theta_y = -(row - 1.5) * pitch
+            local = tof_point_body(d, theta_x, theta_y)
+            if local is None:
+                continue
+            lx, ly, lz = local
+            pt = np.array([ly, -lx, lz])
+            points.append(pt)
     return points
 
 def build_points_side(distances, orientation):
-    fov = 90.0
-    pitch = fov / 7.0  # ~12.857 degrees per pixel
+    fov = 60.0
+    pitch = fov / 7.0  # ~8.5714 degrees between each pixel
     points = []
     for row in range(8):
         for col in range(8):
@@ -115,16 +126,16 @@ def build_points_side(distances, orientation):
             d = distances[idx]
             if d is None or d < 0.2:
                 continue
-            theta_x = (col - 3.5) * pitch
-            theta_y = (row - 3.5) * pitch
+            theta_x = -(col - 3.5) * pitch
+            theta_y = -(row - 3.5) * pitch
             local = tof_point_body(d, theta_x, theta_y)
             if local is None:
                 continue
             lx, ly, lz = local
             if orientation == "L":
-                pt = np.array([lx, -lz, ly])  # left sensor looks -Y
+                pt = np.array([-lx, lz, ly])  # left sensor looks -Y
             else:  # "R"
-                pt = np.array([lx, lz, ly])   # right sensor looks +Y
+                pt = np.array([lx, -lz, ly])   # right sensor looks +Y
             points.append(pt)
     return points
 
@@ -185,7 +196,7 @@ def visualize_matplotlib(points, drone_positions):
 def main():
     # Load trajectory + ToF + rotation data
     traj = pd.read_csv("../optical_flow_method_data/xy_velocities_to_world_frame.csv")
-    tof = pd.read_csv("../optical_flow_method_data/combined_samples/26_09_25_Lv4/2_mixed_straight/download_tof_cropped.csv")
+    tof = pd.read_csv("../optical_flow_method_data/combined_samples/22_09_25_MILC/7_lyco_lab/download_tof_cropped.csv")
     times_mat, rot_mats = load_rotation_matrices("../optical_flow_method_data/rotation_matrices.csv")
 
     all_points = []
