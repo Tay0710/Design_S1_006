@@ -283,6 +283,25 @@ def main():
         return
 
     visualize_open3d(np.array(all_points), drone_positions)
+
+    # Attempt to filter
+    pcd = o3d.geometry.PointCloud()
+    pcd.points = o3d.utility.Vector3dVector(all_points)
+    o3d.visualization.draw_geometries([pcd], window_name="Original Point Cloud")
+
+    # Apply statistical outlier removal
+    # 20 neighbors and a standard deviation ratio of 2.0 are common starting points
+    cl, ind = pcd.remove_statistical_outlier(nb_neighbors=20, std_ratio=2)
+
+    # `cl` contains the inlier points (cleaned point cloud)
+    # `ind` contains the indices of the inlier points
+    # Visualize the original and filtered point clouds
+    o3d.visualization.draw_geometries([cl], window_name="Filtered Point Cloud (Inliers)")
+
+    # To visualize the removed outliers, you can extract them using the `ind` variable
+    outlier_pcd = pcd.select_by_index(ind, invert=True)
+    o3d.visualization.draw_geometries([outlier_pcd], window_name="Removed Outliers")
+
     visualize_matplotlib(all_points, drone_positions)
 
 if __name__ == "__main__":
