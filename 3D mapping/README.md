@@ -5,3 +5,6 @@ To update this for new samples:
 
 To run:
     - python tof_map.py
+
+
+Note: to get open3d working must use python 11 or below....
