@@ -456,14 +456,14 @@ void loop() {
   Olddistance = CurrentDistance;
 
     // --- Hover controller ---
-  float targetHeight = 150.0;      // Desired hover height in cm
+  float targetHeight = 100.0;      // Desired hover height in cm
   float error = CurrentDistance - targetHeight; // +ve = too high, -ve = too low
 
   // Proportional gain factor (tune this)
   float Kp = 0.1;  
 
   // Timing check (500 ms = 0.5 sec)
-  if (currentMillis - lastCorrectionTime >= 100) {
+  if (currentMillis - lastCorrectionTime >= 500) {
 
     // --- Throttle logic ---
 
@@ -472,13 +472,13 @@ void loop() {
       rcChannels[THROTTLE] += error * Kp;
     }
 
-    // // Safety bounds
-    // if (CurrentDistance > 120.00 && DeltaDistance < 1.00) {
-    //   rcChannels[THROTTLE] += 1;
-    // }
-    // if (CurrentDistance < 80.00 && DeltaDistance > -1.00) {
-    //   rcChannels[THROTTLE] -= 1;
-    // }
+    // Safety bounds
+    if (CurrentDistance > 120.00 && DeltaDistance < 1.00) {
+      rcChannels[THROTTLE] += 1;
+    }
+    if (CurrentDistance < 80.00 && DeltaDistance > -1.00) {
+      rcChannels[THROTTLE] -= 1;
+    }
 
     // Reset timer
     lastCorrectionTime = currentMillis;
@@ -498,14 +498,14 @@ void loop() {
     rcChannels[THROTTLE] = THROTTLE_MIN; // set to min throttle despite controller being connected
 
     // wait 10 seconds then arm
-    if (currentMillis > 5000 + armingMillis && currentMillis < 10000 + armingMillis) {
+    if (currentMillis > 10000 + armingMillis && currentMillis < 20000 + armingMillis) {
       rcChannels[AUX1] = 1800;
       Serial.println("Arm drone.");
-    } else if (currentMillis > 10000 + armingMillis && currentMillis < 15000 + armingMillis) { // Wait another 10 seconds before turning on throttle and leave on for 5 seconds
-      rcChannels[THROTTLE] = 1300;
-      Serial.println("Throttle 1300.");
+    } else if (currentMillis > 20000 + armingMillis && currentMillis < 25000 + armingMillis) { // Wait another 10 seconds before turning on throttle and leave on for 5 seconds
+      rcChannels[THROTTLE] = 1075;
+      Serial.println("Throttle 1075.");
       rcChannels[AUX1] = 1800;
-    } else if (currentMillis > 15000 + armingMillis) {
+    } else if (currentMillis > 25000 + armingMillis) {
       Serial.println("Arming sequence finished");
       armingSequenceFlag = false;
     }
