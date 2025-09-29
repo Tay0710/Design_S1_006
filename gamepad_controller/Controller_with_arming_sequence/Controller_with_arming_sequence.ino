@@ -31,7 +31,7 @@ float input, output;
 int lastCorrectionTime = 0;
 
 // PIDs
-float kp = 1.0, ki = 0.5, kd = 0.1;
+float kp = 0.5, ki = 0.1, kd = 1;
 
 QuickPID hoverPID(&input, &output, &targetheight);
 
@@ -446,7 +446,9 @@ void setup() {
   // PID initialisation
   hoverPID.SetTunings(kp, ki, kd);
   hoverPID.SetMode(hoverPID.Control::automatic);
-  // hoverPID.SetOutputLimits(float Min, float Max);     // Set and clamps the output to (0-255 by default), can be min/max -200/200
+  hoverPID.SetOutputLimits(-200, 200);     // Set and clamps the output to (0-255 by default), can be min/max -200/200
+  hoverPID.SetControllerDirection(QuickPID::Action::reverse);
+
 
 
   Serial.println(" --- Setup Complete --- ");
@@ -465,8 +467,10 @@ void loop() {
 
     // PID analysis
     input = CurrentDistance;
+    Serial.print("Distance: "); Serial.println(input);
     hoverPID.Compute(); // Compute PID output
-    rcChannels[THROTTLE] += -(int)output; // has to be minused as it is relative to the roof, meaning the input is larger than the target value which means the output will be negative but we want to increase throttle for drone to take off. 
+    Serial.print("Ouput: "); Serial.println((int)output);
+    rcChannels[THROTTLE] += (int)output; // has to be minused as it is relative to the roof, meaning the input is larger than the target value which means the output will be negative but we want to increase throttle for drone to take off. 
     }
 
 
