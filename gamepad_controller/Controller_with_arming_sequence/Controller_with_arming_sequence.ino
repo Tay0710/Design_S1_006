@@ -467,7 +467,8 @@ void loop() {
     if (CurrentDistance > targetHeight && DeltaDistance < 1) {
       rcChannels[THROTTLE] += error * Kp_up;
     } else if (CurrentDistance < targetHeight) {
-      rcChannels[THROTTLE] += error * Kp_down;
+      // rcChannels[THROTTLE] += error * Kp_down;
+      rcChannels[THROTTLE] = 1300;
     }
 
     // --- Throttle logic ---
