@@ -97,6 +97,7 @@ def build_points_down(distances):
     fov = 60.0
     pitch = fov / 3.0  # 20 degrees between each pixel 
     points = []
+    R, G, B = 32, 214, 96
     for row in range(4):
         for col in range(4):
             idx = row * 4 + col
@@ -109,7 +110,7 @@ def build_points_down(distances):
             if local is None:
                 continue
             lx, ly, lz = local
-            pt = np.array([-ly, -lx, -lz])
+            pt = np.array([-ly, -lx, -lz, R, G, B])
             points.append(pt)
     return points
 
@@ -117,6 +118,7 @@ def build_points_up(distances):
     fov = 60.0
     pitch = fov / 3.0  # 20 degrees between each pixel
     points = []
+    R, G, B = 141, 205, 240
     for row in range(4):
         for col in range(4):
             idx = row * 4 + col
@@ -129,7 +131,7 @@ def build_points_up(distances):
             if local is None:
                 continue
             lx, ly, lz = local
-            pt = np.array([ly, -lx, lz])
+            pt = np.array([ly, -lx, lz, R, G, B])
             points.append(pt)
     return points
 
@@ -150,38 +152,43 @@ def build_points_side(distances, orientation):
                 continue
             lx, ly, lz = local
             if orientation == "L":
-                pt = np.array([-lx, lz, ly])  # left sensor looks -Y
+                R, G, B = 175, 32, 214
+                pt = np.array([-lx, lz, ly, R, G, B])  # left sensor looks -Y
             else:  # "R"
-                pt = np.array([lx, -lz, ly])   # right sensor looks +Y
+                R, G, B = 255, 0, 0
+                pt = np.array([lx, -lz, ly, R, G, B])   # right sensor looks +Y
             points.append(pt)
     return points
 
 # === Rotation into world frame ===
 def rotate_point_to_world(local_vec, rot_mat, drone_pos):
-    world_vec = rot_mat @ local_vec
+    world_vec = rot_mat @ local_vec[:3]
     return (
         drone_pos[0] + world_vec[0],
         drone_pos[1] + world_vec[1],
         drone_pos[2] + world_vec[2],
+        local_vec[3], # Include RGB
+        local_vec[4],
+        local_vec[5]
     )
 
 # === Visualisation ===
 def visualize_open3d(points, drone_positions):
     geoms = []
     pc = o3d.geometry.PointCloud()
-    pc.points = o3d.utility.Vector3dVector(points)
-    pc.paint_uniform_color([0, 0, 1])
+    pc.points = o3d.utility.Vector3dVector(points[:, :3])
+    pc.colors = o3d.utility.Vector3dVector(points[:, 3:6]/255)
     geoms.append(pc)
 
     traj = o3d.geometry.LineSet()
     traj.points = o3d.utility.Vector3dVector(drone_positions)
     traj.lines = o3d.utility.Vector2iVector([[i, i+1] for i in range(len(drone_positions)-1)])
-    traj.colors = o3d.utility.Vector3dVector([[1, 0, 0] for _ in range(len(drone_positions)-1)])
+    traj.colors = o3d.utility.Vector3dVector([[0, 0, 1] for _ in range(len(drone_positions)-1)])
     geoms.append(traj)
 
     drone_marker = o3d.geometry.TriangleMesh.create_sphere(radius=0.1)
     drone_marker.translate(drone_positions[-1])
-    drone_marker.paint_uniform_color([1, 0, 0])
+    drone_marker.paint_uniform_color([0, 0, 1])
     geoms.append(drone_marker)
 
     axis = o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.2)
@@ -207,13 +214,14 @@ def visualize_matplotlib(points, drone_positions):
     ax.set_ylabel("Y (m)")
     ax.set_zlabel("Z (m)")
     ax.set_title("ToF + Drone Mapping (Matplotlib)")
+    plt.axis('equal')
     ax.legend()
     plt.show()
 
 def main():
     # Load trajectory + ToF + rotation data
     traj = pd.read_csv("../optical_flow_method_data/xy_velocities_to_world_frame.csv")
-    tof = pd.read_csv("../optical_flow_method_data/combined_samples/26_09_25_Lv4/1_flower_straight/download_tof_cropped.csv")
+    tof = pd.read_csv("../optical_flow_method_data/combined_samples/22_09_25_MILC/7_lyco_lab/download_tof_cropped.csv")
     times_mat, rot_mats = load_rotation_matrices("../optical_flow_method_data/rotation_matrices.csv")
 
     all_points = []
@@ -286,7 +294,11 @@ def main():
 
     # Attempt to filter
     pcd = o3d.geometry.PointCloud()
-    pcd.points = o3d.utility.Vector3dVector(all_points)
+    
+    pcd.points = o3d.utility.Vector3dVector(np.array(all_points)[:, :3])
+    # Example with colors (assuming 'points' has 6 columns: x, y, z, R, G, B)
+    # all_points[:, 3:6] / 255.0 # Normalize if needed
+    pcd.colors = o3d.utility.Vector3dVector(np.array(all_points)[:, 3:6]/255)
     o3d.visualization.draw_geometries([pcd], window_name="Original Point Cloud")
 
     # Apply statistical outlier removal
