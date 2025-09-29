@@ -13,13 +13,13 @@
 #include <stdio.h>
 #include <Ticker.h>
 
-#include "soc/soc.h"             // disable brownout problems
-#include "soc/rtc_cntl_reg.h"    // disable brownout problems
+#include "soc/soc.h"           // disable brownout problems
+#include "soc/rtc_cntl_reg.h"  // disable brownout problems
 
 #include <Arduino.h>
 
 // Ultrasonic Variables
-#define pwPin1 25 // GPIO pin
+#define pwPin1 25  // GPIO pin
 volatile unsigned long pulseStart1 = 0;
 volatile float distanceCm1 = 0;
 volatile bool US_ready1 = false;
@@ -59,13 +59,13 @@ bool armingSequenceFlag = false;
 #define AXIS_RIGHT 512
 
 // Extra SBUS constants
-#define SBUS_MIN 1400 // 885 to 890
+#define SBUS_MIN 1400  // 885 to 890
 #define SBUS_MID 1500
-#define SBUS_MAX 1600 // 2115, switched to 2110
+#define SBUS_MAX 1600  // 2115, switched to 2110
 
 #define THROTTLE_MIN 890
 #define THROTTLE_MID 1150
-#define THROTTLE_MAX 1410 // shrink range of throttle
+#define THROTTLE_MAX 1410  // shrink range of throttle
 
 #define DPAD_INCREMENT 2
 
@@ -78,7 +78,7 @@ bool armingSequenceFlag = false;
 #define TCP_PORT 7050
 #define DNS_PORT 53
 
-const int debounceDelay  = 100;
+const int debounceDelay = 100;
 
 int currentThrottle = 0;
 bool hoverFlag = false;
@@ -202,7 +202,7 @@ void processGamepad(ControllerPtr ctl) {
 
   // Map throttle values
   // NOTE: may require non-linear mapping
-  // Press A to keep throttle value constant 
+  // Press A to keep throttle value constant
   // if ((ctl->buttons() & 0x0002) && (millis() - lastPress) > debounceDelay)
   // {
   //   lastPress = millis();
@@ -268,19 +268,18 @@ void processGamepad(ControllerPtr ctl) {
 
   // Dpad: up = 0x01 = 0b00000001, down = 0x02 = 0b00000010, left = 0x08 = 0b00001000, right = 0x04 = 0b00000100
   // Map pitch to Dpad
-  if(ctl->dpad() & 0x02 && rcChannels[THROTTLE] > THROTTLE_MIN) {
+  if (ctl->dpad() & 0x02 && rcChannels[THROTTLE] > THROTTLE_MIN) {
     // rcChannels[PITCH] = rcChannels[PITCH] - DPAD_INCREMENT;
     rcChannels[THROTTLE] = rcChannels[THROTTLE] - DPAD_INCREMENT;
   }
-  if(ctl->dpad() & 0x01 && rcChannels[THROTTLE] < THROTTLE_MAX) {
+  if (ctl->dpad() & 0x01 && rcChannels[THROTTLE] < THROTTLE_MAX) {
     // rcChannels[PITCH] = rcChannels[PITCH] + DPAD_INCREMENT;
     rcChannels[THROTTLE] = rcChannels[THROTTLE] + DPAD_INCREMENT;
-
   }
-  if(ctl->dpad() & 0x08 && rcChannels[ROLL] > SBUS_MIN) {
+  if (ctl->dpad() & 0x08 && rcChannels[ROLL] > SBUS_MIN) {
     rcChannels[ROLL] = rcChannels[ROLL] - DPAD_INCREMENT;
   }
-  if(ctl->dpad() & 0x04 && rcChannels[ROLL] < SBUS_MAX) {
+  if (ctl->dpad() & 0x04 && rcChannels[ROLL] < SBUS_MAX) {
     rcChannels[ROLL] = rcChannels[ROLL] + DPAD_INCREMENT;
   }
 
@@ -292,8 +291,8 @@ void processGamepad(ControllerPtr ctl) {
     Serial.println("Y button is pressed");
     Serial.println("Start arming sequence");
 
-    armingMillis = millis(); // store starting time of arming sequence
-    armingSequenceFlag = true; // set flag to true
+    armingMillis = millis();    // store starting time of arming sequence
+    armingSequenceFlag = true;  // set flag to true
   }
 
   // if(ctl->dpad()) {
@@ -302,10 +301,9 @@ void processGamepad(ControllerPtr ctl) {
   //   Serial.print("roll: ");
   //   Serial.println(rcChannels[ROLL]);
   // }
-  
+
 
   // dumpGamepad(ctl);  // Prints everything for debug
-
 }
 
 void processControllers() {
@@ -364,7 +362,7 @@ void US1_ISR() {
 
 // Arduino setup function. Runs in CPU 1
 void setup() {
-  WRITE_PERI_REG(RTC_CNTL_BROWN_OUT_REG, 0); //disable brownout detector
+  WRITE_PERI_REG(RTC_CNTL_BROWN_OUT_REG, 0);  //disable brownout detector
 
   Serial.begin(115200);
 
@@ -400,7 +398,7 @@ void setup() {
   }
   // Initialise throttle to 890 (failsafe is triggered if mapping maps 885 below 885)
   rcChannels[THROTTLE] = 890;  // must be below min_check = 1050 when arming
-  rcChannels[AUX2] = 1200;  // For angle mode
+  rcChannels[AUX2] = 1200;     // For angle mode
   // TODO: might map this to button instead
 
   Serial1.begin(100000, SERIAL_8E2, RX_PIN, TX_PIN, true);  // Initialize Serial1 with 100000 baud rate
@@ -446,31 +444,39 @@ void loop() {
 
   if (US_ready1) {
     // Serial.print("US1 Distance: ");
-    CurrentDistance = round(distanceCm1 * 100) / 100; 
+    CurrentDistance = round(distanceCm1 * 100) / 100;
     // Serial.print(distanceCm1, 2);
     // Serial.println(" cm");
-    US_ready1 = false; // Current distance of ultrasonic is saved in: distanceCm1
-  } 
-  
+    US_ready1 = false;  // Current distance of ultrasonic is saved in: distanceCm1
+  }
+
   float DeltaDistance = Olddistance - CurrentDistance;
   Olddistance = CurrentDistance;
 
-    // --- Hover controller ---
-  float targetHeight = 150.0;      // Desired hover height in cm
-  float error = CurrentDistance - targetHeight; // +ve = too high, -ve = too low
+  // --- Hover controller ---
+  float targetHeight = 200.0;                    // Desired hover height in cm
+  float error = CurrentDistance - targetHeight;  // +ve = too high, -ve = too low
 
   // Proportional gain factor (tune this)
-  float Kp = 0.1;  
+  float Kp_up = 0.4;
+  float Kp_down = 0.4;
 
   // Timing check (500 ms = 0.5 sec)
-  if (currentMillis - lastCorrectionTime >= 100) {
+  if (!armingSequenceFlag && currentMillis - lastCorrectionTime >= 100) {
+
+    if (CurrentDistance > targetHeight && DeltaDistance < 1) {
+      rcChannels[THROTTLE] += error * Kp_up;
+    } else if (CurrentDistance < targetHeight) {
+      rcChannels[THROTTLE] += error * Kp_down;
+    }
 
     // --- Throttle logic ---
+    // rcChannels[THROTTLE] += error * Kp;
 
-    // Gentle correction if not moving too fast
-    if (DeltaDistance < 1.0 && DeltaDistance > -1.0) {
-      rcChannels[THROTTLE] += error * Kp;
-    }
+    // // Gentle correction if not moving too fast
+    // if (DeltaDistance < 1.0 && DeltaDistance > -1.0) {
+    //   rcChannels[THROTTLE] += error * Kp;
+    // }
 
     // // Safety bounds
     // if (CurrentDistance > 120.00 && DeltaDistance < 1.00) {
@@ -495,13 +501,13 @@ void loop() {
 
   // Arming sequence hard coded
   if (armingSequenceFlag) {
-    rcChannels[THROTTLE] = THROTTLE_MIN; // set to min throttle despite controller being connected
+    rcChannels[THROTTLE] = THROTTLE_MIN;  // set to min throttle despite controller being connected
 
     // wait 10 seconds then arm
     if (currentMillis > 5000 + armingMillis && currentMillis < 10000 + armingMillis) {
       rcChannels[AUX1] = 1800;
       Serial.println("Arm drone.");
-    } else if (currentMillis > 10000 + armingMillis && currentMillis < 15000 + armingMillis) { // Wait another 10 seconds before turning on throttle and leave on for 5 seconds
+    } else if (currentMillis > 10000 + armingMillis && currentMillis < 15000 + armingMillis) {  // Wait another 10 seconds before turning on throttle and leave on for 5 seconds
       rcChannels[THROTTLE] = 1300;
       Serial.println("Throttle 1300.");
       rcChannels[AUX1] = 1800;
