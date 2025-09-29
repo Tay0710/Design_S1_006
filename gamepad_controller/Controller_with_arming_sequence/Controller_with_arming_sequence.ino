@@ -17,7 +17,7 @@
 #include "soc/rtc_cntl_reg.h"  // disable brownout problems
 
 #include <Arduino.h>
-#include <QuickPID.h>
+#include "QuickPID.h"
 
 
 // Ultrasonic Variables
@@ -27,7 +27,7 @@ volatile float distanceCm1 = 0;
 volatile bool US_ready1 = false;
 volatile float CurrentDistance = 0; // read from ultrasonic
 float targetheight = 200; // in cm
-float input, output
+float input, output;
 int lastCorrectionTime = 0;
 
 // PIDs
