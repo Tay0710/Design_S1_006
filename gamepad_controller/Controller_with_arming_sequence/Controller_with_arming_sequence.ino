@@ -463,6 +463,7 @@ void loop() {
     // Serial.println(" cm");
     US_ready1 = false;  // Current distance of ultrasonic is saved in: distanceCm1
 
+<<<<<<< HEAD
       // PID analysis
     input = CurrentDistance;
     hoverPID.Compute(); // Compute PID output
