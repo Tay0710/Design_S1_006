@@ -17,15 +17,23 @@
 #include "soc/rtc_cntl_reg.h"  // disable brownout problems
 
 #include <Arduino.h>
+#include <QuickPID.h>
+
 
 // Ultrasonic Variables
 #define pwPin1 25  // GPIO pin
 volatile unsigned long pulseStart1 = 0;
 volatile float distanceCm1 = 0;
 volatile bool US_ready1 = false;
-float CurrentDistance = 0;
-float Olddistance = 0;
+volatile float CurrentDistance = 0; // read from ultrasonic
+float targetheight = 200; // in cm
+float input, output
 int lastCorrectionTime = 0;
+
+// PIDs
+float kp = 1.0, ki = 0.5, kd = 0.1;
+
+QuickPID hoverPID(&input, &output, &targetheight);
 
 // Using UART2 on ESP32
 #define RX_PIN 16
@@ -435,6 +443,12 @@ void setup() {
   pinMode(pwPin1, INPUT_PULLUP);
   attachInterrupt(digitalPinToInterrupt(pwPin1), US1_ISR, CHANGE);
 
+  // PID initialisation
+  hoverPID.SetTunings(kp, ki, kd);
+  hoverPID.SetMode(hoverPID.Control::automatic);
+  // hoverPID.SetOutputLimits(float Min, float Max);     // Set and clamps the output to (0-255 by default), can be min/max -200/200
+
+
   Serial.println(" --- Setup Complete --- ");
 }
 
@@ -448,47 +462,14 @@ void loop() {
     // Serial.print(distanceCm1, 2);
     // Serial.println(" cm");
     US_ready1 = false;  // Current distance of ultrasonic is saved in: distanceCm1
-  }
 
-  float DeltaDistance = Olddistance - CurrentDistance;
-  Olddistance = CurrentDistance;
-
-  // --- Hover controller ---
-  float targetHeight = 200.0;                    // Desired hover height in cm
-  float error = CurrentDistance - targetHeight;  // +ve = too high, -ve = too low
-
-  // Proportional gain factor (tune this)
-  float Kp_up = 0.4;
-  float Kp_down = 0.4;
-
-  // Timing check (500 ms = 0.5 sec)
-  if (!armingSequenceFlag && currentMillis - lastCorrectionTime >= 100) {
-
-    if (CurrentDistance > targetHeight && DeltaDistance < 1) {
-      rcChannels[THROTTLE] += error * Kp_up;
-    } else if (CurrentDistance < targetHeight) {
-      rcChannels[THROTTLE] += error * Kp_down;
+      // PID analysis
+    input = CurrentDistance;
+    hoverPID.Compute(); // Compute PID output
+    rcChannels[THROTTLE] += -(int)output; // has to be minused as it is relative to the roof, meaning the input is larger than the target value which means the output will be negative but we want to increase throttle for drone to take off. 
     }
 
-    // --- Throttle logic ---
-    // rcChannels[THROTTLE] += error * Kp;
 
-    // // Gentle correction if not moving too fast
-    // if (DeltaDistance < 1.0 && DeltaDistance > -1.0) {
-    //   rcChannels[THROTTLE] += error * Kp;
-    // }
-
-    // // Safety bounds
-    // if (CurrentDistance > 120.00 && DeltaDistance < 1.00) {
-    //   rcChannels[THROTTLE] += 1;
-    // }
-    // if (CurrentDistance < 80.00 && DeltaDistance > -1.00) {
-    //   rcChannels[THROTTLE] -= 1;
-    // }
-
-    // Reset timer
-    lastCorrectionTime = currentMillis;
-  }
 
 
 
