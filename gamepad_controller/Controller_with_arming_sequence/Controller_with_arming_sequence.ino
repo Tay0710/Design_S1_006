@@ -463,8 +463,7 @@ void loop() {
     // Serial.println(" cm");
     US_ready1 = false;  // Current distance of ultrasonic is saved in: distanceCm1
 
-<<<<<<< HEAD
-      // PID analysis
+    // PID analysis
     input = CurrentDistance;
     hoverPID.Compute(); // Compute PID output
     rcChannels[THROTTLE] += -(int)output; // has to be minused as it is relative to the roof, meaning the input is larger than the target value which means the output will be negative but we want to increase throttle for drone to take off. 
