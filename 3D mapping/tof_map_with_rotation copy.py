@@ -41,6 +41,16 @@ import pandas as pd
 import open3d as o3d
 import matplotlib.pyplot as plt
 
+# == Sensor Offsets ==
+offsetD = np.array([0.019, 0.0, 0.0]) # [x-offset (m), y-offset (m), z-offset (m)]
+offsetU = np.array([0.021, 0.0, 0.132])
+offsetL = np.array([0.012, 0.080, 0.035])
+offsetR = np.array([0.040, -0.052, 0.035])
+# offsetD = np.array([0,0,0]) # [x-offset (m), y-offset (m), z-offset (m)]
+# offsetU = np.array([0,0,0])
+# offsetL = np.array([0,0,0])
+# offsetR = np.array([0,0,0])
+
 # === Load rotation matrices ===
 def load_rotation_matrices(rot_csv):
     rot = np.loadtxt(rot_csv, delimiter=",", skiprows=1, usecols=range(1,10))
@@ -111,6 +121,7 @@ def build_points_down(distances):
                 continue
             lx, ly, lz = local
             pt = np.array([-ly, -lx, -lz, R, G, B])
+            pt[0:3] += offsetD
             points.append(pt)
     return points
 
@@ -132,6 +143,7 @@ def build_points_up(distances):
                 continue
             lx, ly, lz = local
             pt = np.array([ly, -lx, lz, R, G, B])
+            pt[0:3] += offsetU
             points.append(pt)
     return points
 
@@ -154,9 +166,11 @@ def build_points_side(distances, orientation):
             if orientation == "L":
                 R, G, B = 175, 32, 214
                 pt = np.array([-lx, lz, ly, R, G, B])  # left sensor looks -Y
+                pt[0:3] += offsetL
             else:  # "R"
                 R, G, B = 255, 0, 0
                 pt = np.array([lx, -lz, ly, R, G, B])   # right sensor looks +Y
+                pt[0:3] += offsetR
             points.append(pt)
     return points
 
@@ -221,7 +235,7 @@ def visualize_matplotlib(points, drone_positions):
 def main():
     # Load trajectory + ToF + rotation data
     traj = pd.read_csv("../optical_flow_method_data/xy_velocities_to_world_frame.csv")
-    tof = pd.read_csv("../optical_flow_method_data/combined_samples/22_09_25_MILC/7_lyco_lab/download_tof_cropped.csv")
+    tof = pd.read_csv("../optical_flow_method_data/combined_samples/26_09_25_Lv4/2_mixed_straight/download_tof_cropped.csv")
     times_mat, rot_mats = load_rotation_matrices("../optical_flow_method_data/rotation_matrices.csv")
 
     all_points = []
@@ -284,6 +298,8 @@ def main():
         # Rotate + translate into world frame
         world_pts = [rotate_point_to_world(lp, rot_mat, drone_pos) for lp in local_pts]
         all_points.extend(world_pts)
+    
+    print(offsetD)
 
     # Visualise
     if len(all_points) == 0:
