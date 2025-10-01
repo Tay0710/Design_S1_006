@@ -23,17 +23,56 @@
 // Ultrasonic Variables
 #define pwPin1 25  // GPIO pin
 volatile unsigned long pulseStart1 = 0;
-volatile float distanceCm1 = 0;
+volatile double distanceCm1 = 0;
 volatile bool US_ready1 = false;
-volatile float CurrentDistance = 0; // read from ultrasonic
+volatile double CurrentDistance = 0; // read from ultrasonic
 float targetheight = 200; // in cm
 float input, output;
 int lastCorrectionTime = 0;
 
 // PIDs
-float kp = 0.5, ki = 0.1, kd = 1;
+float kp = 0.5, ki = 0.5, kd = 1; // last values: kp = , ki = , kd = ; 
+// Notes:
+/*
+Source: https://docs.px4.io/main/en/config_mc/pid_tuning_guide_multicopter.html
+kp:
+  If the kp gain is too high: you will see high-frequency oscillations.
+  If the kp gain is too low:
+    the vehicle will react slowly to input changes.
+    In Acro mode the vehicle will drift, and you will constantly need to correct to keep it level.
+kd:
+  If the D gain is too high: the motors become twitchy (and maybe hot), because the D term amplifies noise.
+  If the D gain is too low: you see overshoots after a step-input.
+ki:
+  If the I gain is too high: you will see slow oscillations.
+*/
 
 QuickPID hoverPID(&input, &output, &targetheight);
+
+// #define BUFFER_SIZE 2
+// volatile float buffer[BUFFER_SIZE];
+// volatile int bufIndex = 0;
+// volatile int bufCount = 0;   // how many values are actually filled so far
+// volatile double bufSum = 0;
+
+// void addSample(float newValue) {
+//   // Subtract the value being overwritten
+//   bufSum -= buffer[bufIndex];
+//   // Insert the new value
+//   buffer[bufIndex] = newValue;
+//   bufSum += newValue;
+
+//   // Move to next index
+//   bufIndex = (bufIndex + 1) % BUFFER_SIZE;
+
+//   if (bufCount < BUFFER_SIZE) bufCount++;
+// }
+
+// float getAverage() {
+//   if (bufCount == 0) return 0; // avoid divide by zero
+//   return bufSum / bufCount;
+// }
+
 
 // Using UART2 on ESP32
 #define RX_PIN 16
@@ -72,8 +111,8 @@ bool armingSequenceFlag = false;
 #define SBUS_MAX 1600  // 2115, switched to 2110
 
 #define THROTTLE_MIN 890
-#define THROTTLE_MID 1150
-#define THROTTLE_MAX 1410  // shrink range of throttle
+#define THROTTLE_MID 1150 //1150
+#define THROTTLE_MAX 1410  // shrink range of throttle, was 1410
 
 #define DPAD_INCREMENT 2
 
@@ -464,14 +503,17 @@ void loop() {
     // Serial.print(distanceCm1, 2);
     // Serial.println(" cm");
     US_ready1 = false;  // Current distance of ultrasonic is saved in: distanceCm1
+    
+    // addSample(CurrentDistance);
+    // if (bufCount == BUFFER_SIZE) {
+    //   input = getAverage();
+    //   Serial.print("Distance: "); Serial.println(input);
+    //   hoverPID.Compute(); 
+    //   // rcChannels[THROTTLE] += (int)output;
+    //   Serial.print("Ouput: "); Serial.println((int)output);
+    // }
+  }
 
-    // PID analysis
-    input = CurrentDistance;
-    Serial.print("Distance: "); Serial.println(input);
-    hoverPID.Compute(); // Compute PID output
-    Serial.print("Ouput: "); Serial.println((int)output);
-    rcChannels[THROTTLE] += (int)output; // has to be minused as it is relative to the roof, meaning the input is larger than the target value which means the output will be negative but we want to increase throttle for drone to take off. 
-    }
 
 
 
