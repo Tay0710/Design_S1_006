@@ -4,6 +4,11 @@
 // IMU, OF, SD Card, 4*ToF, 5*Ultrasonic (4 mapping, 1 obejct detection)
 // Missing SBUS commands
 
+
+// To Add
+// buffer to continue data logging when sd card is not available
+// add mux to i2c bus lines
+
 #include <Arduino.h>
 #include <Wire.h>
 #include <SD.h>
@@ -25,7 +30,8 @@
 
 // Stack size (adjust based on function memory usage)
 #define STACK_SIZE 4096
-
+#define STACK_SIZE_TOF 8192 // larger stack for ToF task
+#define IMU_BUFFER_SIZE 37500  // 500ms @ 1 kHz, 75 bytes/sample
 
 // Optical flow SPI pins
 #define VSPI_MOSI 36 // OF and IMU, VSPI
@@ -68,6 +74,10 @@ const unsigned long debounceDelay = 200; // ms
 
 // Mutex for SD card access
 SemaphoreHandle_t sdMutex;
+// Mutexes for I2C buses
+SemaphoreHandle_t i2cBus1Mutex; // L and D ToF sensors
+SemaphoreHandle_t i2cBus2Mutex; // R and U ToF sensors
+SemaphoreHandle_t imuBufferMutex; // protects buffer operations
 
 // VL53L7CX new I2C addresses for 2nd Sensor on I2C bus
 #define CHANGE_ADDR 0x30
@@ -126,14 +136,16 @@ int UimageResolution  = 0; // Same for D
 
 // Char buffers
 char imuBuf[128];
+char imuBufferQueue[IMU_BUFFER_SIZE];
+size_t imuBufferHead = 0;  // next write position
+size_t imuBufferTail = 0;  // next read position (for flushing)
 char ofBuf[64];
-char ultraBuf[64];
+// char ultraBuf[64];
 // char ultraBuf[128]; // enough for timestamp + 4 readings
-char tofLBuf[384]; // 8x8 resolution, with 4 character + 1 space ~ 384 chars
-char tofRBuf[384]; 
-char tofUBuf[96]; // 4x4 resolution ~ 96 chars (16*5 = 80)
-char tofDBuf[96];
-// char tofBuf[1024]; // All 4 ToFs in one buffer
+char tofLBuf[512]; // 8x8 resolution, with 4 character + 1 space ~ 384 chars
+char tofRBuf[512]; 
+char tofUBuf[128]; // 4x4 resolution ~ 96 chars (16*5 = 80)
+char tofDBuf[128];
 
 // IMU - Calibration offsets
 float calibAccelX = 0, calibAccelY = 0, calibAccelZ = 0;
@@ -145,20 +157,14 @@ float  dps_rating = 250; // 15.625/31.25/62.5/125/250/500/1000/2000/4000 dps
 // Timing control
 unsigned long lastIMUtime = 0;
 unsigned long lastOFtime = 0;
-unsigned long lastTOFtime = 0;
-// unsigned long lastTOFLtime = 0;
-// unsigned long lastTOFRtime = 0;
-// unsigned long lastTOFUtime = 0;
-// unsigned long lastTOFDtime = 0;
+unsigned long lastTOFLtime = 0;
+unsigned long lastTOFRtime = 0;
+unsigned long lastTOFUtime = 0;
+unsigned long lastTOFDtime = 0;
 
 const unsigned long imuInterval = 250;    // microseconds → ~4000 Hz | Low noise mode max = 6400Hz
-const unsigned long ofInterval = 20000;   // microseconds → ~50 Hz
-const unsigned long tofInterval = 500000/4;   // microseconds → ~4 Hz // Side Tof should be every 0.25s and Roof/ Floor ToF should be every 0.5s. 
-
-// const unsigned long S1tofInterval = 250000;
-// const unsigned long S2tofInterval = 250000;
-// const unsigned long RtofInterval  = 250000; 
-// const unsigned long FtofInterval  = 250000;
+const unsigned long ofInterval = 18200;   // 18200 = ~55Hz, microseconds → ~50 Hz
+const unsigned long tofInterval = 80000; // microseconds → 12.5 Hz 
 
 // ---- Calibration function ----
 void calibrateIMU(int samples) {
@@ -241,10 +247,10 @@ int appendTimestamp(char* buf, unsigned long micros_val) {
 }
 
 void logIMU() {
+  if (!mode) return; // if file is not open; skip!
   unsigned long now = micros();
   if (now - lastIMUtime < imuInterval) return;  
   lastIMUtime = now;
-  if (!imuFile) return; // if file is not open; skip!
 
   inv_imu_sensor_data_t imu_data;
   IMU.getDataFromRegisters(imu_data);
@@ -256,15 +262,23 @@ void logIMU() {
   float ay = imu_data.accel_data[1]*G_rating/32768.0 - calibAccelY;
   float az = imu_data.accel_data[2]*G_rating/32768.0 - calibAccelZ;
 
-  int idx = appendTimestamp(imuBuf, now);
-  idx += snprintf(imuBuf + idx, sizeof(imuBuf) - idx, ",%.9f,%.9f,%.9f,%.9f,%.9f,%.9f\n", gx, gy, gz, ax, ay, az);
-  // --- Mutex protect just the write ---
-  if (xSemaphoreTake(sdMutex, portMAX_DELAY) == pdTRUE) {
-      imuFile.write((uint8_t*)imuBuf, idx);
-      xSemaphoreGive(sdMutex);
+    // Prepare CSV line
+    char line[128];
+    int len = appendTimestamp(line, now);
+    len += snprintf(line + len, sizeof(line) - len, ",%.9f,%.9f,%.9f,%.9f,%.9f,%.9f\n", gx, gy, gz, ax, ay, az); 
+    // Store in circular buffer
+    if(xSemaphoreTake(imuBufferMutex, 1) == pdTRUE) { // 1 tick wait, non-blocking
+      for(int i = 0; i < len; i++) {
+        imuBufferQueue[imuBufferHead] = line[i];
+        imuBufferHead = (imuBufferHead + 1) % IMU_BUFFER_SIZE;
+        // Optional: overwrite oldest if full
+        if(imuBufferHead == imuBufferTail) {
+          imuBufferTail = (imuBufferTail + 1) % IMU_BUFFER_SIZE;
+        }
+      }
+    xSemaphoreGive(imuBufferMutex);
   }
 }
-
 // Task: Log IMU
 void imuTask(void *pvParameters) {
     for (;;) {
@@ -273,190 +287,355 @@ void imuTask(void *pvParameters) {
     }
 }
 
+// IMU Buffer is flushed onto SD card when it is available
+void imuFlushTask(void *pvParameters) {
+    for(;;) {
+        // Only flush if SD card is available
+        if (sdMutex != NULL && xSemaphoreTake(sdMutex, 10) == pdTRUE) {
+            if(imuFile) {
+                // Lock buffer for reading
+                if(xSemaphoreTake(imuBufferMutex, portMAX_DELAY) == pdTRUE) {
+                    while(imuBufferTail != imuBufferHead) {
+                       size_t chunk;
+
+                        // Determine contiguous block size
+                        if (imuBufferHead > imuBufferTail) {
+                            chunk = imuBufferHead - imuBufferTail; // simple case
+                        } else {
+                            chunk = IMU_BUFFER_SIZE - imuBufferTail; // wrap-around
+                        }
+
+                        // Write chunk to SD
+                        imuFile.write((uint8_t*)&imuBufferQueue[imuBufferTail], chunk);
+
+                        // Update tail pointer
+                        imuBufferTail = (imuBufferTail + chunk) % IMU_BUFFER_SIZE;
+                    }
+                    xSemaphoreGive(imuBufferMutex);
+                }
+            }
+            xSemaphoreGive(sdMutex);
+        }
+        vTaskDelay(pdMS_TO_TICKS(10)); // flush every 10ms
+    }
+}
 
 // Fast integer to string conversion, returns number of chars written
-int intToStr(int val, char* buf) {
-  char temp[6]; // max 3500 -> 4 digits + null
+int intToStr(int val, char* buf, int maxLen) {
+  if(maxLen <= 0) return 0; // no space at all
+
+  if (val == 0) {
+    if (maxLen < 1) return 0;  // need at least 1 slot
+    buf[0] = '0';
+    return 1;
+  }
+
+  char tmp[12]; // enough for 32-bit int
   int i = 0;
-  if(val == 0) {
-      buf[0] = '0';
-      return 1;
+
+  while (val > 0 && i < (int)sizeof(tmp)) {
+    tmp[i++] = '0' + (val % 10);
+    val /= 10;
   }
-  while(val > 0) {
-      temp[i++] = '0' + (val % 10);
-      val /= 10;
+
+  if (i > maxLen) {
+    return 0;     // not enough room in destination buffer
   }
-  // reverse
+
+  // copy digits in reverse order into buf
   for(int j = 0; j < i; j++) {
-      buf[j] = temp[i - j - 1];
+      buf[j] = tmp[i - j - 1];
   }
-  return i;
+  return i; // number of chars written
 }
+
 
 void logToFL() {
+  // If logging mode is not active, skip function
+  if (!mode) return; 
+
+  // Get current time in microseconds
   unsigned long now = micros();
-  if (now - lastTOFtime < tofInterval) return;
-  lastTOFtime = now;
-  if (!tofFile) return;
 
-  if(sensorL.isDataReady() && sensorL.getRangingData(&measurementDataL)) {
-    int idx = appendTimestamp(tofLBuf, now); // write timestamp
+  // Only log if the required interval has passed since last log
+  if (now - lastTOFLtime < tofInterval) return; 
+  lastTOFLtime = now; // Update last log timestamp
 
-    idx += snprintf(tofLBuf + idx, sizeof(tofLBuf) - idx, ",L");
+  // Take I2C bus 1 mutex to safely access sensors L and D
+  if (xSemaphoreTake(i2cBus1Mutex, portMAX_DELAY) == pdTRUE) {    
+    // Check if the left ToF sensor has data ready and read the ranging measurements
+    if(sensorL.isDataReady() && sensorL.getRangingData(&measurementDataL)) {
 
-    for(int i = 0; i < LimageResolution; i++) { //8x8 = 64; 4x4 = 16
-      tofLBuf[idx++] = ',';      
-      const uint8_t stat  = measurementDataL.target_status[i];
-      if (stat == 5){         
-      idx += intToStr(measurementDataL.distance_mm[i], tofLBuf + idx); // fast int -> string
+      // Start writing timestamp to buffer
+      int idx = appendTimestamp(tofLBuf, now); 
+
+      // Append sensor identifier "L" (for left sensor) if there is space
+      if (idx < sizeof(tofLBuf) - 2) {
+        idx += snprintf(tofLBuf + idx, sizeof(tofLBuf) - idx, ",L");
       }
-      else{
-        tofLBuf[idx++] = 'X';
-      }
-    }
 
-    tofLBuf[idx++] = '\n';
-  // --- Mutex protect just the write ---
-    if (xSemaphoreTake(sdMutex, portMAX_DELAY) == pdTRUE) {
-    tofFile.write((uint8_t*)tofLBuf, idx);  // write raw bytes
-    xSemaphoreGive(sdMutex);
+      // Loop over all distance measurements from the sensor
+      for(int i = 0; i < LimageResolution; i++) { // 8x8 = 64 or 4x4 = 16 depending on resolution
+        // Add comma separator before each measurement if space allows
+        if (idx < sizeof(tofLBuf) - 2) {
+          tofLBuf[idx++] = ',';
+        }   
+
+        // Read the target status for this measurement
+        const uint8_t stat  = measurementDataL.target_status[i];
+
+        if (stat == 5) { // Status 5 indicates a valid measurement
+          // Convert integer distance to string and append to buffer
+          int written = intToStr(measurementDataL.distance_mm[i], tofLBuf + idx, sizeof(tofLBuf) - idx);
+          if (written == 0) {
+            Serial.println("Buffer overflow in intToStr!"); // Warn if buffer cannot hold the value
+            break; // Stop writing to prevent memory corruption
+          }
+          idx += written; // Advance buffer index by number of characters written
+        }
+        else { 
+          // If measurement is invalid, append 'X' as a placeholder
+          if (idx < sizeof(tofLBuf) - 1) { 
+            tofLBuf[idx++] = 'X';
+          }
+        }
+
+        // Safety check: Ensure we don't exceed buffer size
+        if (idx >= sizeof(tofLBuf)) {
+          Serial.println("Buffer overflow in logToFL!");
+          idx = sizeof(tofLBuf) - 1; // Clamp index to buffer size
+          break;
+        }
+      }
+
+      // Add newline at end of buffer for CSV format if space allows
+      if (idx < sizeof(tofLBuf) - 1) {
+        tofLBuf[idx++] = '\n';
+      }
+
+      // Write buffer to SD card safely using mutex to prevent concurrent access
+      if (sdMutex != NULL){
+        if (xSemaphoreTake(sdMutex, portMAX_DELAY) == pdTRUE) {
+          if(tofFile) tofFile.write((uint8_t*)tofLBuf, idx);  // write raw bytes to file
+          xSemaphoreGive(sdMutex);
+        }
+      }    
     }
+    xSemaphoreGive(i2cBus1Mutex); // Release I2C bus 1 mutex
   }
 }
 
-
 void logToFR() {
+  if (!mode) return; // if file is not open; skip!
   unsigned long now = micros();
-  if (now - lastTOFtime < tofInterval) return;
-  lastTOFtime = now;
-  if (!tofFile) return;
-
-  if(sensorR.isDataReady() && sensorR.getRangingData(&measurementDataR)) {
-    int idx = appendTimestamp(tofRBuf, now); // write timestamp
-
-    idx += snprintf(tofRBuf + idx, sizeof(tofRBuf) - idx, ",R");
-
-    for(int i = 0; i < LimageResolution; i++) { //8x8 = 64; 4x4 = 16
-      tofRBuf[idx++] = ',';      
-      const uint8_t stat  = measurementDataR.target_status[i];
-      if (stat == 5){         
-      idx += intToStr(measurementDataR.distance_mm[i], tofRBuf + idx); // fast int -> string
+  if (now - lastTOFRtime < tofInterval) return; 
+  lastTOFRtime = now;
+  if (xSemaphoreTake(i2cBus2Mutex, portMAX_DELAY) == pdTRUE) { 
+    if(sensorR.isDataReady() && sensorR.getRangingData(&measurementDataR)) {
+      int idx = appendTimestamp(tofRBuf, now); // write timestamp
+      if (idx < sizeof(tofRBuf) - 2) {
+        idx += snprintf(tofRBuf + idx, sizeof(tofRBuf) - idx, ",R");
       }
-      else{
-        tofRBuf[idx++] = 'X';
+
+      for(int i = 0; i < LimageResolution; i++) { 
+        if (idx < sizeof(tofRBuf) - 2) {
+          tofRBuf[idx++] = ',';
+        }
+        const uint8_t stat  = measurementDataR.target_status[i];
+        if (stat == 5) {
+          int written = intToStr(measurementDataR.distance_mm[i], tofRBuf + idx, sizeof(tofRBuf) - idx);
+          if (written == 0) {
+            Serial.println("Buffer overflow in intToStr (FR)!");
+            break;
+          }
+          idx += written;
+        }
+        else {
+          if (idx < sizeof(tofRBuf) - 1) {
+            tofRBuf[idx++] = 'X';
+          }
+        }
+        if (idx >= sizeof(tofRBuf)) {
+          Serial.println("Buffer overflow in logToFR!");
+          idx = sizeof(tofRBuf) - 1;
+          break;
+        }
+      }
+
+      if (idx < sizeof(tofRBuf) - 1) {
+        tofRBuf[idx++] = '\n';
+      }
+
+      if (sdMutex != NULL){
+        if (xSemaphoreTake(sdMutex, portMAX_DELAY) == pdTRUE) {
+          if(tofFile) tofFile.write((uint8_t*)tofRBuf, idx);
+          xSemaphoreGive(sdMutex);
+        }
       }
     }
-
-    tofRBuf[idx++] = '\n';
-    
-      // --- Mutex protect just the write ---
-    if (xSemaphoreTake(sdMutex, portMAX_DELAY) == pdTRUE) {
-      tofFile.write((uint8_t*)tofRBuf, idx);  // write raw bytes
-      xSemaphoreGive(sdMutex);
-    }
+    xSemaphoreGive(i2cBus2Mutex); // Release I2C bus 2 mutex
   }
 }
 
 void logToFU() {
+  if (!mode) return;
   unsigned long now = micros();
-  if (now - lastTOFtime < tofInterval) return;
-  lastTOFtime = now;
-  if (!tofFile) return;
+  if (now - lastTOFUtime < tofInterval) return; 
+  lastTOFUtime = now;
 
-  if(sensorU.isDataReady() && sensorU.getRangingData(&measurementDataU)) {
-    int idx = appendTimestamp(tofUBuf, now); // write timestamp
-
-    idx += snprintf(tofUBuf + idx, sizeof(tofUBuf) - idx, ",U");
-
-    for(int i = 0; i < UimageResolution; i++) { //8x8 = 64; 4x4 = 16
-      tofUBuf[idx++] = ',';      
-      const uint8_t stat  = measurementDataU.target_status[i];
-      if (stat == 5){         
-      idx += intToStr(measurementDataU.distance_mm[i], tofUBuf + idx); // fast int -> string
+  if (xSemaphoreTake(i2cBus2Mutex, portMAX_DELAY) == pdTRUE) {   
+    if(sensorU.isDataReady() && sensorU.getRangingData(&measurementDataU)) {
+      int idx = appendTimestamp(tofUBuf, now);
+      if (idx < sizeof(tofUBuf) - 2) {
+        idx += snprintf(tofUBuf + idx, sizeof(tofUBuf) - idx, ",U");
       }
-      else{
-        tofUBuf[idx++] = 'X';
+
+      for(int i = 0; i < UimageResolution; i++) { 
+        if (idx < sizeof(tofUBuf) - 2) {
+          tofUBuf[idx++] = ',';
+        }
+        const uint8_t stat  = measurementDataU.target_status[i];
+        if (stat == 5) {
+          int written = intToStr(measurementDataU.distance_mm[i], tofUBuf + idx, sizeof(tofUBuf) - idx);
+          if (written == 0) {
+            Serial.println("Buffer overflow in intToStr (FU)!");
+            break;
+          }
+          idx += written;
+        }
+        else {
+          if (idx < sizeof(tofUBuf) - 1) {
+            tofUBuf[idx++] = 'X';
+          }
+        }
+        if (idx >= sizeof(tofUBuf)) {
+          Serial.println("Buffer overflow in logToFU!");
+          idx = sizeof(tofUBuf) - 1;
+          break;
+        }
+      }
+
+      if (idx < sizeof(tofUBuf) - 1) {
+        tofUBuf[idx++] = '\n';
+      }
+
+      if (sdMutex != NULL){
+        if (xSemaphoreTake(sdMutex, portMAX_DELAY) == pdTRUE) {
+          if(tofFile) tofFile.write((uint8_t*)tofUBuf, idx);
+          xSemaphoreGive(sdMutex);
+        }
       }
     }
-
-    tofUBuf[idx++] = '\n';
-          // --- Mutex protect just the write ---
-    if (xSemaphoreTake(sdMutex, portMAX_DELAY) == pdTRUE) {
-      tofFile.write((uint8_t*)tofUBuf, idx);  // write raw bytes
-      xSemaphoreGive(sdMutex);
-    }
+    xSemaphoreGive(i2cBus2Mutex); // Release I2C bus 2 mutex
   }
 }
 
 void logToFD() {
+  if (!mode) return;
   unsigned long now = micros();
-  if (now - lastTOFtime < tofInterval) return;
-  lastTOFtime = now;
-  if (!tofFile) return;
+  if (now - lastTOFDtime < tofInterval) return; 
+  lastTOFDtime = now;
 
-  if(sensorD.isDataReady() && sensorD.getRangingData(&measurementDataD)) {
-    int idx = appendTimestamp(tofDBuf, now); // write timestamp
-
-    idx += snprintf(tofDBuf + idx, sizeof(tofDBuf) - idx, ",D");
-
-    for(int i = 0; i < UimageResolution; i++) { //8x8 = 64; 4x4 = 16
-      tofDBuf[idx++] = ',';      
-      const uint8_t stat  = measurementDataD.target_status[i];
-      if (stat == 5){         
-      idx += intToStr(measurementDataD.distance_mm[i], tofDBuf + idx); // fast int -> string
+  if (xSemaphoreTake(i2cBus1Mutex, portMAX_DELAY) == pdTRUE) {   
+    if(sensorD.isDataReady() && sensorD.getRangingData(&measurementDataD)) {
+      int idx = appendTimestamp(tofDBuf, now);
+      if (idx < sizeof(tofDBuf) - 2) {
+        idx += snprintf(tofDBuf + idx, sizeof(tofDBuf) - idx, ",D");
       }
-      else{
-        tofDBuf[idx++] = 'X';
+
+      for(int i = 0; i < UimageResolution; i++) { 
+        if (idx < sizeof(tofDBuf) - 2) {
+          tofDBuf[idx++] = ',';
+        }
+        const uint8_t stat  = measurementDataD.target_status[i];
+        if (stat == 5) {
+          int written = intToStr(measurementDataD.distance_mm[i], tofDBuf + idx, sizeof(tofDBuf) - idx);
+          if (written == 0) {
+            Serial.println("Buffer overflow in intToStr (FD)!");
+            break;
+          }
+          idx += written;
+        }
+        else {
+          if (idx < sizeof(tofDBuf) - 1) {
+            tofDBuf[idx++] = 'X';
+          }
+        }
+        if (idx >= sizeof(tofDBuf)) {
+          Serial.println("Buffer overflow in logToFD!");
+          idx = sizeof(tofDBuf) - 1;
+          break;
+        }
+      }
+
+      if (idx < sizeof(tofDBuf) - 1) {
+        tofDBuf[idx++] = '\n';
+      }
+
+      if (sdMutex != NULL){
+        if (xSemaphoreTake(sdMutex, portMAX_DELAY) == pdTRUE) {
+          if(tofFile) tofFile.write((uint8_t*)tofDBuf, idx);
+          xSemaphoreGive(sdMutex);
+        }
       }
     }
-
-    tofDBuf[idx++] = '\n';
-          // --- Mutex protect just the write ---
-    if (xSemaphoreTake(sdMutex, portMAX_DELAY) == pdTRUE) {
-      tofFile.write((uint8_t*)tofDBuf, idx);  // write raw bytes
-      xSemaphoreGive(sdMutex);
-    }
+    xSemaphoreGive(i2cBus1Mutex); // Release I2C bus 1 mutex
   }
 }
 
-
-volatile int tofInd = 0;
-
-void logToF() {
-  switch (tofInd) {
-    case 0: logToFD(); tofInd++; break;
-    case 1: logToFL(); tofInd++; break;
-    case 2: logToFR(); tofInd++; break;
-    case 3: logToFU(); tofInd = 0; break;
-    default: tofInd = 0; break; // resets if corrupted
-  }
-}
-
-// Task: Log ToF
-void tofTask(void *pvParameters) {
+// Task: Log ToF sensors
+void tofLTask(void *pvParameters) {
     for (;;) {
-        logToF();
-        vTaskDelay(pdMS_TO_TICKS(tofInterval/1000));
+        logToFL();
+        vTaskDelay(pdMS_TO_TICKS(tofInterval / 1000)); // or smaller if faster updates needed
     }
 }
-
+void tofRTask(void *pvParameters) {
+    for (;;) {
+        logToFR();
+        vTaskDelay(pdMS_TO_TICKS(tofInterval / 1000));
+    }
+}
+void tofUTask(void *pvParameters) {
+    for (;;) {
+        logToFU();
+        vTaskDelay(pdMS_TO_TICKS(tofInterval / 1000));
+    }
+}
+void tofDTask(void *pvParameters) {
+    for (;;) {
+        logToFD();
+        vTaskDelay(pdMS_TO_TICKS(tofInterval / 1000));
+    }
+}
 
 void logOF() {
+  if (!mode) return; // if file is not open; skip!
   unsigned long now = micros();
   if (now - lastOFtime < ofInterval) return;  
   lastOFtime = now;
 
-  if (!ofFile) return;
-  // flow.readFrameBuffer(frame);
   flow.readMotionCount(&deltaX, &deltaY);
-  int idx = appendTimestamp(ofBuf, now);
-  // Add DeltaX and DeltaY values
-  idx += snprintf(ofBuf + idx, sizeof(ofBuf) - idx, ",%d,%d\n", deltaX, deltaY);
 
+  // Start buffer with timestamp
+  int idx = appendTimestamp(ofBuf, now);
+  if (idx >= sizeof(ofBuf)) {
+      Serial.println("Buffer overflow at timestamp in logOF!");
+      idx = sizeof(ofBuf) - 1;
+  }
+  int written = snprintf(ofBuf + idx, sizeof(ofBuf) - idx, ",%d,%d\n", deltaX, deltaY);
+  if (written <= 0 || written >= (sizeof(ofBuf) - idx)) {
+      Serial.println("Buffer overflow while writing OF data!");
+      idx = sizeof(ofBuf) - 1;
+  } else {
+      idx += written;
+  }
   // --- Mutex protect just the write ---
-  if (xSemaphoreTake(sdMutex, portMAX_DELAY) == pdTRUE) {
-    ofFile.write((uint8_t*)ofBuf, idx);
-    xSemaphoreGive(sdMutex);
+  if (sdMutex != NULL) {
+    if (xSemaphoreTake(sdMutex, portMAX_DELAY) == pdTRUE) {
+      if(ofFile ) ofFile.write((uint8_t*)ofBuf, idx);
+      xSemaphoreGive(sdMutex);
+    }
   }
 }
 
@@ -467,36 +646,6 @@ void ofTask(void *pvParameters) {
         vTaskDelay(pdMS_TO_TICKS(ofInterval/1000));
     }
 }
-
-// #define pwPin1 14
-// volatile unsigned long pulseStartD = 0;
-// volatile float pulseWidthD = 0;
-// volatile bool usReadyD = false;
-
-// void USD_ISR() {
-//   // Called when pwPin changes
-//   if (digitalRead(USD) == HIGH) {
-//     // Rising edge
-//     pulseStartD = micros();
-//     usReadyD = false;
-//   } else {
-//     // Falling edge
-//     unsigned long pulseWidthD = micros() - pulseStartD;
-//     usReadyD = true;
-//   }
-// }
-
-// // Log all 4 ultrasonic sensors (US1-US4) to CSV
-// void logUltra() {
-//   if (UltraFile && usReadyD) {
-//     int idx = appendTimestamp(ultraBuf, pulseStartD + pulseWidthD/2);
-//     float distCmD = pulseWidthD / 57.87;
-//     idx += snprintf(ultraBuf + idx, sizeof(ultraBuf) - idx, ",%.2f\n", distCmD);
-//     UltraFile.write((uint8_t*)ultraBuf, idx);
-//   }
-//   // To do: add similar if statements for 4 other ultrasonics
-// }
-
 
 // Task: Handle SD card open/close
 void sdTask(void *pvParameters) {
@@ -594,10 +743,10 @@ void setup() {
 
   // Initialise 4 ToF sensors
   I2C_bus1.begin(SDA1, SCL1); // This resets I2C bus to 100kHz
-  I2C_bus1.setClock(1000000); //Sensor (L7) has max I2C freq of 1MHz
+  I2C_bus1.setClock(400000); //Sensor (L7) has max I2C freq of 1MHz, using 400kHz
   delay(100);
   I2C_bus2.begin(SDA2, SCL2); 
-  I2C_bus2.setClock(1000000); 
+  I2C_bus2.setClock(400000); 
   // Serial.println(I2C_bus2.getClock());
   Serial.println("Clock Has been Set for I2Cs");
 
@@ -605,25 +754,25 @@ void setup() {
   // Activating PWR_EN (Make High). 
   pinMode(PENA, OUTPUT);
   digitalWrite(PENA, HIGH); 
-  delay(100);   
+  delay(200);   
   // Activating I2C Reset pin to reset the addresses (Pulse High). 
   pinMode(RESET, OUTPUT);
   digitalWrite(RESET, HIGH); 
-  delay(100); 
+  delay(200); 
   digitalWrite(RESET, LOW); 
-  delay(100); 
+  delay(300); 
   // Deactivating PWR_EN (Make Low). Reseting sensors
   digitalWrite(PENA, LOW); 
-  delay(100);   
+  delay(300);   
   digitalWrite(PENA, HIGH); // Make high again
-  delay(100);  
+  delay(300);  
   // Configure LPn pins
   pinMode(LPN, OUTPUT);
   // Set sensor 1 LPn low (Deactivate I2C communication) 
   digitalWrite(LPN, LOW); // One LPn should be set HIGH permanently
-  delay(100); 
+  delay(200); 
 
-  // I2C bus split: L + U on I2C_bus2; R + D on I2C_bus1
+  // I2C bus split: L + D on I2C_bus1; R + U on I2C_bus2
   // Have to change the address of the ToFs with no LPN pin attached.
   // U + D are the sensors that have their address changed
 
@@ -667,17 +816,26 @@ void setup() {
   Serial.println("Sensors L and R initialized successfully at 0x29");
   delay(50);
 
+   digitalWrite(USU, HIGH); // Lighting up LED to indicate complete setup
   // // Set Frequency
-  // sensorR.setRangingFrequency(15);
-  // sensorF.setRangingFrequency(15);
-  // sensorS1.setRangingFrequency(15);
-  // sensorS2.setRangingFrequency(15);
+  sensorU.setRangingFrequency(15);
+  sensorD.setRangingFrequency(15);
+  sensorL.setRangingFrequency(15);
+  sensorR.setRangingFrequency(15);
   // Start ranging on both sensors. 
   Serial.println("Starting ranging of ToFL7  sensors...");
+  delay(50);
   sensorU.startRanging();
+  delay(50);
+  Serial.println("Quarter way there...");
   sensorD.startRanging();
+  delay(50);
+  Serial.println("Haflway there...");
   sensorL.startRanging();
+  delay(50);
+  Serial.println("Almost there...");
   sensorR.startRanging();
+  delay(50);
   Serial.println("Sensors are now ranging.");
 
   // Ultrasonics
@@ -687,7 +845,6 @@ void setup() {
   // pinMode(USR, INPUT);
   // pinMode(USF, INPUT); // USF is for object detection (front of drone). 
 
-  digitalWrite(USU, HIGH);
 
   // Init IMU CSV
   SD.remove(imuFileName);
@@ -718,19 +875,37 @@ void setup() {
   Ultra.println();
   Ultra.close();
 
-
+  // Creat SD card mutex
   sdMutex = xSemaphoreCreateMutex();
   if (sdMutex == NULL) {
       Serial.println("Failed to create SD mutex!");
       while (1);
   }
 
+  // Create I2C mutexes
+  i2cBus1Mutex = xSemaphoreCreateMutex();
+  i2cBus2Mutex = xSemaphoreCreateMutex();
+  if (i2cBus1Mutex == NULL || i2cBus2Mutex == NULL) {
+      Serial.println("Failed to create I2C mutex!");
+      while (1); // halt
+  }
+
+  // Create IMU buffer mutex - prevents concurrent access to imuBuffer
+  imuBufferMutex = xSemaphoreCreateMutex();
+  if(imuBufferMutex == NULL) {
+      Serial.println("Failed to create IMU buffer mutex!");
+      while(1);
+  }
 
   // Create tasks
   xTaskCreatePinnedToCore(imuTask, "IMU_Task", STACK_SIZE, NULL, IMU_TASK_PRIORITY, NULL, 1);
-  xTaskCreatePinnedToCore(tofTask, "ToF_Task", STACK_SIZE, NULL, TOF_TASK_PRIORITY, NULL, 0);
+  xTaskCreate(imuFlushTask, "IMU_Flush", 8192, NULL, IMU_TASK_PRIORITY, NULL);
   xTaskCreatePinnedToCore(ofTask, "OF_Task", STACK_SIZE, NULL, OF_TASK_PRIORITY, NULL, 1);
   xTaskCreate(sdTask, "SD_Task", STACK_SIZE, NULL, SD_TASK_PRIORITY, NULL);
+  xTaskCreatePinnedToCore(tofLTask, "ToF_L", STACK_SIZE_TOF, NULL, TOF_TASK_PRIORITY, NULL, 0);
+  xTaskCreatePinnedToCore(tofRTask, "ToF_R", STACK_SIZE_TOF, NULL, TOF_TASK_PRIORITY, NULL, 0);
+  xTaskCreatePinnedToCore(tofUTask, "ToF_U", STACK_SIZE_TOF, NULL, TOF_TASK_PRIORITY, NULL, 0);
+  xTaskCreatePinnedToCore(tofDTask, "ToF_D", STACK_SIZE_TOF, NULL, TOF_TASK_PRIORITY, NULL, 0);
 
   // xTaskCreatePinnedToCore(IdleTaskC0, "Idle_C0", 1024, NULL, Idle_C0_TASK_PRIORITY, NULL, 0);
   // xTaskCreatePinnedToCore(IdleTaskC1, "Idle_C1", 1024, NULL, Idle_C1_TASK_PRIORITY, NULL, 1);
