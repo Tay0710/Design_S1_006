@@ -613,13 +613,17 @@ void setup() {
       while (1);  // stop if not found
   }
   delay(100);
+  Serial.println("PMW3901 Optical Flow sensor initialized.");
   flow.enableFrameBuffer(); 
+  Serial.println("Frame Buffer enabled.");
 
   // Initialise SD card - using hspi
+  Serial.println("Initializing SD card...");
   if (!SD.begin(SDCS, hspi)) {
     Serial.println("SD init failed!");
     while (1);
   }
+  Serial.println("SD Card initialized.");
 
   // Initialise 4 ToF sensors
   I2C_bus1.begin(SDA1, SCL1); // This resets I2C bus to 100kHz
@@ -651,6 +655,7 @@ void setup() {
   // Set sensor 1 LPn low (Deactivate I2C communication) 
   digitalWrite(LPN, LOW); // One LPn should be set HIGH permanently
   delay(100); 
+  Serial.println("Succesfully reset ToF sensors' I2C addresses.");
 
   // I2C bus split: L + U on I2C_bus2; R + D on I2C_bus1
   // Have to change the address of the ToFs with no LPN pin attached.
@@ -717,17 +722,22 @@ void setup() {
   // pinMode(USU, INPUT); // USF is for object detection (front of drone). 
 
   digitalWrite(LED1, HIGH);
+  Serial.println("Set LED high"); delay(50);
 
+  Serial.println("Setting up Ultrasonics...");
   attachInterrupt(digitalPinToInterrupt(USD), USD_ISR, CHANGE);
   attachInterrupt(digitalPinToInterrupt(USL), USL_ISR, CHANGE);
   attachInterrupt(digitalPinToInterrupt(USR), USR_ISR, CHANGE);
   attachInterrupt(digitalPinToInterrupt(USU), USU_ISR, CHANGE);
+  Serial.println("Ultrasonics set up complete.");
 
+  Serial.println("Setting up the CSV files!");
   // Init IMU CSV
   SD.remove(imuFileName);
   File imu = SD.open(imuFileName, FILE_WRITE);
   imu.println("time,gyro x,gyro y,gyro z,accel x,accel y,accel z");
   imu.close();
+  Serial.println("IMU CSV done!");
 
   // Init ToF CSV/s
   SD.remove(tofFileName);
@@ -736,6 +746,7 @@ void setup() {
   for(int i=0; i<((LimageResolution)); i++) tof.print(",D"+String(i));
   tof.println();
   tof.close();
+  Serial.println("ToF CSV done!");
   // For separate CSVs
   // SD.remove(tofUFileName);
   // File tofU = SD.open(tofUFileName, FILE_WRITE);
@@ -769,6 +780,7 @@ void setup() {
   of.print(",deltaX,deltaY");
   of.println();
   of.close();
+  Serial.println("OF CSV done!");
 
   // Init Ultra CSVs
   SD.remove(UltraFileName);
@@ -776,6 +788,7 @@ void setup() {
   Ultra.print("time,type,distance"); 
   Ultra.println();
   Ultra.close();
+  Serial.println("Ultra CSV done!");
 
   Serial.println("Finished Setup!");
   digitalWrite(LED1, LOW);
