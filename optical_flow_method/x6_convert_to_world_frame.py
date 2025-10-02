@@ -52,6 +52,14 @@ def load_body_velocities(vel_csv):
     v_body3 = np.hstack([v_body, np.zeros((len(v_body), 1))])  # add z=0
     return times, v_body3
 
+def load_body_acceleration(vel_csv):
+    """Load body-frame velocities and timestamps from CSV."""
+    vel_df = pd.read_csv(vel_csv)
+    times = vel_df["time (s)"].values
+    a_body = vel_df[["acc_x (m/s^2)", "acc_y (m/s^2)"]].values
+    a_body3 = np.hstack([a_body, np.zeros((len(a_body), 1))])  # add z=0
+    return times, a_body3
+
 def match_rotation_matrices_times(rot_mats, times_v, times_mat):
     """Pick closest rotation matrix and store into new np.arr."""
     index = 0
@@ -84,10 +92,13 @@ def integrate_velocity(times, v_world):
         pos_world[i] = pos_world[i - 1] + 0.5 * dt * (v_world[i] + v_world[i - 1])
     return pos_world
 
-def save_results(times, v_world, pos_world, output_csv):
+def save_results(times, a_world, v_world, pos_world, output_csv):
     """Save world-frame velocities and positions to CSV."""
     out = pd.DataFrame({
         "time (s)": times,
+        "a_world_x": a_world[:, 0],
+        "a_world_y": a_world[:, 1],
+        "a_world_z": a_world[:, 2],
         "v_world_x": v_world[:, 0],
         "v_world_y": v_world[:, 1],
         "v_world_z": v_world[:, 2],
@@ -98,7 +109,7 @@ def save_results(times, v_world, pos_world, output_csv):
     out.to_csv(output_csv, index=False)
     print(f"Saved world-frame velocities and positions to {output_csv}")
 
-def plot_positions_and_velocities(times, v_world, pos_world):
+def plot_positions_and_velocities(times, a_world, v_world, pos_world):
     """Plot positions and velocities in world frame."""
     # === Plot positions ===
     plt.figure(figsize=(12, 5))
@@ -127,7 +138,9 @@ def plot_positions_and_velocities(times, v_world, pos_world):
     plt.show()
 
     # === Plot velocities ===
-    plt.figure(figsize=(8, 5))
+    plt.figure(figsize=(14, 5))
+
+    plt.subplot(1, 2, 1)
     plt.plot(times, v_world[:, 0], label="Vx (m/s)")
     plt.plot(times, v_world[:, 1], label="Vy (m/s)")
     plt.plot(times, v_world[:, 2], label="Vz (m/s)")
@@ -136,6 +149,19 @@ def plot_positions_and_velocities(times, v_world, pos_world):
     plt.title("World Velocities vs Time")
     plt.legend()
     plt.grid(True)
+
+
+    plt.subplot(1, 2, 2)
+    plt.plot(times, a_world[:, 0], label="Ax (m/s^2)")
+    plt.plot(times, a_world[:, 1], label="Ay (m/s^2)")
+    plt.plot(times, a_world[:, 2], label="Az (m/s^2)")
+    plt.xlabel("Time (s)")
+    plt.ylabel("Acceleration (m/s)")
+    plt.title("World Acceleration vs Time")
+    plt.legend()
+    plt.grid(True)
+
+    plt.tight_layout()
     plt.show()
 
 def main():
@@ -146,17 +172,20 @@ def main():
     # Load data
     times_mat, rot_mats = load_rotation_matrices(rot_csv)
     times_v, v_body3 = load_body_velocities(vel_csv)
+    times_v, a_body3 = load_body_acceleration(vel_csv)
 
     # Match rotation matrix to times from velocity
     rot_mats_matched = match_rotation_matrices_times(rot_mats, times_v, times_mat)
 
     # Rotate + integrate
     v_world = rotate_to_world(rot_mats_matched, v_body3)
+    a_world = rotate_to_world(rot_mats_matched, a_body3)
+
     pos_world = integrate_velocity(times_v, v_world)
 
     # Save and plot
-    save_results(times_v, v_world, pos_world, output_csv)
-    plot_positions_and_velocities(times_v, v_world, pos_world)
+    save_results(times_v, a_world, v_world, pos_world, output_csv)
+    plot_positions_and_velocities(times_v, a_world, v_world, pos_world)
 
 if __name__ == "__main__":
     main()
