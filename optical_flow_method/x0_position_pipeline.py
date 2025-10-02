@@ -103,12 +103,12 @@ def cut_data(stage_0_input_path, stage_1_input_path, stage_2_input_path, stage_5
 def main():
     t0 = time.time()
 
-    data_name = "MILC_carpet/s2/"
+    data_name = "02_10_25_Lv4/70cm/"
 
     stage_0_input_path = "../optical_flow_method_data/combined_samples/" + data_name + "data_times.csv"
-    stage_1_input_path = "../optical_flow_method_data/combined_samples/" + data_name + "download_of.csv"
-    stage_2_input_path = "../optical_flow_method_data/combined_samples/" + data_name + "download_tof.csv"
-    stage_5_and_7_input_path = "../optical_flow_method_data/combined_samples/" + data_name + "download_imu.csv"
+    stage_1_input_path = "../optical_flow_method_data/combined_samples/" + data_name + "of_PMW3901.csv"
+    stage_2_input_path = "../optical_flow_method_data/combined_samples/" + data_name + "tof_L7.csv"
+    stage_5_and_7_input_path = "../optical_flow_method_data/combined_samples/" + data_name + "imu_ICM45686.csv"
 
     stage_1_input_path_cropped = "../optical_flow_method_data/combined_samples/" + data_name + "download_of_cropped.csv"
     stage_2_input_path_cropped = "../optical_flow_method_data/combined_samples/" + data_name + "download_tof_cropped.csv"
