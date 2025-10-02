@@ -26,7 +26,7 @@ volatile unsigned long pulseStart1 = 0;
 volatile double distanceCm1 = 0;
 volatile bool US_ready1 = false;
 volatile double CurrentDistance = 0; // read from ultrasonic
-float targetheight = 200; // in cm
+float targetheight = 150; // in cm
 float input, output;
 int lastCorrectionTime = 0;
 
@@ -115,15 +115,6 @@ bool armingSequenceFlag = false;
 #define THROTTLE_MAX 1410  // shrink range of throttle, was 1410
 
 #define DPAD_INCREMENT 2
-
-// Constants for Wifi
-#define SSID "ESP-TEST-DJ"
-#define PASSWORD "123456789"
-
-#define SERVER_HOST_NAME "192.168.4.2"  // IP address of TCP server (on PC)
-
-#define TCP_PORT 7050
-#define DNS_PORT 53
 
 const int debounceDelay = 100;
 
@@ -337,9 +328,6 @@ void processGamepad(ControllerPtr ctl) {
   if (ctl->buttons() & 0x0004) {
     Serial.println("Y button is pressed");
     Serial.println("Start arming sequence");
-
-    // NOTE: start PID here
-
     armingMillis = millis();    // store starting time of arming sequence
     armingSequenceFlag = true;  // set flag to true
   }
@@ -453,45 +441,17 @@ void setup() {
   Serial1.begin(100000, SERIAL_8E2, RX_PIN, TX_PIN, true);  // Initialize Serial1 with 100000 baud rate
   // false = univerted, true = inverted
 
-  // Serial.println(" --- Setup WIFI/TCP Connection --- ");
-  // // Setup ESP32 as the access point
-  // // https://randomnerdtutorials.com/esp32-access-point-ap-web-server/
-  // Serial.println("Setting Access Point...");
-  // WiFi.softAP(SSID, PASSWORD);
-
-  // // Print ESP Local IP Address
-  // IPAddress IP = WiFi.softAPIP();
-  // Serial.print("AP IP Address: ");
-  // Serial.println(IP);
-
-  // // Setup ESP32 as AsyncTCP Client
-  // client->onConnect(&onConnect, client);  // on successful connect
-
-  // client->connect(SERVER_HOST_NAME, TCP_PORT);  // attempt to connect
-  // client->onData(&handleData, client);          // when data is received
-
-  // Serial.println("Connecting to TCP server");
-
-  // // Wait until ESP32 is connected to the TCP Server on PC
-  // // while (!client->connected()) {
-  // //   Serial.print(".");
-  // //   delay(1000);
-  // // }
-
-  // client->onDisconnect(&onDisconnect, client);  // when disconnected
-
   // Ultrasonic Interrupt Setup
   pinMode(pwPin1, INPUT_PULLUP);
   attachInterrupt(digitalPinToInterrupt(pwPin1), US1_ISR, CHANGE);
 
   // PID initialisation
-  hoverPID.SetTunings(kp, ki, kd);
-  hoverPID.SetMode(hoverPID.Control::automatic);
+  hoverPID.SetTunings(kp, ki, kd); 
+  hoverPID.SetMode(hoverPID.Control::automatic); // 
   hoverPID.SetOutputLimits(-200, 200);     // Set and clamps the output to (0-255 by default), can be min/max -200/200
-  hoverPID.SetControllerDirection(QuickPID::Action::reverse);
+  hoverPID.SetControllerDirection(QuickPID::Action::reverse); // direct or reverse, TO CHECK
 
-
-
+  // Can try setting anti-windup mode
   Serial.println(" --- Setup Complete --- ");
 }
 
