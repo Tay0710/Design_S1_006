@@ -26,12 +26,7 @@ volatile unsigned long pulseStart1 = 0;
 volatile double distanceCm1 = 0;
 volatile bool US_ready1 = false;
 volatile double CurrentDistance = 0; // read from ultrasonic
-float targetheight = 200; // in cm
-float input, output;
-int lastCorrectionTime = 0;
 
-// PIDs
-float kp = 0.5, ki = 0.5, kd = 1; // last values: kp = , ki = , kd = ; 
 // Notes:
 /*
 Source: https://docs.px4.io/main/en/config_mc/pid_tuning_guide_multicopter.html
@@ -47,7 +42,6 @@ ki:
   If the I gain is too high: you will see slow oscillations.
 */
 
-QuickPID hoverPID(&input, &output, &targetheight);
 
 // #define BUFFER_SIZE 2
 // volatile float buffer[BUFFER_SIZE];
@@ -116,21 +110,27 @@ bool armingSequenceFlag = false;
 
 #define DPAD_INCREMENT 2
 
-// Constants for Wifi
-#define SSID "ESP-TEST-DJ"
-#define PASSWORD "123456789"
-
-#define SERVER_HOST_NAME "192.168.4.2"  // IP address of TCP server (on PC)
-
-#define TCP_PORT 7050
-#define DNS_PORT 53
-
 const int debounceDelay = 100;
 
 int currentThrottle = 0;
 bool hoverFlag = false;
 
 int lastPress = 0;
+
+
+// PID
+float targetheight = 200; // in cm
+float input = targetheight;
+float output = THROTTLE_MIN;
+
+uint32_t PIDSampleTimesUs = 100000; // 100000 us by default
+
+QuickPID hoverPID(&input, &output, &targetheight);
+
+
+int lastCorrectionTime = 0; // Not currently used
+
+float kp = 0.5, ki = 0.5, kd = 1; // last values: kp = , ki = , kd = ; 
 
 
 // This callback gets called any time a new gamepad is connected.
@@ -243,75 +243,12 @@ void processGamepad(ControllerPtr ctl) {
     rcChannels[PITCH] = SBUS_MID;
   }
 
-  // else {
-  //   // rcChannels[AUX3] = 1500;
-  // }
 
-  // Map throttle values
-  // NOTE: may require non-linear mapping
-  // Press A to keep throttle value constant
-  // if ((ctl->buttons() & 0x0002) && (millis() - lastPress) > debounceDelay)
-  // {
-  //   lastPress = millis();
-  //   rcChannels[THROTTLE] = currentThrottle;
-  //   hoverFlag = !hoverFlag;
-
-  // }
-  // else if (ctl->axisY() <= AXIS_L_NEUTRAL_Y && !hoverFlag) {
-  //   currentThrottle = (int)map(ctl->axisY(), AXIS_L_NEUTRAL_Y, AXIS_UP, THROTTLE_MID, THROTTLE_MAX);
-  //   rcChannels[THROTTLE] = currentThrottle;
-  // } else if (!hoverFlag) {
-  //   currentThrottle = (int)map(ctl->axisY(), AXIS_L_NEUTRAL_Y, AXIS_DOWN, THROTTLE_MID, THROTTLE_MIN);
-  //   rcChannels[THROTTLE] = currentThrottle;
-  // }
-
-
-  // Serial.print("axis l - y: ");
-  // Serial.print(ctl->axisY());
-  // Serial.print("\t throttle: ");
-  // Serial.println(rcChannels[THROTTLE]);
-
-  // Map yaw values
-  // NOTE: disable for now
-  // if (ctl->axisX() <= AXIS_L_NEUTRAL_X) {
-  //   rcChannels[YAW] = (int)map(ctl->axisX(), AXIS_L_NEUTRAL_X, AXIS_LEFT, SBUS_MID, SBUS_MIN);
-  // } else {
-  //   rcChannels[YAW] = (int)map(ctl->axisX(), AXIS_L_NEUTRAL_X, AXIS_RIGHT, SBUS_MID, SBUS_MAX);
-  // }
   if (ctl->axisRX() <= AXIS_R_NEUTRAL_X) {
     rcChannels[YAW] = (int)map(ctl->axisRX(), AXIS_R_NEUTRAL_X, AXIS_LEFT, SBUS_MID, SBUS_MIN);
   } else {
     rcChannels[YAW] = (int)map(ctl->axisRX(), AXIS_R_NEUTRAL_X, AXIS_RIGHT, SBUS_MID, SBUS_MAX);
   }
-  // Serial.print("axis l - x: ");
-  // Serial.print(ctl->axisX());
-  // Serial.print("\t yaw: ");
-  // Serial.println(rcChannels[YAW]);
-
-  // Map pitch values
-  // Note: this currently assumes pitching down is > 1500 and pitching up is < 1500, if not simply swap SBUS_MAX and SBUS_MIN
-  // TODO: change this to button
-  // if (ctl->axisRY() <= AXIS_R_NEUTRAL_Y) {
-  //   rcChannels[PITCH] = (int)map(ctl->axisRY(), AXIS_R_NEUTRAL_Y, AXIS_UP, SBUS_MID, SBUS_MAX);
-  // } else {
-  //   rcChannels[PITCH] = (int)map(ctl->axisRY(), AXIS_R_NEUTRAL_Y, AXIS_DOWN, SBUS_MID, SBUS_MIN);
-  // }
-  // Serial.print("axis r - y: ");
-  // Serial.print(ctl->axisY());
-  // Serial.print("\t pitch: ");
-  // Serial.println(rcChannels[PITCH]);
-
-  // Map roll values
-  // if (ctl->axisRX() <= AXIS_R_NEUTRAL_X) {
-  //   rcChannels[ROLL] = (int)map(ctl->axisRX(), AXIS_R_NEUTRAL_X, AXIS_LEFT, SBUS_MID, SBUS_MIN);
-  // } else {
-  //   rcChannels[ROLL] = (int)map(ctl->axisRX(), AXIS_R_NEUTRAL_X, AXIS_RIGHT, SBUS_MID, SBUS_MAX);
-  // }
-  // Serial.print("axis r - x: ");
-  // Serial.print(ctl->axisRX());
-  // Serial.print("\t yaw: ");
-  // Serial.println(rcChannels[ROLL]);
-
 
   // Dpad: up = 0x01 = 0b00000001, down = 0x02 = 0b00000010, left = 0x08 = 0b00001000, right = 0x04 = 0b00000100
   // Map pitch to Dpad
@@ -337,20 +274,9 @@ void processGamepad(ControllerPtr ctl) {
   if (ctl->buttons() & 0x0004) {
     Serial.println("Y button is pressed");
     Serial.println("Start arming sequence");
-
-    // NOTE: start PID here
-
     armingMillis = millis();    // store starting time of arming sequence
     armingSequenceFlag = true;  // set flag to true
   }
-
-  // if(ctl->dpad()) {
-  //   Serial.print("pitch: ");
-  //   Serial.println(rcChannels[PITCH]);
-  //   Serial.print("roll: ");
-  //   Serial.println(rcChannels[ROLL]);
-  // }
-
 
   // dumpGamepad(ctl);  // Prints everything for debug
 }
@@ -378,23 +304,9 @@ void sendData() {
   }
 }
 
-/* event callbacks */
-static void handleData(void* arg, AsyncClient* client, void* data, size_t len) {
-  Serial.printf("\n data received from %s \n", client->remoteIP().toString().c_str());
-  Serial.write((uint8_t*)data, len);
-}
-
-void onConnect(void* arg, AsyncClient* client) {
-  Serial.printf("\n client has been connected to %s on port %d \n", SERVER_HOST_NAME, TCP_PORT);
-  sendTimer.attach(0.2, sendData);  // interval in seconds
-}
-
-void onDisconnect(void* arg, AsyncClient* client) {
-  Serial.printf("\n client has been disconnected from %s on port %d \n", SERVER_HOST_NAME, TCP_PORT);
-  sendTimer.detach();  // Pause timer
-}
 
 // Ultrasonic Interupt Function
+// TODO: how quick is the ultrasonic sensor reading?
 void US1_ISR() {
   // Called when pwPin changes
   if (digitalRead(pwPin1) == HIGH) {
@@ -453,51 +365,26 @@ void setup() {
   Serial1.begin(100000, SERIAL_8E2, RX_PIN, TX_PIN, true);  // Initialize Serial1 with 100000 baud rate
   // false = univerted, true = inverted
 
-  // Serial.println(" --- Setup WIFI/TCP Connection --- ");
-  // // Setup ESP32 as the access point
-  // // https://randomnerdtutorials.com/esp32-access-point-ap-web-server/
-  // Serial.println("Setting Access Point...");
-  // WiFi.softAP(SSID, PASSWORD);
-
-  // // Print ESP Local IP Address
-  // IPAddress IP = WiFi.softAPIP();
-  // Serial.print("AP IP Address: ");
-  // Serial.println(IP);
-
-  // // Setup ESP32 as AsyncTCP Client
-  // client->onConnect(&onConnect, client);  // on successful connect
-
-  // client->connect(SERVER_HOST_NAME, TCP_PORT);  // attempt to connect
-  // client->onData(&handleData, client);          // when data is received
-
-  // Serial.println("Connecting to TCP server");
-
-  // // Wait until ESP32 is connected to the TCP Server on PC
-  // // while (!client->connected()) {
-  // //   Serial.print(".");
-  // //   delay(1000);
-  // // }
-
-  // client->onDisconnect(&onDisconnect, client);  // when disconnected
-
   // Ultrasonic Interrupt Setup
   pinMode(pwPin1, INPUT_PULLUP);
   attachInterrupt(digitalPinToInterrupt(pwPin1), US1_ISR, CHANGE);
 
   // PID initialisation
-  hoverPID.SetTunings(kp, ki, kd);
-  hoverPID.SetMode(hoverPID.Control::automatic);
-  hoverPID.SetOutputLimits(-200, 200);     // Set and clamps the output to (0-255 by default), can be min/max -200/200
-  hoverPID.SetControllerDirection(QuickPID::Action::reverse);
+  hoverPID.SetTunings(kp, ki, kd); 
+  hoverPID.SetSampleTimeUs(PIDSampleTimesUs); // Set PID compute sample time, default = 100000 µs
+  hoverPID.SetMode(hoverPID.Control::automatic); // 
+  hoverPID.SetOutputLimits(THROTTLE_MIN, THROTTLE_MAX);     // Set and clamps the output to (0-255 by default), can be min/max -200/200
+  hoverPID.SetControllerDirection(QuickPID::Action::reverse); 
 
-
-
+  // Can try setting anti-windup mode
   Serial.println(" --- Setup Complete --- ");
 }
 
 // Arduino loop function. Runs in CPU 1.
 void loop() {
   currentMillis = millis();
+
+  hoverPID.Compute(); 
 
   if (US_ready1) {
     // Serial.print("US1 Distance: ");
@@ -540,9 +427,14 @@ void loop() {
       rcChannels[THROTTLE] = 1300;
       Serial.println("Throttle 1300.");
       rcChannels[AUX1] = 1800;
+
+      hoverPID.Reset();
     } else if (currentMillis > 15000 + armingMillis) {
       Serial.println("Arming sequence finished");
-      armingSequenceFlag = false;
+
+      Serial.println("Start PID control");
+      rcChannels[THROTTLE] = output;
+      // armingSequenceFlag = false;
     }
   }
 
