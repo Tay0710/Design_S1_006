@@ -431,7 +431,10 @@ void loop() {
       hoverPID.Reset();
     } else if (currentMillis > 15000 + armingMillis) {
       Serial.println("Arming sequence finished");
-      armingSequenceFlag = false;
+
+      Serial.println("Start PID control");
+      rcChannels[THROTTLE] = output;
+      // armingSequenceFlag = false;
     }
   }
 
