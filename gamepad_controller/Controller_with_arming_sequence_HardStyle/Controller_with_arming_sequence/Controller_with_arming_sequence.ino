@@ -73,7 +73,7 @@ bool armingSequenceFlag = false;
 #define THROTTLE_MID 1150 //1150
 #define THROTTLE_MAX 1410  // shrink range of throttle, was 1410
 
-#define DPAD_INCREMENT 5
+#define DPAD_INCREMENT 10
 
 // Constants for Wifi
 #define SSID "ESP-TEST-DJ"
@@ -473,31 +473,23 @@ void loop() {
 
 
   // Arming sequence hard coded
+  // Arming sequence hard coded
   if (armingSequenceFlag) {
-    rcChannels[THROTTLE] = THROTTLE_MIN;  // set to min throttle despite controller being connected
+    rcChannels[THROTTLE] = THROTTLE_MIN; // set to min throttle despite controller being connected
 
     // wait 10 seconds then arm
-    if (currentMillis > 5000 + armingMillis && currentMillis < 10000 + armingMillis) {
+    if (currentMillis > 10000 + armingMillis && currentMillis < 15000 + armingMillis) {
       rcChannels[AUX1] = 1800;
       Serial.println("Arm drone.");
-    } else if (currentMillis > 10000 + armingMillis && currentMillis < 12000 + armingMillis) {  // Wait another 10 seconds before turning on throttle and leave on for 5 seconds
-      rcChannels[THROTTLE] = 1350;
-      Serial.println("Throttle 1300.");
+    } else if (currentMillis > 15000 + armingMillis && currentMillis < 16000 + armingMillis) { // Wait another 10 seconds before turning on throttle and leave on for 5 seconds
+      rcChannels[THROTTLE] = 1320;
+      Serial.println("Throttle 1075.");
       rcChannels[AUX1] = 1800;
-    // } else if (currentMillis > 15000 + armingMillis && (currentMillis - lastmillis1 > 1000) && rcChannels[THROTTLE] < 1360) {
-    //   Serial.println("Arming sequence finished");
-    //   rcChannels[THROTTLE] += 20;
-    //   lastmillis1 = currentMillis; 
-    // } else if (currentMillis > 12000 + armingMillis && currentMillis < 14000 + armingMillis){ // && (currentMillis - lastmillis2 > 500) && rcChannels[THROTTLE] < 1360) {
-    //   Serial.println("Arming sequence finished");
-    //   rcChannels[THROTTLE] = 1330;
-    //   lastmillis2 = currentMillis; 
-    // } else if (currentMillis > 14000 + armingMillis){ // rcChannels[THROTTLE] > 1390
-    //   rcChannels[THROTTLE] = 1340;
-    } else if (currentMillis > 12000 + armingMillis) {
+    } else if (currentMillis > 16000 + armingMillis) {
+      Serial.println("Arming sequence finished");
       armingSequenceFlag = false;
+      rcChannels[THROTTLE] = 1320;
     }
-
   }
 
   // The main loop must have some kind of "yield to lower priority task" event.
