@@ -134,6 +134,16 @@ void setup()
         while (true);
     }
 
+    // TODO: check this
+    /*
+    * Sets LoRa sync word.
+    * SX1278/SX1276/SX1268/SX1262/SX1280 : Sets LoRa sync word. Only available in LoRa mode.
+    * * */
+    if (radio.setSyncWord(0x1424) != RADIOLIB_ERR_NONE) {
+        Serial.println(F("Unable to set sync word!"));
+        while (true);
+    }
+
     // Enables or disables CRC check of received packets.
     if (radio.setCRC(false) == RADIOLIB_ERR_INVALID_CRC_CONFIGURATION) {
         Serial.println(F("Selected CRC is invalid for this module!"));

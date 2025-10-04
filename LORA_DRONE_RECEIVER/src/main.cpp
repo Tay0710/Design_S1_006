@@ -94,6 +94,13 @@ void setupLoRaModule()
   // Initialize the Radio
   Radio.Init(&RadioEvents);
 
+  // SX126xGetSyncWord
+
+  // Serial.println(Radio.GetSyncWord()); // 5156 is default?
+
+  Radio.SetCustomSyncWord(0x1424);
+
+
   // Set radio to sleep for next setup
   Radio.Sleep();
 
