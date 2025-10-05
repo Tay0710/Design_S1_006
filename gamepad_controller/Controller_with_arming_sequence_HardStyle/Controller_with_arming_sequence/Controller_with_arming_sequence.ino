@@ -30,6 +30,7 @@ float targetheight = 200; // in cm
 volatile uint32_t lastmillis1 = 0; 
 volatile uint32_t lastmillis2 = 0; 
 
+
 // Using UART2 on ESP32
 #define RX_PIN 16
 #define TX_PIN 17
@@ -73,7 +74,7 @@ bool armingSequenceFlag = false;
 #define THROTTLE_MID 1150 //1150
 #define THROTTLE_MAX 1410  // shrink range of throttle, was 1410
 
-#define DPAD_INCREMENT 10
+#define DPAD_INCREMENT 5
 
 // Constants for Wifi
 #define SSID "ESP-TEST-DJ"
@@ -458,6 +459,22 @@ void loop() {
     Serial.print(distanceCm1, 2);
     Serial.println(" cm");
     US_ready1 = false;  // Current distance of ultrasonic is saved in: distanceCm1
+    if (CurrentDistance < 153.53){ //  && currentMillis - lastmillis1 > 1000
+      rcChannels[THROTTLE] = 1305;
+      // lastmillis1 = currentMillis;
+    } else if (CurrentDistance > 153.53 && CurrentDistance < 156.47){
+    rcChannels[THROTTLE] = 8.5*CurrentDistance;    
+    } else if (CurrentDistance > 156.47){
+    rcChannels[THROTTLE] = 1325;    
+    }
+
+    // if (CurrentDistance > 160.00){ // && currentMillis - lastmillis2 > 1000
+    //   rcChannels[THROTTLE] = 1325;
+    //   // lastmillis2 = currentMillis;
+    // }    
+
+    // rcChannels[THROTTLE] = 8.5*CurrentDistance;    
+
   }
 
 
@@ -478,14 +495,14 @@ void loop() {
     rcChannels[THROTTLE] = THROTTLE_MIN; // set to min throttle despite controller being connected
 
     // wait 10 seconds then arm
-    if (currentMillis > 10000 + armingMillis && currentMillis < 15000 + armingMillis) {
+    if (currentMillis > 5000 + armingMillis && currentMillis < 10000 + armingMillis) {
       rcChannels[AUX1] = 1800;
       Serial.println("Arm drone.");
-    } else if (currentMillis > 15000 + armingMillis && currentMillis < 16000 + armingMillis) { // Wait another 10 seconds before turning on throttle and leave on for 5 seconds
+    } else if (currentMillis > 10000 + armingMillis && currentMillis < 11700 + armingMillis) { // Wait another 10 seconds before turning on throttle and leave on for 5 seconds
       rcChannels[THROTTLE] = 1320;
       Serial.println("Throttle 1075.");
       rcChannels[AUX1] = 1800;
-    } else if (currentMillis > 16000 + armingMillis) {
+    } else if (currentMillis > 11700 + armingMillis) {
       Serial.println("Arming sequence finished");
       armingSequenceFlag = false;
       rcChannels[THROTTLE] = 1320;
