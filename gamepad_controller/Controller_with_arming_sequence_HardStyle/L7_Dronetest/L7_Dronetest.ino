@@ -84,7 +84,7 @@ void loop()
     if (sensor1.getRangingData(&measurementData1)) {
       
       // Middle 4 indices in 4x4 grid: 5, 6, 9, 10
-      int middleIdx[4] = {5, 6, 9, 10};
+      int middleIdx[4] = {5, 6, 9, 10};  // can get all points by using: sensor1.getResolution(); returns 16 for 4*4 array. 
       int sum = 0;
       int count = 0;
 

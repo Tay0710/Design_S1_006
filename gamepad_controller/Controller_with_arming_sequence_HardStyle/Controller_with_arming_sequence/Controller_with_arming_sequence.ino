@@ -279,12 +279,12 @@ void processGamepad(ControllerPtr ctl) {
   // currentMillis
   if (ctl->dpad() & 0x02 && rcChannels[THROTTLE] > THROTTLE_MIN && (currentMillis - LastDownPress) > debounceDelay) {
     // rcChannels[PITCH] = rcChannels[PITCH] - DPAD_INCREMENT;
-    rcChannels[THROTTLE] = rcChannels[THROTTLE] - DPAD_INCREMENT;
+    rcChannels[PITCH] = rcChannels[PITCH] - DPAD_INCREMENT;
     LastDownPress = currentMillis; 
   }
   if (ctl->dpad() & 0x01 && rcChannels[THROTTLE] < THROTTLE_MAX && (currentMillis - LastUpPress) > debounceDelay) {
     // rcChannels[PITCH] = rcChannels[PITCH] + DPAD_INCREMENT;
-    rcChannels[THROTTLE] = rcChannels[THROTTLE] + DPAD_INCREMENT;
+    rcChannels[PITCH] = rcChannels[PITCH] + DPAD_INCREMENT;
     LastUpPress = currentMillis; 
   }
   if (ctl->dpad() & 0x08 && rcChannels[ROLL] > SBUS_MIN) {
@@ -467,15 +467,23 @@ void loop() {
     } else if (CurrentDistance > 156.47){
     rcChannels[THROTTLE] = 1325;    
     }
-
-    // if (CurrentDistance > 160.00){ // && currentMillis - lastmillis2 > 1000
-    //   rcChannels[THROTTLE] = 1325;
-    //   // lastmillis2 = currentMillis;
-    // }    
-
-    // rcChannels[THROTTLE] = 8.5*CurrentDistance;    
-
   }
+
+  // TO TRY (HAVE NOT TRIED YET)
+  // Test to see drone go forward for 2 seconds, then slow down as it reverses direction. 
+  if (rcChannels[PITCH] == SBUS_MID){
+    rcChannels[PITCH] = 1510;
+    lastmillis2 = currentMillis; 
+  }
+  if(rcChannels[PITCH] == 1510 && currentMillis - lastmillis2 > 2000) { // Go forward for 2 seconds
+  // should lower pitch to 1505 then use a front sensor to let drone know when to slow down. 
+    rcChannels[PITCH] == 1490; 
+  }
+
+// TO ADD:
+// CHANGE in PITCH
+
+    // rcChannels[PITCH] = SBUS_MID
 
 
 
@@ -498,14 +506,14 @@ void loop() {
     if (currentMillis > 5000 + armingMillis && currentMillis < 10000 + armingMillis) {
       rcChannels[AUX1] = 1800;
       Serial.println("Arm drone.");
-    } else if (currentMillis > 10000 + armingMillis && currentMillis < 11700 + armingMillis) { // Wait another 10 seconds before turning on throttle and leave on for 5 seconds
+    } else if (currentMillis > 10000 + armingMillis && currentMillis < 11600 + armingMillis) { // Wait another 10 seconds before turning on throttle and leave on for 5 seconds
       rcChannels[THROTTLE] = 1320;
-      Serial.println("Throttle 1075.");
+      Serial.println("Throttle 1320.");
       rcChannels[AUX1] = 1800;
-    } else if (currentMillis > 11700 + armingMillis) {
-      Serial.println("Arming sequence finished");
-      armingSequenceFlag = false;
+      else if (currentMillis > 11600 + armingMillis)
       rcChannels[THROTTLE] = 1320;
+      armingSequenceFlag = false;
+
     }
   }
 
