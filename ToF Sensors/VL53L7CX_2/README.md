@@ -12,7 +12,6 @@ IOVDD : 3.3V
 GND : GND
 
 
-
 Notes from code: 
   delay(100); // Ensure full reset - this does not ensure a full reset of address back to 0x29. To do a full reset of the I2C, the I2C_RST pin must be pulled high then pull low again. This just tells the sensor to reset its address however the address at this point has still not been changed from XxXX to 0x29. TO change it to 0x29, the sensor must be powered-off then on again. (Which pin needs to be powered-on and off I do not know (testing is done in comment below), so far i have been powering off and on the whole board.)
   // Pin to disconnect, then reconnect is: (any one of the following) IOVDO, AVDD, PWREN, GND. 

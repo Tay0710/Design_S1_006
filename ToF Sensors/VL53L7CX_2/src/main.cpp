@@ -25,8 +25,14 @@
 // Power Enable pin
 #define PWR_EN_PIN 40
 
-#define SDA_PIN 2
-#define SCL_PIN 1
+#define SDA_PIN 26
+#define SCL_PIN 27
+
+#define P1 21 // AVDD
+#define P2 18 // IOVDD
+#define P3 23 // GND
+#define P4 14 // PWR_EN
+#define P5 19 // LPn
 
 // VL53L5CX default and new I2C addresses
 #define SENSOR1_ADDR 0x29
@@ -70,32 +76,49 @@ void setup()
   delay(1000);
   Serial.println("SparkFun VL53L5CX Dual Sensor Example");
 
-// Activating PWR_EN (Make High). 
-  pinMode(PWR_EN_PIN, OUTPUT);
-  digitalWrite(PWR_EN_PIN, HIGH); 
-  delay(100);   
-
-
-// Activating I2C Reset pin to reset the addresses (Pulse High). 
-  pinMode(I2C_RST_PIN, OUTPUT);
-  digitalWrite(I2C_RST_PIN, HIGH); 
+  pinMode(P1, OUTPUT); // 
+  digitalWrite(P1, HIGH); // 
+  delay(100);
+  pinMode(P2, OUTPUT); // 
+  digitalWrite(P2, HIGH); // 
+  delay(100);
+  pinMode(P3, OUTPUT); // GND
+  digitalWrite(P3, LOW); // 
+  delay(100);
+  pinMode(P4, OUTPUT); // PWR_EN
+  digitalWrite(P4, HIGH); //  
   delay(100); 
-  digitalWrite(I2C_RST_PIN, LOW); 
-  delay(100); 
+  pinMode(P5, OUTPUT); // LPn
+  digitalWrite(P5, HIGH); // One LPn should be set HIGH permanently
+  delay(100);
+
+  
+// // Activating PWR_EN (Make High). 
+//   pinMode(PWR_EN_PIN, OUTPUT);
+//   digitalWrite(PWR_EN_PIN, HIGH); 
+//   delay(100);   
 
 
-// Deactivating PWR_EN (Make Low). Reseting Sensors.  
-  digitalWrite(PWR_EN_PIN, LOW); 
-  delay(100);   
-  digitalWrite(PWR_EN_PIN, HIGH); // Make High again.
-  delay(100);  
+// // Activating I2C Reset pin to reset the addresses (Pulse High). 
+//   pinMode(I2C_RST_PIN, OUTPUT);
+//   digitalWrite(I2C_RST_PIN, HIGH); 
+//   delay(100); 
+//   digitalWrite(I2C_RST_PIN, LOW); 
+//   delay(100); 
 
 
-  // Configure LPn pins
-  pinMode(LPN_PIN_1, OUTPUT);
-  // Set Sensor 1 LPn low (Deactivate I2C communication). 
-  digitalWrite(LPN_PIN_1, LOW); // One LPn should be set HIGH permanently
-  delay(100); 
+// // Deactivating PWR_EN (Make Low). Reseting Sensors.  
+//   digitalWrite(PWR_EN_PIN, LOW); 
+//   delay(100);   
+//   digitalWrite(PWR_EN_PIN, HIGH); // Make High again.
+//   delay(100);  
+
+
+//   // Configure LPn pins
+//   pinMode(LPN_PIN_1, OUTPUT);
+//   // Set Sensor 1 LPn low (Deactivate I2C communication). 
+//   digitalWrite(LPN_PIN_1, LOW); // One LPn should be set HIGH permanently
+//   delay(100); 
 
   Wire.begin(SDA_PIN, SCL_PIN); // Initialize I2C bus
   Wire.setClock(400000); // Optional: 400 kHz I2C
@@ -105,34 +128,34 @@ void setup()
 
 
 
-  // Set sensor 2 to 0x30 before calling begin()
-  Serial.println("Initializing Sensor 2 at 0x29 (It will become 0x30)...");
+  // // Set sensor 2 to 0x30 before calling begin()
+  // Serial.println("Initializing Sensor 2 at 0x29 (It will become 0x30)...");
 
-    if (!sensor2.begin()) { 
-    Serial.println("Sensor 2 not found at 0x29!");
-    while (1);
-  }
+  //   if (!sensor2.begin()) { 
+  //   Serial.println("Sensor 2 not found at 0x29!");
+  //   while (1);
+  // }
 
-  sensor2.setAddress(SENSOR2_ADDR);
-  Serial.println("SCAN for Sensor 2 Address change, should be 0x30!");
-  scanI2C(); // Scan I2C bus to find devices
+  // sensor2.setAddress(SENSOR2_ADDR);
+  // Serial.println("SCAN for Sensor 2 Address change, should be 0x30!");
+  // scanI2C(); // Scan I2C bus to find devices
 
-  sensor2.setResolution(8 * 8);
-  imageResolution2 = sensor2.getResolution();
-  imageWidth2 = sqrt(imageResolution2);
-  Serial.println("Sensor 2 initialized successfully at 0x30");
+  // sensor2.setResolution(8 * 8);
+  // imageResolution2 = sensor2.getResolution();
+  // imageWidth2 = sqrt(imageResolution2);
+  // Serial.println("Sensor 2 initialized successfully at 0x30");
 
-    Serial.println("SCAN #3: Looking for Sensor 2 at 0x30");
-    scanI2C(); // Scan I2C bus to find devices
-  delay(50);
+  //   Serial.println("SCAN #3: Looking for Sensor 2 at 0x30");
+  //   scanI2C(); // Scan I2C bus to find devices
+  // delay(50);
 
 
 
-  // Sensor 1 initialization
-  Serial.println("Initializing Sensor 1 at 0x29 (Stays at 0x29)...");
-  // Set Sensor 1 LPn HIGH (Activate I2C communication). 
-  digitalWrite(LPN_PIN_1, HIGH); // Other LPn should still be set HIGH
-  delay(100); 
+  // // Sensor 1 initialization
+  // Serial.println("Initializing Sensor 1 at 0x29 (Stays at 0x29)...");
+  // // Set Sensor 1 LPn HIGH (Activate I2C communication). 
+  // digitalWrite(LPN_PIN_1, HIGH); // Other LPn should still be set HIGH
+  // delay(100); 
 
   Serial.println("SCAN #4: Looking for Sensor 1 at 0x29 (Sensor 2 is at 0x30).");
   scanI2C(); // Scan I2C bus to find devices
@@ -157,7 +180,7 @@ void setup()
   // Start ranging on both sensors. 
   Serial.println("Starting ranging on both sensors...");
   sensor1.startRanging();
-  sensor2.startRanging();
+  // sensor2.startRanging();
 
   Serial.println("Both sensors are now ranging.");
 
@@ -182,20 +205,20 @@ void loop()
     }
   }
 
-  // Sensor 2 data ready check and read
-  if (sensor2.isDataReady()) {
-    if (sensor2.getRangingData(&measurementData2)) {
-      Serial.println("Sensor 2 data:");
-      for (int y = 0; y <= imageWidth2 * (imageWidth2 - 1); y += imageWidth2) {
-        for (int x = imageWidth2 - 1; x >= 0; x--) {
-          Serial.print(measurementData2.distance_mm[x + y]);
-          Serial.print("\t");
-        }
-        Serial.println();
-      }
-      Serial.println();
-    }
-  }
+  // // Sensor 2 data ready check and read
+  // if (sensor2.isDataReady()) {
+  //   if (sensor2.getRangingData(&measurementData2)) {
+  //     Serial.println("Sensor 2 data:");
+  //     for (int y = 0; y <= imageWidth2 * (imageWidth2 - 1); y += imageWidth2) {
+  //       for (int x = imageWidth2 - 1; x >= 0; x--) {
+  //         Serial.print(measurementData2.distance_mm[x + y]);
+  //         Serial.print("\t");
+  //       }
+  //       Serial.println();
+  //     }
+  //     Serial.println();
+  //   }
+  // }
 
   delay(5); // Small delay between polling
 }
