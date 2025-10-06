@@ -196,7 +196,7 @@ void setup()
   // Init ToF CSV
   SD.remove(tofFileName);
   File tof = SD.open(tofFileName, FILE_WRITE);
-  tof.print("time");
+  tof.print("time,type");
   for(int i=0; i<16; i++) tof.print(",D"+String(i));
   tof.println();
   tof.close();
@@ -262,7 +262,6 @@ void setup()
   myImager.startRanging();
 
   Serial.println("Trigger LOW to Record data. Trigger HIGH to Stop and Download files.");
-
 
 }
 
@@ -361,6 +360,7 @@ void logToF() {
         // Serial.printf("%.9f",now/1000000.0);
         // Serial.println("");
       int idx = appendTimestamp(tofBuf, now); // write timestamp
+      idx += snprintf(tofBuf + idx, sizeof(tofBuf) - idx, ",D");
       for(int i = 0; i < imageResolution; i++) { //8x8 = 64; 4x4 = 16
           tofBuf[idx++] = ',';      
           const uint8_t stat  = measurementData.target_status[i];
