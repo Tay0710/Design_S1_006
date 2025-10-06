@@ -35,6 +35,10 @@ volatile uint32_t lastmillis2 = 0;
 #define RX_PIN 16
 #define TX_PIN 17
 
+// Using UART0 on ESP32
+// #define RX_PIN 3
+// #define TX_PIN 1
+
 // Initialise global variables
 ControllerPtr myControllers[BP32_MAX_GAMEPADS];
 AsyncClient* client = new AsyncClient;  // Initialise TCP client
