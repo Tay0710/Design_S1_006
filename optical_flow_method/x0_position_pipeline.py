@@ -62,8 +62,6 @@ from x4_xy_velocity_calculation import main as xy_velocity_calculation
 from x5_rotation_matrix import main as rotation_matrix
 from x6_convert_to_world_frame import main as convert_to_world_frame
 
-import numpy as np
-
 def cut_data(stage_0_input_path, stage_1_input_path, stage_2_input_path, stage_5_and_7_input_path, stage_1_input_path_cropped, stage_2_input_path_cropped, stage_5_and_7_input_path_cropped):
     # Stage 0 file is just two numbers: start, end
     data_0 = np.genfromtxt(stage_0_input_path, delimiter=",", skip_header=1)
