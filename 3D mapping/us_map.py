@@ -94,30 +94,6 @@ def rotate_point_to_world(local_vec, rot_mat, drone_pos):
         local_vec[5],
     )
 
-# === Crop ultrasonic data based on data_times.csv ===
-def crop_ultrasonic_data(folder):
-    times_path = os.path.join(folder, "data_times.csv")
-    ultrasonic_path = os.path.join(folder, "fake_ultrasonic.csv")
-    output_path = os.path.join(folder, "fake_ultrasonic_cropped.csv")
-
-    # Load cropping times
-    times_df = pd.read_csv(times_path)
-    if not {"start", "end"}.issubset(times_df.columns):
-        raise ValueError("data_times.csv must have 'start' and 'end' columns.")
-    start_time = float(times_df["start"].iloc[0])
-    end_time = float(times_df["end"].iloc[0])
-    print(f"🕒 Cropping ultrasonic data from {start_time:.3f} → {end_time:.3f}s")
-
-    # Load ultrasonic data
-    us_df = pd.read_csv(ultrasonic_path)
-    if "time" not in us_df.columns:
-        raise ValueError("'fake_ultrasonic.csv' must contain a 'time' column.")
-
-    cropped = us_df[(us_df["time"] >= start_time) & (us_df["time"] <= end_time)].copy()
-    cropped.to_csv(output_path, index=False)
-    print(f"✅ Saved cropped ultrasonic data: {len(cropped)} rows → {output_path}")
-    return output_path
-
 # === Visualisation (Open3D) ===
 def visualize_open3d(points, drone_positions):
     geoms = []
@@ -172,17 +148,14 @@ def visualize_matplotlib(points, drone_positions):
     plt.show()
 
 # === Main ===
-def main():
+def main(us_input_cropped):
     # Folder containing ultrasonic + time files
     folder = "../optical_flow_method_data/combined_samples/26_09_25_Lv4/2_mixed_straight"
-
-    # Crop ultrasonic data first
-    cropped_ultrasonic_path = crop_ultrasonic_data(folder)
 
     # Load trajectory, rotation, and cropped ultrasonic data
     traj = pd.read_csv("../optical_flow_method_data/xy_velocities_to_world_frame.csv")
     times_mat, rot_mats = load_rotation_matrices("../optical_flow_method_data/rotation_matrices.csv")
-    us = pd.read_csv(cropped_ultrasonic_path)
+    us = pd.read_csv(us_input_cropped)
 
     all_points = []
     drone_positions = []
@@ -248,7 +221,7 @@ def main():
 
     all_points = np.array(all_points)
     visualize_open3d(all_points, drone_positions)
-    visualize_matplotlib(all_points, drone_positions)
+    # visualize_matplotlib(all_points, drone_positions)
 
 if __name__ == "__main__":
     main()
