@@ -53,6 +53,7 @@ uint32_t LastDownPress = 0;
 uint32_t LastUpPress = 0;
 
 bool armingSequenceFlag = false;
+bool armsequencecomplete = false;
 
 
 // Constant for joystick
@@ -468,22 +469,53 @@ void loop() {
     rcChannels[THROTTLE] = 1325;    
     }
   }
-
+  Serial.print("PITCH: ");
+  Serial.println(rcChannels[PITCH]);
   // TO TRY (HAVE NOT TRIED YET)
-  // Test to see drone go forward for 2 seconds, then slow down as it reverses direction. 
-  if (rcChannels[PITCH] == SBUS_MID){
-    rcChannels[PITCH] = 1510;
-    lastmillis2 = currentMillis; 
+  // Test to see drone go forward for 2 seconds, then slow down as it reverses direction.
+  if(armsequencecomplete){
+    if (rcChannels[PITCH] == SBUS_MID){
+      rcChannels[PITCH] = 1510;
+      lastmillis2 = currentMillis; 
+    }
+    else if(rcChannels[PITCH] == 1510 && currentMillis - lastmillis2 > 5000) { // Go forward for 2 seconds
+    // should lower pitch to 1505 then use a front sensor to let drone know when to slow down. 
+      rcChannels[PITCH] == 1490; 
+    }
   }
-  if(rcChannels[PITCH] == 1510 && currentMillis - lastmillis2 > 2000) { // Go forward for 2 seconds
-  // should lower pitch to 1505 then use a front sensor to let drone know when to slow down. 
-    rcChannels[PITCH] == 1490; 
-  }
-
 // TO ADD:
 // CHANGE in PITCH
 
-    // rcChannels[PITCH] = SBUS_MID
+
+// // TO ADD:
+// // CHANGE in THROTTLE AS BATTERY DIES
+// // Code description:
+// // as the drone battery lowers, it will eventually stay in the THROTTLE = 1325 zone. If the drone stays in this throttle zone for longer than 5 seconds,
+// // then both the lower and upper throttle limits should increase by 5 throttle values. 
+
+// if(lowmode){  
+//   if(firsttime){
+//     lowmodetime = currentMillis;
+//     firsttime = false;
+//   }
+//   if(currentMillis - lowmodetime > 5000 && runOnce){
+//     LowThrottle += 5;
+//     UpThrottle += 5;
+//     runOnce = false; 
+//   }
+// } else{
+//   lowmodetime = 0;
+//   firsttime = true; 
+//   runOnce = true; 
+// }
+
+// // To enable:
+// // add lowmode = false (in low throttle and transistion throttle periods)
+// // add lowmode = true (in high throttle period)
+
+// // define lowmode, runOnce, firsttime as booleans. 
+// // define lowmodetime as unit32 (timestamp)
+// // define low and upper throttle period as variables (check requirements for transition period)
 
 
 
@@ -510,10 +542,10 @@ void loop() {
       rcChannels[THROTTLE] = 1320;
       Serial.println("Throttle 1320.");
       rcChannels[AUX1] = 1800;
-      else if (currentMillis > 11600 + armingMillis)
+    } else if (currentMillis > 11600 + armingMillis){
       rcChannels[THROTTLE] = 1320;
       armingSequenceFlag = false;
-
+      armsequencecomplete = true;
     }
   }
 
