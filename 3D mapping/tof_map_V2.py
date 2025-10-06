@@ -331,6 +331,9 @@ def main(tof_input_cropped):
     ####       o3d.visualization.draw_geometries([outlier_pcd], window_name="Removed Outliers")
 
     ####       visualize_matplotlib(all_points, drone_positions)
+    
+    # Return data instead of only visualizing
+    return np.array(all_points), np.array(drone_positions)
 
 if __name__ == "__main__":
     main()

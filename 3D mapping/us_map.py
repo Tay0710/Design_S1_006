@@ -222,6 +222,9 @@ def main(us_input_cropped):
     all_points = np.array(all_points)
     visualize_open3d(all_points, drone_positions)
     # visualize_matplotlib(all_points, drone_positions)
+    
+    # Return data for combined visualisation
+    return np.array(all_points), np.array(drone_positions)
 
 if __name__ == "__main__":
     main()

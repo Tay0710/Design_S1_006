@@ -22,10 +22,11 @@ Pipeline stages:
         - Maps each directional ultrasonic reading (U, D, L, R) into the world
           frame using the same coordinate system as the ToF data.
     4. Combined visualization
-        - Each mapping stage launches an Open3D visualization with:
-            * Red drone trajectory and final position marker
-            * Colored point clouds (ToF: blue; Ultrasonic: multi-color by direction)
-            * Coordinate frame axes for world alignment
+        - Merges ToF and Ultrasonic points into a single Open3D display:
+            * Blue: ToF map
+            * Multi-color: Ultrasonic directions (U, D, L, R)
+            * Red: Drone trajectory and final position
+            * Axes: World coordinate reference
 
 Usage:
     Run this script directly to execute the full mapping pipeline:
@@ -33,20 +34,23 @@ Usage:
 
 Outputs:
     Intermediate files:
-        - download_ultrasonic_cropped.csv : Cropped ultrasonic data (time-synchronized).
+        - us_cropped.csv : Cropped ultrasonic data (time-synchronized).
     Final deliverable:
         - A synchronized 3D environmental map combining ToF and Ultrasonic
           point clouds, both aligned to the drone’s world-frame trajectory.
 """
 
+import numpy as np
+import pandas as pd
+import open3d as o3d
+import time
+import os
+
 from tof_map_V2 import main as tof_map
 from us_map import main as us_map
 
-import numpy as np
-import time
-
+# === Data Cropping Function ===
 def cut_data(data_times, us_input_path, us_input_cropped):
-    # Stage 0 file is just two numbers: start, end
     data_0 = np.genfromtxt(data_times, delimiter=",", skip_header=1)
     start_time, end_time = data_0[0], data_0[1]
 
@@ -66,35 +70,85 @@ def cut_data(data_times, us_input_path, us_input_cropped):
             except ValueError:
                 continue
             if start <= t <= end:
-                kept.append(line)  # keep original formatting
+                kept.append(line)
 
         with open(output_path, "w") as f:
             f.writelines(kept)
 
     filter_file(us_input_path, us_input_cropped, start_time, end_time)
-
     print(f"File updated and saved with cut data: start={start_time}, end={end_time}")
 
+def visualize_combined_map(tof_points, us_points, traj_positions):
+    """Display a combined ToF + Ultrasonic map in Open3D."""
+    import open3d as o3d
 
+    geoms = []
+
+    # === ToF points (blue) ===
+    if tof_points is not None and len(tof_points) > 0:
+        pc_tof = o3d.geometry.PointCloud()
+        pc_tof.points = o3d.utility.Vector3dVector(tof_points[:, :3])
+        pc_tof.paint_uniform_color([0, 0, 1])  # blue
+        geoms.append(pc_tof)
+
+    # === Ultrasonic points (orange) ===
+    if us_points is not None and len(us_points) > 0:
+        pc_us = o3d.geometry.PointCloud()
+        pc_us.points = o3d.utility.Vector3dVector(us_points[:, :3])
+        pc_us.paint_uniform_color([1, 0.5, 0])  # orange
+        geoms.append(pc_us)
+
+    # === Drone trajectory ===
+    if traj_positions is not None and len(traj_positions) > 1:
+        traj = o3d.geometry.LineSet()
+        traj.points = o3d.utility.Vector3dVector(traj_positions)
+        traj.lines = o3d.utility.Vector2iVector([[i, i + 1] for i in range(len(traj_positions) - 1)])
+        traj.colors = o3d.utility.Vector3dVector([[1, 0, 0] for _ in range(len(traj_positions) - 1)])
+        geoms.append(traj)
+
+        # Final drone position marker
+        drone_marker = o3d.geometry.TriangleMesh.create_sphere(radius=0.05)
+        drone_marker.translate(traj_positions[-1])
+        drone_marker.paint_uniform_color([1, 0, 0])
+        geoms.append(drone_marker)
+
+    # === Coordinate frame ===
+    axis = o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.2)
+    geoms.append(axis)
+
+    print("\n=== Stage 3: Combined ToF + Ultrasonic Map ===")
+    o3d.visualization.draw_geometries(geoms, window_name="Combined ToF + Ultrasonic Map")
+
+
+# === Main Execution ===
 def main():
     t0 = time.time()
-    
+
     data_name = "26_09_25_Lv4/2_mixed_straight/"
+    base_path = "../optical_flow_method_data/combined_samples/" + data_name
 
-    data_times = "../optical_flow_method_data/combined_samples/" + data_name + "data_times.csv"
-    tof_input_cropped = "../optical_flow_method_data/combined_samples/" + data_name + "download_tof_cropped.csv"
-    us_input_path = "../optical_flow_method_data/combined_samples/" + data_name + "fake_ultrasonic.csv"
-    us_input_cropped = "../optical_flow_method_data/combined_samples/" + data_name + "us_cropped.csv"
+    data_times = base_path + "data_times.csv"
+    tof_input_cropped = base_path + "download_tof_cropped.csv"
+    us_input_path = base_path + "fake_ultrasonic.csv"
+    us_input_cropped = base_path + "us_cropped.csv"
 
+    # 1️⃣ Crop ultrasonic data
     cut_data(data_times, us_input_path, us_input_cropped)
-    
+
+    # 2️⃣ Generate ToF map
     print("\n=== Stage 1: Generate ToF Point Cloud ===")
-    tof_map(tof_input_cropped)
-    
+    tof_points, traj_positions = tof_map(tof_input_cropped)
+
+    # 3️⃣ Generate Ultrasonic map
     print("\n=== Stage 2: Generate Ultrasonic Point Cloud ===")
-    us_map(us_input_cropped)
-    
+    us_points, _ = us_map(us_input_cropped)
+
+    # 4️⃣ Combined visualization
+    visualize_combined_map(tof_points, us_points, traj_positions)
+
+
     print(f"\nPipeline complete in {time.time() - t0:.2f}s")
+
 
 if __name__ == "__main__":
     main()
