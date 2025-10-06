@@ -10,7 +10,6 @@
 
   Feel like supporting our work? Buy a board from SparkFun!
   https://www.sparkfun.com/products/18642
-
 */
 
 #include <Wire.h>
