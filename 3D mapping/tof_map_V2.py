@@ -232,10 +232,10 @@ def visualize_matplotlib(points, drone_positions):
     ax.legend()
     plt.show()
 
-def main():
+def main(tof_input_cropped):
     # Load trajectory + ToF + rotation data
     traj = pd.read_csv("../optical_flow_method_data/xy_velocities_to_world_frame.csv")
-    tof = pd.read_csv("../optical_flow_method_data/combined_samples/26_09_25_Lv4/2_mixed_straight/download_tof_cropped.csv")
+    tof = pd.read_csv(tof_input_cropped)
     times_mat, rot_mats = load_rotation_matrices("../optical_flow_method_data/rotation_matrices.csv")
 
     all_points = []
@@ -309,28 +309,28 @@ def main():
     visualize_open3d(np.array(all_points), drone_positions)
 
     # Attempt to filter
-    pcd = o3d.geometry.PointCloud()
+    ####        pcd = o3d.geometry.PointCloud()
     
-    pcd.points = o3d.utility.Vector3dVector(np.array(all_points)[:, :3])
+    ####        pcd.points = o3d.utility.Vector3dVector(np.array(all_points)[:, :3])
     # Example with colors (assuming 'points' has 6 columns: x, y, z, R, G, B)
     # all_points[:, 3:6] / 255.0 # Normalize if needed
-    pcd.colors = o3d.utility.Vector3dVector(np.array(all_points)[:, 3:6]/255)
-    o3d.visualization.draw_geometries([pcd], window_name="Original Point Cloud")
+    ####        pcd.colors = o3d.utility.Vector3dVector(np.array(all_points)[:, 3:6]/255)
+    ####        o3d.visualization.draw_geometries([pcd], window_name="Original Point Cloud")
 
     # Apply statistical outlier removal
     # 20 neighbors and a standard deviation ratio of 2.0 are common starting points
-    cl, ind = pcd.remove_statistical_outlier(nb_neighbors=20, std_ratio=2)
+    #####      cl, ind = pcd.remove_statistical_outlier(nb_neighbors=20, std_ratio=2)
 
     # `cl` contains the inlier points (cleaned point cloud)
     # `ind` contains the indices of the inlier points
     # Visualize the original and filtered point clouds
-    o3d.visualization.draw_geometries([cl], window_name="Filtered Point Cloud (Inliers)")
+    ####       o3d.visualization.draw_geometries([cl], window_name="Filtered Point Cloud (Inliers)")
 
     # To visualize the removed outliers, you can extract them using the `ind` variable
-    outlier_pcd = pcd.select_by_index(ind, invert=True)
-    o3d.visualization.draw_geometries([outlier_pcd], window_name="Removed Outliers")
+    ####       outlier_pcd = pcd.select_by_index(ind, invert=True)
+    ####       o3d.visualization.draw_geometries([outlier_pcd], window_name="Removed Outliers")
 
-    visualize_matplotlib(all_points, drone_positions)
+    ####       visualize_matplotlib(all_points, drone_positions)
 
 if __name__ == "__main__":
     main()
