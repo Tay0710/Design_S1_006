@@ -378,7 +378,7 @@ void setup() {
   rcChannels[AUX2] = 1200;  // For angle mode
   // TODO: might map this to button instead
 
-  Serial1.begin(100000, SERIAL_8E2, RX_PIN, TX_PIN, true);  // Initialize Serial1 with 100000 baud rate
+  Serial1.begin(100000, SERIAL_8E2, RX_PIN, TX_PIN, false);  // Initialize Serial1 with 100000 baud rate
   // false = univerted, true = inverted
 
   // Serial.println(" --- Setup WIFI/TCP Connection --- ");
