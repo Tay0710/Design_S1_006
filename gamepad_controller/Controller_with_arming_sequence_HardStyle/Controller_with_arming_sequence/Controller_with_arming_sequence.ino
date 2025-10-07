@@ -20,7 +20,7 @@
 #include "QuickPID.h"
 
 
-// Ultrasonic Variables
+// Top Ultrasonic Variables
 #define pwPin1 25  // GPIO pin
 volatile unsigned long pulseStart1 = 0;
 volatile double distanceCm1 = 0;
@@ -29,6 +29,13 @@ volatile double CurrentDistance = 0; // read from ultrasonic
 float targetheight = 200; // in cm
 volatile uint32_t lastmillis1 = 0; 
 volatile uint32_t lastmillis2 = 0; 
+
+// Front Ultrasonic Variables
+#define pwPinFront 5  // GPIO pin
+volatile unsigned long pulseStartF = 0;
+volatile double distanceCmF = 0;
+volatile bool US_readyF = false;
+volatile double CurrentDistanceF = 0; // read from ultrasonic
 
 
 // Using UART2 on ESP32
@@ -79,7 +86,7 @@ bool armsequencecomplete = false;
 #define THROTTLE_MID 1150 //1150
 #define THROTTLE_MAX 1410  // shrink range of throttle, was 1410
 
-#define DPAD_INCREMENT 5
+#define DPAD_INCREMENT 188 // ~ 22.56 
 
 // Constants for Wifi
 #define SSID "ESP-TEST-DJ"
@@ -284,12 +291,12 @@ void processGamepad(ControllerPtr ctl) {
   // currentMillis
   if (ctl->dpad() & 0x02 && rcChannels[THROTTLE] > THROTTLE_MIN && (currentMillis - LastDownPress) > debounceDelay) {
     // rcChannels[PITCH] = rcChannels[PITCH] - DPAD_INCREMENT;
-    rcChannels[PITCH] = rcChannels[PITCH] - DPAD_INCREMENT;
+    rcChannels[YAW] = rcChannels[YAW] - DPAD_INCREMENT;
     LastDownPress = currentMillis; 
   }
   if (ctl->dpad() & 0x01 && rcChannels[THROTTLE] < THROTTLE_MAX && (currentMillis - LastUpPress) > debounceDelay) {
     // rcChannels[PITCH] = rcChannels[PITCH] + DPAD_INCREMENT;
-    rcChannels[PITCH] = rcChannels[PITCH] + DPAD_INCREMENT;
+    rcChannels[YAW] = rcChannels[YAW] + DPAD_INCREMENT;
     LastUpPress = currentMillis; 
   }
   if (ctl->dpad() & 0x08 && rcChannels[ROLL] > SBUS_MIN) {
@@ -361,7 +368,7 @@ void onDisconnect(void* arg, AsyncClient* client) {
   sendTimer.detach();  // Pause timer
 }
 
-// Ultrasonic Interupt Function
+// Ultrasonic Top Interupt Function
 void US1_ISR() {
   // Called when pwPin changes
   if (digitalRead(pwPin1) == HIGH) {
@@ -375,6 +382,23 @@ void US1_ISR() {
     US_ready1 = true;
   }
 }
+
+
+// Ultrasonic Front Interupt Function
+void USFront_ISR() {
+  // Called when pwPin changes
+  if (digitalRead(pwPinFront) == HIGH) {
+    // Rising edge
+    pulseStartF = micros();
+    US_readyF = false;
+  } else {
+    // Falling edge
+    unsigned long pulseWidth = micros() - pulseStart1;
+    distanceCmF = pulseWidth / 57.87;
+    US_readyF = true;
+  }
+}
+
 
 // Arduino setup function. Runs in CPU 1
 void setup() {
@@ -449,7 +473,8 @@ void setup() {
 
   // Ultrasonic Interrupt Setup
   pinMode(pwPin1, INPUT_PULLUP);
-  attachInterrupt(digitalPinToInterrupt(pwPin1), US1_ISR, CHANGE);
+  attachInterrupt(digitalPinToInterrupt(pwPin1), US1_ISR, CHANGE); // USFront_ISR
+  // attachInterrupt(digitalPinToInterrupt(pwPinFront), USFront_ISR, CHANGE);
 
   Serial.println(" --- Setup Complete --- ");
 }
@@ -461,6 +486,7 @@ void loop() {
   if (US_ready1) {
     // Serial.print("US1 Distance: ");
     CurrentDistance = round(distanceCm1 * 100) / 100;
+    Serial.print("Top US: ");
     Serial.print(distanceCm1, 2);
     Serial.println(" cm");
     US_ready1 = false;  // Current distance of ultrasonic is saved in: distanceCm1
@@ -473,13 +499,14 @@ void loop() {
     rcChannels[THROTTLE] = 1325;    
     }
   }
-  Serial.print("PITCH: ");
-  Serial.println(rcChannels[PITCH]);
+  // Serial.print("PITCH: ");
+  // Serial.println(rcChannels[PITCH]);
   // TO TRY (HAVE NOT TRIED YET)
   // Test to see drone go forward for 2 seconds, then slow down as it reverses direction.
   if(armsequencecomplete){
-    if (rcChannels[PITCH] == SBUS_MID){
+    if (rcChannels[PITCH] == 1500){
       rcChannels[PITCH] = 1510;
+      // rcChannels[YAW] = 1800;
       lastmillis2 = currentMillis; 
     }
     else if(rcChannels[PITCH] == 1510 && currentMillis - lastmillis2 > 5000) { // Go forward for 2 seconds
@@ -489,6 +516,9 @@ void loop() {
   }
 // TO ADD:
 // CHANGE in PITCH
+
+// CHANGE IN YAW
+// 100 ~ 12 degree angle change. 
 
 
 // // TO ADD:
@@ -522,9 +552,18 @@ void loop() {
 // // define low and upper throttle period as variables (check requirements for transition period)
 
 
+// TO ADD:
+// FRONT Ultrasonic Sensor (MB1000)
 
-
-
+  // if (US_readyF) {
+  //   // Serial.print("US1 Distance: ");
+  //   CurrentDistanceF = round(distanceCmF * 100) / 100;
+  //   Serial.print("US FRONT : ");
+  //   Serial.print(distanceCmF, 2);
+  //   Serial.println(" cm");
+  //   US_readyF = false;  // Current distance of ultrasonic is saved in: distanceCm1
+    
+  // }
 
   // This call fetches all the controllers' data.
   // Call this function in your main loop.
@@ -541,12 +580,14 @@ void loop() {
     // wait 10 seconds then arm
     if (currentMillis > 5000 + armingMillis && currentMillis < 10000 + armingMillis) {
       rcChannels[AUX1] = 1800;
+      // rcChannels[PITCH] = 1500;
+      // rcChannels[YAW] = 1500;
       Serial.println("Arm drone.");
-    } else if (currentMillis > 10000 + armingMillis && currentMillis < 11600 + armingMillis) { // Wait another 10 seconds before turning on throttle and leave on for 5 seconds
-      rcChannels[THROTTLE] = 1320;
+    } else if (currentMillis > 10000 + armingMillis && currentMillis < 11700 + armingMillis) { // Wait another 10 seconds before turning on throttle and leave on for 5 seconds
+      rcChannels[THROTTLE] = 1320;     
       Serial.println("Throttle 1320.");
       rcChannels[AUX1] = 1800;
-    } else if (currentMillis > 11600 + armingMillis){
+    } else if (currentMillis > 11700 + armingMillis){
       rcChannels[THROTTLE] = 1320;
       armingSequenceFlag = false;
       armsequencecomplete = true;
@@ -570,6 +611,6 @@ void loop() {
     // printSBUSChannel(rcChannels);
     // printSBUSPacket(sbusPacket);
     sbusTime = currentMillis + SBUS_UPDATE_RATE;
-    Serial.print("Current Throttle: "); Serial.println(rcChannels[THROTTLE]);
+    // Serial.print("Current Throttle: "); Serial.println(rcChannels[THROTTLE]);
   }
 }
