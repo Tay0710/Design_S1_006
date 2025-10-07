@@ -635,7 +635,8 @@ void loop() {
   }
 
 
-
+// To TEST:
+// TILT to prevent side wall crash (minor correction left and right)
 
 // // TO ADD:
 // // CHANGE in THROTTLE AS BATTERY DIES
