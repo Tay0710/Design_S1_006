@@ -12,12 +12,10 @@
 
 #define SDA_PIN 26
 #define SCL_PIN 27
-
  // AVDD - needs 3v3 supply
  // IOVDD - needs 3v3 supply
  // GND - GND
-
-//  #define P1 19 // LPn - not required. 
+//  #define P1 19 // LPn - not required for single sensor
 
 
 
@@ -75,7 +73,6 @@ void setup()
   Serial.println("Both sensors are now ranging.");
 
 }
-
 
 
 void loop()

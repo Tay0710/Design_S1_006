@@ -19,6 +19,9 @@
 #include <Arduino.h>
 #include "QuickPID.h"
 
+#include <Wire.h>
+#include <SparkFun_VL53L5CX_Library.h> //http://librarymanager/All#SparkFun_VL53L5CX
+
 
 // Top Ultrasonic Variables
 #define pwPin1 25  // GPIO pin
@@ -36,6 +39,21 @@ volatile unsigned long pulseStartF = 0;
 volatile double distanceCmF = 0;
 volatile bool US_readyF = false;
 volatile double CurrentDistanceF = 0; // read from ultrasonic
+
+// TOF RIGHT
+#define SDA_PIN 26
+#define SCL_PIN 27
+ // AVDD - needs 3v3 supply
+ // IOVDD - needs 3v3 supply
+ // GND - GND
+//  #define P1 19 // LPn - not required for single sensor
+
+// Sensor objects and measurement data
+SparkFun_VL53L5CX sensor1;
+VL53L5CX_ResultsData measurementData1; // Result data class structure, 1356 byes of RAM
+int imageResolution1 = 0;
+int imageWidth1 = 0;
+volatile int centerAvg = -1;  // Global variable to hold the latest average
 
 
 // Using UART2 on ESP32
@@ -65,6 +83,7 @@ uint32_t LastUpPress = 0;
 
 bool armingSequenceFlag = false;
 bool armsequencecomplete = false;
+bool runoncePITCH = false;
 
 
 // Constant for joystick
@@ -86,7 +105,7 @@ bool armsequencecomplete = false;
 #define THROTTLE_MID 1150 //1150
 #define THROTTLE_MAX 1410  // shrink range of throttle, was 1410
 
-#define DPAD_INCREMENT 188 // ~ 22.56 
+#define DPAD_INCREMENT 5 // YAW: 188 = ~ 22.56 
 
 // Constants for Wifi
 #define SSID "ESP-TEST-DJ"
@@ -212,7 +231,7 @@ void processGamepad(ControllerPtr ctl) {
   if (ctl->buttons() & 0x0001) {
     Serial.println("Reset pitch and roll");
     rcChannels[ROLL] = SBUS_MID;
-    rcChannels[PITCH] = SBUS_MID;
+    // rcChannels[PITCH] = SBUS_MID;
   }
 
   // else {
@@ -291,12 +310,12 @@ void processGamepad(ControllerPtr ctl) {
   // currentMillis
   if (ctl->dpad() & 0x02 && rcChannels[THROTTLE] > THROTTLE_MIN && (currentMillis - LastDownPress) > debounceDelay) {
     // rcChannels[PITCH] = rcChannels[PITCH] - DPAD_INCREMENT;
-    rcChannels[YAW] = rcChannels[YAW] - DPAD_INCREMENT;
+    rcChannels[PITCH] = rcChannels[PITCH] - DPAD_INCREMENT;
     LastDownPress = currentMillis; 
   }
   if (ctl->dpad() & 0x01 && rcChannels[THROTTLE] < THROTTLE_MAX && (currentMillis - LastUpPress) > debounceDelay) {
     // rcChannels[PITCH] = rcChannels[PITCH] + DPAD_INCREMENT;
-    rcChannels[YAW] = rcChannels[YAW] + DPAD_INCREMENT;
+    rcChannels[PITCH] = rcChannels[PITCH] + DPAD_INCREMENT;
     LastUpPress = currentMillis; 
   }
   if (ctl->dpad() & 0x08 && rcChannels[ROLL] > SBUS_MIN) {
@@ -476,49 +495,146 @@ void setup() {
   attachInterrupt(digitalPinToInterrupt(pwPin1), US1_ISR, CHANGE); // USFront_ISR
   // attachInterrupt(digitalPinToInterrupt(pwPinFront), USFront_ISR, CHANGE);
 
+  Wire.begin(SDA_PIN, SCL_PIN); // Initialize I2C bus
+  Wire.setClock(400000); // Optional: 400 kHz I2C
+  delay(50);
+
+  while (!sensor1.begin()) {
+    Serial.println("Sensor 1 not found at 0x29! Retrying...");
+    delay(50); // small delay to avoid spamming I2C or Serial
+  }
+
+  sensor1.setResolution(4 * 4);
+  imageResolution1 = sensor1.getResolution();
+  imageWidth1 = sqrt(imageResolution1);
+  Serial.println("Sensor 1 initialized successfully at 0x29");
+
+  delay(50);
+
+  // Start ranging on both sensors. 
+  Serial.println("Starting ranging on both sensors...");
+  sensor1.setRangingFrequency(60);
+  sensor1.startRanging();
+  Serial.println("Both sensors are now ranging.");
+
   Serial.println(" --- Setup Complete --- ");
 }
+
+
+/// Reading RIGHT TOF sensor. 
+void readCenterAverage(SparkFun_VL53L5CX &sensor, VL53L5CX_ResultsData &measurementData) {
+  if (sensor.isDataReady()) {
+    if (sensor.getRangingData(&measurementData)) {
+
+      // Middle 4 indices in a 4x4 grid: 5, 6, 9, 10
+      int middleIdx[4] = {5, 6, 9, 10};
+      int sum = 0;
+      int count = 0;
+
+      for (int i = 0; i < 4; i++) {
+        int idxPixel = middleIdx[i];
+        uint8_t status = measurementData.target_status[idxPixel];
+        if (status == 5) { // valid return
+          sum += measurementData.distance_mm[idxPixel];
+          count++;
+        }
+      }
+
+      if (count > 0) {
+        centerAvg = sum / count;
+        Serial.print("Average center distance (mm): ");
+        Serial.println(centerAvg);
+      } else {
+        centerAvg = -1;
+        Serial.println("No valid center pixels.");
+      }
+    }
+  }
+}
+
+// Need a sensor to detect the roof (keep drone in air)
+// one for right wall, one for left wall, one for upcoming wall infront. 
+// if wall infront turn to side where TOF data is of greater distance? (atleast 150cm)
+//    else if both less than 150cm then do a 180 degree turn. 
 
 // Arduino loop function. Runs in CPU 1.
 void loop() {
   currentMillis = millis();
 
-  if (US_ready1) {
-    // Serial.print("US1 Distance: ");
-    CurrentDistance = round(distanceCm1 * 100) / 100;
-    Serial.print("Top US: ");
-    Serial.print(distanceCm1, 2);
-    Serial.println(" cm");
-    US_ready1 = false;  // Current distance of ultrasonic is saved in: distanceCm1
-    if (CurrentDistance < 153.53){ //  && currentMillis - lastmillis1 > 1000
-      rcChannels[THROTTLE] = 1305;
-      // lastmillis1 = currentMillis;
-    } else if (CurrentDistance > 153.53 && CurrentDistance < 156.47){
-    rcChannels[THROTTLE] = 8.5*CurrentDistance;    
-    } else if (CurrentDistance > 156.47){
-    rcChannels[THROTTLE] = 1325;    
-    }
-  }
-  // Serial.print("PITCH: ");
-  // Serial.println(rcChannels[PITCH]);
-  // TO TRY (HAVE NOT TRIED YET)
-  // Test to see drone go forward for 2 seconds, then slow down as it reverses direction.
-  if(armsequencecomplete){
-    if (rcChannels[PITCH] == 1500){
-      rcChannels[PITCH] = 1510;
-      // rcChannels[YAW] = 1800;
-      lastmillis2 = currentMillis; 
-    }
-    else if(rcChannels[PITCH] == 1510 && currentMillis - lastmillis2 > 5000) { // Go forward for 2 seconds
-    // should lower pitch to 1505 then use a front sensor to let drone know when to slow down. 
-      rcChannels[PITCH] == 1490; 
-    }
-  }
-// TO ADD:
-// CHANGE in PITCH
+  // // This call fetches all the controllers' data.
+  // // Call this function in your main loop.
+  bool dataUpdated = BP32.update();
+  if (dataUpdated)
+    processControllers();
+  
 
-// CHANGE IN YAW
-// 100 ~ 12 degree angle change. 
+  // Arming sequence hard coded
+  if (armingSequenceFlag) {
+    rcChannels[THROTTLE] = THROTTLE_MIN; // set to min throttle despite controller being connected
+
+    // wait 10 seconds then arm
+    if (currentMillis > 5000 + armingMillis && currentMillis < 10000 + armingMillis) {
+      rcChannels[AUX1] = 1800;
+      // armsequencecomplete = false;
+      Serial.println("Arm drone.");
+    } else if (currentMillis > 10000 + armingMillis && currentMillis < 11700 + armingMillis) { // Wait another 10 seconds before turning on throttle and leave on for 5 seconds
+      rcChannels[THROTTLE] = 1330;     
+      Serial.println("Throttle 1320.");
+      rcChannels[AUX1] = 1800;
+    } else if (currentMillis > 11700 + armingMillis){
+      rcChannels[THROTTLE] = 1330;
+      armsequencecomplete = true;
+      // runoncePITCH = true;
+      armingSequenceFlag = false;
+
+    }
+  }
+
+    // Serial.print("PITCH: "); Serial.println(rcChannels[PITCH]);
+    Serial.println("BEFORE THE TRUE LOOP");
+  if(armsequencecomplete){ // armsequencecomplete
+    // THROTTLE CHANGES 
+    // TOP side Ultrasonic Sensor
+    Serial.print("US READY");
+    rcChannels[PITCH] = 1520;
+    if (US_ready1) {
+      // Serial.print("US1 Distance: ");
+      CurrentDistance = round(distanceCm1 * 100) / 100;
+      Serial.print("Top US: ");
+      Serial.print(distanceCm1, 2);
+      Serial.println(" cm");
+      US_ready1 = false;  // Current distance of ultrasonic is saved in: distanceCm1
+      if (CurrentDistance < 154.71){ //  && currentMillis - lastmillis1 > 1000
+        rcChannels[THROTTLE] = 1315; // 154.70588
+        // lastmillis1 = currentMillis;
+      } else if (CurrentDistance > 153.53 && CurrentDistance < 156.47){
+      rcChannels[THROTTLE] = 8.5*CurrentDistance;    
+      } else if (CurrentDistance > 157.05){ // 157.05882
+      rcChannels[THROTTLE] = 1335;    
+      }
+    }    
+
+    Serial.println("BEFORE YAW CHANGES");
+    // YAW Changes
+    readCenterAverage(sensor1, measurementData1);
+    if(centerAvg > 0 && centerAvg < 500){ // centerAvg returns middle 4 tof average ranges in mm. 
+      rcChannels[YAW] = 1375;  // 125 ~ 15 degrees change. 
+    } 
+
+    Serial.println("PITCH CHANGES");
+    // PITCH Changes
+    // if (){
+    // rcChannels[PITCH] = 1510;
+      // rcChannels[YAW] = 1800;
+      // lastmillis2 = currentMillis; 
+      // runoncePITCH = false;
+    // } else if(rcChannels[PITCH] == 1510 && currentMillis - lastmillis2 > 5000) { // Go forward for 2 seconds
+    // // should lower pitch to 1505 then use a front sensor to let drone know when to slow down. 
+    //   rcChannels[PITCH] = 1490; 
+    // }
+  }
+
+
 
 
 // // TO ADD:
@@ -565,34 +681,7 @@ void loop() {
     
   // }
 
-  // This call fetches all the controllers' data.
-  // Call this function in your main loop.
-  bool dataUpdated = BP32.update();
-  if (dataUpdated)
-    processControllers();
 
-
-  // Arming sequence hard coded
-  // Arming sequence hard coded
-  if (armingSequenceFlag) {
-    rcChannels[THROTTLE] = THROTTLE_MIN; // set to min throttle despite controller being connected
-
-    // wait 10 seconds then arm
-    if (currentMillis > 5000 + armingMillis && currentMillis < 10000 + armingMillis) {
-      rcChannels[AUX1] = 1800;
-      // rcChannels[PITCH] = 1500;
-      // rcChannels[YAW] = 1500;
-      Serial.println("Arm drone.");
-    } else if (currentMillis > 10000 + armingMillis && currentMillis < 11700 + armingMillis) { // Wait another 10 seconds before turning on throttle and leave on for 5 seconds
-      rcChannels[THROTTLE] = 1320;     
-      Serial.println("Throttle 1320.");
-      rcChannels[AUX1] = 1800;
-    } else if (currentMillis > 11700 + armingMillis){
-      rcChannels[THROTTLE] = 1320;
-      armingSequenceFlag = false;
-      armsequencecomplete = true;
-    }
-  }
 
   // The main loop must have some kind of "yield to lower priority task" event.
   // Otherwise, the watchdog will get triggered.
