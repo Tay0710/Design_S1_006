@@ -4,16 +4,14 @@
 
 #include <Arduino.h>
 
-#define LOOP_ACTIVITY 22
-
 // US 1
-#define pwPin1 14
+#define pwPin1 18
 volatile unsigned long pulseStart1 = 0;
 volatile float distanceCm1 = 0;
 volatile bool US_ready1 = false;
 
 // US 2
-#define pwPin2 23
+#define pwPin2 26
 volatile unsigned long pulseStart2 = 0;
 volatile float distanceCm2 = 0;
 volatile bool US2_ready = false;
@@ -47,9 +45,6 @@ void IRAM_ATTR US2_ISR() {
 void setup() {
   Serial.begin(115200);
 
-  pinMode(LOOP_ACTIVITY, OUTPUT);
-  digitalWrite(LOOP_ACTIVITY, LOW);
-
   pinMode(pwPin1, INPUT_PULLUP);
   attachInterrupt(digitalPinToInterrupt(pwPin1), US1_ISR, CHANGE);
 
@@ -61,21 +56,18 @@ void setup() {
 
 void loop() {
   
-  digitalWrite(LOOP_ACTIVITY, HIGH);
   if (US_ready1) {
     Serial.print("US1 Distance: ");
     Serial.print(distanceCm1, 2);
     Serial.println(" cm");
     US_ready1 = false;
   } 
-  digitalWrite(LOOP_ACTIVITY, LOW);
 
-  digitalWrite(LOOP_ACTIVITY, HIGH);
   if (US2_ready) {
     Serial.print("US2 Dist: ");
     Serial.print(distanceCm2, 2);
     Serial.println(" cm");
     US2_ready = false;
   }
-  digitalWrite(LOOP_ACTIVITY, LOW);
+
 }
