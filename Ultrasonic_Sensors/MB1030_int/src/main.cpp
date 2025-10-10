@@ -5,16 +5,16 @@
 #include <Arduino.h>
 
 // US 1
-#define pwPin1 18
+#define pwPin1 16
 volatile unsigned long pulseStart1 = 0;
 volatile float distanceCm1 = 0;
 volatile bool US_ready1 = false;
 
-// US 2
-#define pwPin2 26
-volatile unsigned long pulseStart2 = 0;
-volatile float distanceCm2 = 0;
-volatile bool US2_ready = false;
+// // US 2
+// #define pwPin2 15
+// volatile unsigned long pulseStart2 = 0;
+// volatile float distanceCm2 = 0;
+// volatile bool US2_ready = false;
 
 void US1_ISR() {
   // Called when pwPin changes
@@ -30,26 +30,30 @@ void US1_ISR() {
   }
 }
 
-// ISR for sensor 2
-void IRAM_ATTR US2_ISR() {
-  if (digitalRead(pwPin2) == HIGH) {
-    pulseStart2 = micros();
-    US2_ready = false;
-  } else {
-    unsigned long pulseWidth = micros() - pulseStart2;
-    distanceCm2 = pulseWidth / 57.87;
-    US2_ready = true;
-  }
-}
+// // ISR for sensor 2
+// void IRAM_ATTR US2_ISR() {
+//   if (digitalRead(pwPin2) == HIGH) {
+//     pulseStart2 = micros();
+//     US2_ready = false;
+//   } else {
+//     unsigned long pulseWidth = micros() - pulseStart2;
+//     distanceCm2 = pulseWidth / 57.87;
+//     US2_ready = true;
+//   }
+// }
 
 void setup() {
   Serial.begin(115200);
 
+  delay(2000);
+
+  Serial.println("Hello World");
+
   pinMode(pwPin1, INPUT_PULLUP);
   attachInterrupt(digitalPinToInterrupt(pwPin1), US1_ISR, CHANGE);
 
-  pinMode(pwPin2, INPUT_PULLUP);
-  attachInterrupt(digitalPinToInterrupt(pwPin2), US2_ISR, CHANGE);
+  // pinMode(pwPin2, INPUT_PULLUP);
+  // attachInterrupt(digitalPinToInterrupt(pwPin2), US2_ISR, CHANGE);
 
   Serial.println("MB1030 pulse width distance measurement");
 }
@@ -63,11 +67,11 @@ void loop() {
     US_ready1 = false;
   } 
 
-  if (US2_ready) {
-    Serial.print("US2 Dist: ");
-    Serial.print(distanceCm2, 2);
-    Serial.println(" cm");
-    US2_ready = false;
-  }
+  // if (US2_ready) {
+  //   Serial.print("US2 Dist: ");
+  //   Serial.print(distanceCm2, 2);
+  //   Serial.println(" cm");
+  //   US2_ready = false;
+  // }
 
 }
