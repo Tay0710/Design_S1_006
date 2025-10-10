@@ -1,10 +1,10 @@
 #include <SPI.h>
 #include "ICM45686.h"
 
-#define AP_SDI2 37 // IMU / ICM - PSRAM
-#define AP_CLK2 36 // SDO = MISO; SDI = MOSI
-#define AP_SDO2 38
-#define AP_CS2 35
+#define AP_SDI2 36 // IMU / ICM - PSRAM
+#define AP_CLK2 37 // SDO = MISO; SDI = MOSI
+#define AP_SDO2 35
+#define AP_CS2 38
 
 #define BOOT_PIN 0
 
