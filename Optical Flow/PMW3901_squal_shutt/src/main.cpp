@@ -7,9 +7,7 @@
 #define OF_CS 15 // Optical Flow CS pin
 #define SPI_MOSI 13
 #define SPI_CLK 14
-#define SPI_MISO 33
-#define RST 3
-#define RST 3
+#define SPI_MISO 35
 
 Bitcraze_PMW3901 flow(OF_CS);
 
