@@ -16,6 +16,9 @@
 #include <Wire.h>
 #include <SparkFun_VL53L5CX_Library.h> //http://librarymanager/All#SparkFun_VL53L5CX
 
+#define SDA2 2
+#define SCL2 1
+
 SparkFun_VL53L5CX myImager;
 VL53L5CX_ResultsData measurementData; // Result data class structure, 1356 bytes of RAM
 
@@ -44,16 +47,15 @@ void setup()
   delay(1000);
   Serial.println("SparkFun VL53L5CX Imager Example");
 
-  Wire.begin(); //This resets to 100kHz I2C
-  Wire.setClock(400000); //Sensor has max I2C freq of 400kHz 
+  Wire.begin(SDA2, SCL2); //This resets to 100kHz I2C
+  Wire.setClock(400000);  //Sensor has max I2C freq of 400kHz 
 
   scanI2C();  // <--- Run I2C scan before initializing sensor
 
   Serial.println("Initializing sensor board. This can take up to 10s. Please wait.");
-  if (myImager.begin() == false)
+  while (myImager.begin() == false)
   {
     Serial.println(F("Sensor not found - check your wiring. Freezing"));
-    while (1) ;
   }
 
   myImager.setResolution(8*8); //Enable all 64 pads
@@ -66,7 +68,6 @@ void setup()
 
 void loop()
 {
-  //Poll sensor for new data
   if (myImager.isDataReady() == true)
   {
     if (myImager.getRangingData(&measurementData)) //Read distance data into array
