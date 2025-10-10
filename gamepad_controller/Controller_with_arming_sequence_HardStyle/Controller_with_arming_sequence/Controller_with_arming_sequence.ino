@@ -670,27 +670,26 @@ void loop() {
       if(TurnLeft == 3 && CurrentDistanceF < 150.00){
         endofpath = true; // Drone should be turning LEFT
         TurnLeft = 0;
-      }  else{
-        // nothing
-      }
+      }  
+      // else{
+      //   // nothing
+      // }
+      Serial.print("END OF PATH: "); Serial.println(endofpath);
+    }
 
     // Turn Left complete, reset endofpath boolean to false.   
     if(TurnLeft == 3){
       endofpath = false;
     }      
 
-      Serial.print("END OF PATH: "); Serial.println(endofpath);
-
-    }
-
-    
+    // END of if(armsequencecomplete) statement. 
   }
 
 
 // To TEST:
 // TILT to prevent side wall crash (minor correction left and right)
 
-// // TO ADD:
+// // TO ADD: (HAVE to move into if(armsequencecomplete) statement.)
 // // CHANGE in THROTTLE AS BATTERY DIES
 // // Code description:
 // // as the drone battery lowers, it will eventually stay in the THROTTLE = 1325 zone. If the drone stays in this throttle zone for longer than 5 seconds,
