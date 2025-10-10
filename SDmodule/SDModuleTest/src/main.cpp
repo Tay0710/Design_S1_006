@@ -101,6 +101,7 @@ Writes 10,000 lines to a CSV file as fast as possible, flushing every 10ms
 */
 #include <SPI.h>
 #include <SD.h>
+#include <Arduino.h>
 
 // #define HSPI_CLK 13 // SD Card, HSPI
 // #define HSPI_MISO 12
@@ -111,8 +112,6 @@ Writes 10,000 lines to a CSV file as fast as possible, flushing every 10ms
 #define HSPI_MISO 12
 #define HSPI_MOSI 11
 #define SDCS 10 //25
-
-#include <Arduino.h>
 
 #define LED1 7   // First LED on GPIO 7
 

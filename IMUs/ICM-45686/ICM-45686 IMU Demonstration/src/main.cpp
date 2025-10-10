@@ -12,7 +12,7 @@ bool mode = false;         // toggled by BOOT button
 unsigned long lastPress = 0;
 const unsigned long debounceDelay = 200; // ms
 
-SPIClass psramSPI(FSPI); // Custom: using Flash/PSRAM bus for IMU
+SPIClass psramSPI(HSPI); // Custom: using Flash/PSRAM bus for IMU
 
 // Use VSPI bus on ESP32, CS on GPIO5
 ICM456xx IMU(psramSPI, AP_CS2);
@@ -21,7 +21,7 @@ void setup() {
   int ret;
   Serial.begin(115200);
   pinMode(BOOT_PIN, INPUT_PULLUP);
-
+  delay(2000);
   Serial.println("check");
   // Optional: initialize SPI bus explicitly
   // SPI.begin(18, 19, 23, 5); // SCK=18, MISO=19, MOSI=23, CS=5
