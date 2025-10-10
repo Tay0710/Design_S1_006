@@ -34,11 +34,14 @@ volatile uint32_t lastmillis1 = 0;
 volatile uint32_t lastmillis2 = 0; 
 
 // Front Ultrasonic Variables
-#define pwPinFront 5  // GPIO pin
+#define pwPinFront 4  // GPIO pin
 volatile unsigned long pulseStartF = 0;
 volatile double distanceCmF = 0;
 volatile bool US_readyF = false;
 volatile double CurrentDistanceF = 0; // read from ultrasonic
+volatile bool endofpath = false; // Used to decide when to turn drone
+
+volatile int TurnLeft = 3;
 
 // TOF RIGHT
 #define SDA_PIN 26
@@ -78,6 +81,9 @@ int timestamp = 0;
 uint32_t currentMillis;
 uint32_t armingMillis;
 
+uint32_t lastYAWtime = 0;
+uint32_t endofpathtime = 0;
+
 uint32_t LastDownPress = 0;
 uint32_t LastUpPress = 0;
 
@@ -100,6 +106,12 @@ bool runoncePITCH = false;
 #define SBUS_MIN 1400  // 885 to 890
 #define SBUS_MID 1500
 #define SBUS_MAX 1600  // 2115, switched to 2110
+
+// YAW Limits
+#define YAW_MIN 890  // 885 to 890
+#define YAW_MID 1500
+#define YAW_MAX 2110  // 2115, switched to 2110
+// CHange angle gradually 
 
 #define THROTTLE_MIN 890
 #define THROTTLE_MID 1150 //1150
@@ -270,9 +282,9 @@ void processGamepad(ControllerPtr ctl) {
   //   rcChannels[YAW] = (int)map(ctl->axisX(), AXIS_L_NEUTRAL_X, AXIS_RIGHT, SBUS_MID, SBUS_MAX);
   // }
   if (ctl->axisRX() <= AXIS_R_NEUTRAL_X) {
-    rcChannels[YAW] = (int)map(ctl->axisRX(), AXIS_R_NEUTRAL_X, AXIS_LEFT, SBUS_MID, SBUS_MIN);
+    rcChannels[YAW] = (int)map(ctl->axisRX(), AXIS_R_NEUTRAL_X, AXIS_LEFT, YAW_MID, YAW_MIN);
   } else {
-    rcChannels[YAW] = (int)map(ctl->axisRX(), AXIS_R_NEUTRAL_X, AXIS_RIGHT, SBUS_MID, SBUS_MAX);
+    rcChannels[YAW] = (int)map(ctl->axisRX(), AXIS_R_NEUTRAL_X, AXIS_RIGHT, YAW_MID, YAW_MAX);
   }
   // Serial.print("axis l - x: ");
   // Serial.print(ctl->axisX());
@@ -310,12 +322,12 @@ void processGamepad(ControllerPtr ctl) {
   // currentMillis
   if (ctl->dpad() & 0x02 && rcChannels[THROTTLE] > THROTTLE_MIN && (currentMillis - LastDownPress) > debounceDelay) {
     // rcChannels[PITCH] = rcChannels[PITCH] - DPAD_INCREMENT;
-    rcChannels[PITCH] = rcChannels[PITCH] - DPAD_INCREMENT;
+    rcChannels[THROTTLE] = rcChannels[THROTTLE] - DPAD_INCREMENT;
     LastDownPress = currentMillis; 
   }
   if (ctl->dpad() & 0x01 && rcChannels[THROTTLE] < THROTTLE_MAX && (currentMillis - LastUpPress) > debounceDelay) {
     // rcChannels[PITCH] = rcChannels[PITCH] + DPAD_INCREMENT;
-    rcChannels[PITCH] = rcChannels[PITCH] + DPAD_INCREMENT;
+    rcChannels[THROTTLE] = rcChannels[THROTTLE] + DPAD_INCREMENT;
     LastUpPress = currentMillis; 
   }
   if (ctl->dpad() & 0x08 && rcChannels[ROLL] > SBUS_MIN) {
@@ -396,8 +408,8 @@ void US1_ISR() {
     US_ready1 = false;
   } else {
     // Falling edge
-    unsigned long pulseWidth = micros() - pulseStart1;
-    distanceCm1 = pulseWidth / 57.87;
+    unsigned long pulseWidthT = micros() - pulseStart1;
+    distanceCm1 = pulseWidthT / 57.87;
     US_ready1 = true;
   }
 }
@@ -412,8 +424,8 @@ void USFront_ISR() {
     US_readyF = false;
   } else {
     // Falling edge
-    unsigned long pulseWidth = micros() - pulseStart1;
-    distanceCmF = pulseWidth / 57.87;
+    unsigned long pulseWidthF = micros() - pulseStartF;
+    distanceCmF = pulseWidthF / 57.87;
     US_readyF = true;
   }
 }
@@ -493,7 +505,7 @@ void setup() {
   // Ultrasonic Interrupt Setup
   pinMode(pwPin1, INPUT_PULLUP);
   attachInterrupt(digitalPinToInterrupt(pwPin1), US1_ISR, CHANGE); // USFront_ISR
-  // attachInterrupt(digitalPinToInterrupt(pwPinFront), USFront_ISR, CHANGE);
+  attachInterrupt(digitalPinToInterrupt(pwPinFront), USFront_ISR, CHANGE);
 
   Wire.begin(SDA_PIN, SCL_PIN); // Initialize I2C bus
   Wire.setClock(400000); // Optional: 400 kHz I2C
@@ -578,11 +590,11 @@ void loop() {
       // armsequencecomplete = false;
       Serial.println("Arm drone.");
     } else if (currentMillis > 10000 + armingMillis && currentMillis < 11700 + armingMillis) { // Wait another 10 seconds before turning on throttle and leave on for 5 seconds
-      rcChannels[THROTTLE] = 1330;     
+      rcChannels[THROTTLE] = 1336;     
       Serial.println("Throttle 1320.");
       rcChannels[AUX1] = 1800;
     } else if (currentMillis > 11700 + armingMillis){
-      rcChannels[THROTTLE] = 1330;
+      rcChannels[THROTTLE] = 1336;
       armsequencecomplete = true;
       // runoncePITCH = true;
       armingSequenceFlag = false;
@@ -591,12 +603,11 @@ void loop() {
   }
 
     // Serial.print("PITCH: "); Serial.println(rcChannels[PITCH]);
-    Serial.println("BEFORE THE TRUE LOOP");
+    // Serial.println("BEFORE THE TRUE LOOP");
   if(armsequencecomplete){ // armsequencecomplete
     // THROTTLE CHANGES 
     // TOP side Ultrasonic Sensor
-    Serial.print("US READY");
-    rcChannels[PITCH] = 1520;
+    // Serial.print("US READY");
     if (US_ready1) {
       // Serial.print("US1 Distance: ");
       CurrentDistance = round(distanceCm1 * 100) / 100;
@@ -604,34 +615,75 @@ void loop() {
       Serial.print(distanceCm1, 2);
       Serial.println(" cm");
       US_ready1 = false;  // Current distance of ultrasonic is saved in: distanceCm1
-      if (CurrentDistance < 154.71){ //  && currentMillis - lastmillis1 > 1000
-        rcChannels[THROTTLE] = 1315; // 154.70588
+      if (CurrentDistance < 155.41 ){ //  && currentMillis - lastmillis1 > 1000
+        rcChannels[THROTTLE] = 1321; // 155.41176
         // lastmillis1 = currentMillis;
-      } else if (CurrentDistance > 153.53 && CurrentDistance < 156.47){
+      } else if (CurrentDistance > 155.41 && CurrentDistance < 158.24){
       rcChannels[THROTTLE] = 8.5*CurrentDistance;    
-      } else if (CurrentDistance > 157.05){ // 157.05882
-      rcChannels[THROTTLE] = 1335;    
+      } else if (CurrentDistance > 158.24){ // 158.23529
+      rcChannels[THROTTLE] = 1345;    
       }
     }    
 
-    Serial.println("BEFORE YAW CHANGES");
-    // YAW Changes
+    // Serial.println("BEFORE YAW CHANGES");
+    // // YAW Changes
     readCenterAverage(sensor1, measurementData1);
-    if(centerAvg > 0 && centerAvg < 500){ // centerAvg returns middle 4 tof average ranges in mm. 
-      rcChannels[YAW] = 1375;  // 125 ~ 15 degrees change. 
-    } 
+    if(!endofpath){
+      if(currentMillis - lastYAWtime > 800){ // 800ms 
+      Serial.println("IN YAW if statement");
+        if(centerAvg > 0 && centerAvg < 1000){ // centerAvg returns middle 4 tof average ranges in mm. 
+          rcChannels[YAW] = 1406;  // 125 ~ 15 degrees change. 188 ~ 22.56 degrees. 94 ~11.28
+          lastYAWtime = currentMillis;
+        } else if(centerAvg > 1100){ // 1200mm = 1.2m
+          rcChannels[YAW] = 1594;
+          lastYAWtime = currentMillis;
+        }
+        Serial.print("TurnLeft: "); Serial.println(TurnLeft);
+      } 
+    }
+    // TURN DRONE but wait 500ms before turning. 
+    else if(currentMillis - endofpathtime > 500 && !(TurnLeft == 3)){ // (endofpath && ) endofpath is assumed to be true if it is not false?
+      rcChannels[YAW] =  1250; // Left Turn 90 degrees ~ 750, 45* ~ 375, 30* =250
+      TurnLeft += 1;
+      endofpathtime = currentMillis; // reset timer, Drone is to rotate slowly. 
+      Serial.print("EOP YAW Value: "); Serial.println(rcChannels[YAW]);
+    }
+    // Serial.print("lastYAWtime: "); Serial.println(lastYAWtime);
 
-    Serial.println("PITCH CHANGES");
     // PITCH Changes
-    // if (){
-    // rcChannels[PITCH] = 1510;
-      // rcChannels[YAW] = 1800;
-      // lastmillis2 = currentMillis; 
-      // runoncePITCH = false;
-    // } else if(rcChannels[PITCH] == 1510 && currentMillis - lastmillis2 > 5000) { // Go forward for 2 seconds
-    // // should lower pitch to 1505 then use a front sensor to let drone know when to slow down. 
-    //   rcChannels[PITCH] = 1490; 
-    // }
+    if (!endofpath){
+    rcChannels[PITCH] = 1530;
+    } else{ 
+      rcChannels[PITCH] = 1500; // appply pitch brakes and prepare to turn. 
+      Serial.print("IN EOP PITCH: "); Serial.println(rcChannels[PITCH]);
+    }
+
+    // FRONT Ultrasonic Sensor (MB1000) - CHECKING for upcoming obstacle infront (assume obstacle is wall)
+    if (US_readyF) { 
+      // Serial.print("US1 Distance: ");
+      CurrentDistanceF = round(distanceCmF * 100) / 100;
+      Serial.print("US FRONT : ");
+      Serial.print(distanceCmF, 2);
+      Serial.println(" cm");
+      US_readyF = false;  // Current distance of ultrasonic is saved in: distanceCm1
+      
+      if(TurnLeft == 3 && CurrentDistanceF < 150.00){
+        endofpath = true; // Drone should be turning LEFT
+        TurnLeft = 0;
+      }  else{
+        // nothing
+      }
+
+    // Turn Left complete, reset endofpath boolean to false.   
+    if(TurnLeft == 3){
+      endofpath = false;
+    }      
+
+      Serial.print("END OF PATH: "); Serial.println(endofpath);
+
+    }
+
+    
   }
 
 
@@ -667,20 +719,6 @@ void loop() {
 // // define lowmode, runOnce, firsttime as booleans. 
 // // define lowmodetime as unit32 (timestamp)
 // // define low and upper throttle period as variables (check requirements for transition period)
-
-
-// TO ADD:
-// FRONT Ultrasonic Sensor (MB1000)
-
-  // if (US_readyF) {
-  //   // Serial.print("US1 Distance: ");
-  //   CurrentDistanceF = round(distanceCmF * 100) / 100;
-  //   Serial.print("US FRONT : ");
-  //   Serial.print(distanceCmF, 2);
-  //   Serial.println(" cm");
-  //   US_readyF = false;  // Current distance of ultrasonic is saved in: distanceCm1
-    
-  // }
 
 
 
