@@ -101,7 +101,7 @@ void setup()
     * Sets LoRa coding rate denominator.
     * SX1278/SX1276/SX1268/SX1262 : Allowed values range from 5 to 8. Only available in LoRa mode.
     * * * */
-    if (radio.setCodingRate(5) == RADIOLIB_ERR_INVALID_CODING_RATE) {
+    if (radio.setCodingRate(7) == RADIOLIB_ERR_INVALID_CODING_RATE) {
         Serial.println(F("Selected coding rate is invalid for this module!"));
         while (true);
     }
@@ -129,12 +129,11 @@ void setup()
     * Sets preamble length for LoRa or FSK modem.
     * SX1262/SX1268 : Allowed values range from 1 to 65535.
     * * */
-    if (radio.setPreambleLength(8) == RADIOLIB_ERR_INVALID_PREAMBLE_LENGTH) {
+    if (radio.setPreambleLength(16) == RADIOLIB_ERR_INVALID_PREAMBLE_LENGTH) {
         Serial.println(F("Selected preamble length is invalid for this module!"));
         while (true);
     }
 
-    // TODO: check this
     /*
     * Sets LoRa sync word.
     * SX1278/SX1276/SX1268/SX1262/SX1280 : Sets LoRa sync word. Only available in LoRa mode.
@@ -154,14 +153,13 @@ void setup()
     // Setup up failsafe button
     pinMode(RED_BUTTON, INPUT); // Pulled down on PCB
 
-
-    
     // Print instructions to screen
     drawInstructions();
 
     // Wait for start button to be pressed
     while(!digitalRead(RED_BUTTON)) {
     }
+    delay(1000); // Delay for debounce
 
     attachInterrupt(digitalPinToInterrupt(RED_BUTTON), interruptCallback, RISING);
 
@@ -183,8 +181,7 @@ void loop()
         transmittedFlag = false;
 
         flashLed();
-
-
+        
         if (transmissionState == RADIOLIB_ERR_NONE) {
             // packet was successfully sent
             Serial.println(F("transmission finished!"));

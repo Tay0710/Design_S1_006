@@ -121,7 +121,7 @@ void setupLoRaModule()
 
   // Start LoRa
   Serial.println("Starting Radio.Rx");
-  Radio.Rx(RX_TIMEOUT_VALUE); // Note: timeout only works for initial packet
+  Radio.Rx(0); // Note: timeout only works for initial packet
   // Receiver is non-blocking
 }
 
