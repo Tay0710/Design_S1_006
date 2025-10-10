@@ -4,9 +4,9 @@
 #include <Bitcraze_PMW3901.h>
 
 // Defining SPI pins
-#define OF_CS 15 // Optical Flow CS pin
-#define SPI_MOSI 13
-#define SPI_CLK 14
+#define OF_CS 39 // Optical Flow CS pin
+#define SPI_MOSI 36
+#define SPI_CLK 37
 #define SPI_MISO 35
 
 Bitcraze_PMW3901 flow(OF_CS);
