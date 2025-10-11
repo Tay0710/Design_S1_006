@@ -554,11 +554,11 @@ void readCenterAverage(SparkFun_VL53L5CX &sensor, VL53L5CX_ResultsData &measurem
 
       if (count > 0) {
         centerAvg = sum / count;
-        Serial.print("Average center distance (mm): ");
-        Serial.println(centerAvg);
+        // Serial.print("Average center distance (mm): ");
+        // Serial.println(centerAvg);
       } else {
         centerAvg = -1;
-        Serial.println("No valid center pixels.");
+        // Serial.println("No valid center pixels.");
       }
     }
   }
@@ -611,9 +611,9 @@ void loop() {
     if (US_ready1) {
       // Serial.print("US1 Distance: ");
       CurrentDistance = round(distanceCm1 * 100) / 100;
-      Serial.print("Top US: ");
-      Serial.print(distanceCm1, 2);
-      Serial.println(" cm");
+      // Serial.print("Top US: ");
+      // Serial.print(distanceCm1, 2);
+      // Serial.println(" cm");
       US_ready1 = false;  // Current distance of ultrasonic is saved in: distanceCm1
       if (CurrentDistance < 155.41 ){ //  && currentMillis - lastmillis1 > 1000
         rcChannels[THROTTLE] = 1321; // 155.41176
@@ -630,7 +630,7 @@ void loop() {
     readCenterAverage(sensor1, measurementData1);
     if(!endofpath){
       if(currentMillis - lastYAWtime > 800){ // 800ms 
-      Serial.println("IN YAW if statement");
+      // Serial.println("IN YAW if statement");
         if(centerAvg > 0 && centerAvg < 1000){ // centerAvg returns middle 4 tof average ranges in mm. 
           rcChannels[YAW] = 1406;  // 125 ~ 15 degrees change. 188 ~ 22.56 degrees. 94 ~11.28
           lastYAWtime = currentMillis;
@@ -638,7 +638,7 @@ void loop() {
           rcChannels[YAW] = 1594;
           lastYAWtime = currentMillis;
         }
-        Serial.print("TurnLeft: "); Serial.println(TurnLeft);
+        // Serial.print("TurnLeft: "); Serial.println(TurnLeft);
       } 
     }
     // TURN DRONE but wait 500ms before turning. 
@@ -646,23 +646,27 @@ void loop() {
       rcChannels[YAW] =  1250; // Left Turn 90 degrees ~ 750, 45* ~ 375, 30* =250
       TurnLeft += 1;
       endofpathtime = currentMillis; // reset timer, Drone is to rotate slowly. 
-      Serial.print("EOP YAW Value: "); Serial.println(rcChannels[YAW]);
+      // Serial.print("EOP YAW Value: "); Serial.println(rcChannels[YAW]);
+      // Serial.print("TurnLeft value: "); Serial.println(TurnLeft);
     }
     // Serial.print("lastYAWtime: "); Serial.println(lastYAWtime);
+    // Same process for turning right. However the direction the drone turns must be decided by the tof? US? or always follow left wall? or hardcode turns?
+    // expected path (assuming we are starting from the window area):
+    //  Go straight, 180, turn left, 180, turn left, turn right, turn left, end. 
 
     // PITCH Changes
     if (!endofpath){
     rcChannels[PITCH] = 1530;
     } else{ 
       rcChannels[PITCH] = 1500; // appply pitch brakes and prepare to turn. 
-      Serial.print("IN EOP PITCH: "); Serial.println(rcChannels[PITCH]);
+      // Serial.print("IN EOP PITCH: "); Serial.println(rcChannels[PITCH]);
     }
 
     // FRONT Ultrasonic Sensor (MB1000) - CHECKING for upcoming obstacle infront (assume obstacle is wall)
     if (US_readyF) { 
       // Serial.print("US1 Distance: ");
       CurrentDistanceF = round(distanceCmF * 100) / 100;
-      Serial.print("US FRONT : ");
+      Serial.print("LOOKY HERE AT THIS PART US FRONT :   ");
       Serial.print(distanceCmF, 2);
       Serial.println(" cm");
       US_readyF = false;  // Current distance of ultrasonic is saved in: distanceCm1
