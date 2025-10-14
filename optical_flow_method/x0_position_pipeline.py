@@ -61,10 +61,6 @@ from x3_interpolate_heights import main as interpolate_heights
 from x4_xy_velocity_calculation import main as xy_velocity_calculation
 from x5_rotation_matrix import main as rotation_matrix
 from x6_convert_to_world_frame import main as convert_to_world_frame
-from x7_imu_integration_to_position import main as imu_integration_to_position
-from x8_estimator import main as estimator
-
-import numpy as np
 
 def cut_data(stage_0_input_path, stage_1_input_path, stage_2_input_path, stage_5_and_7_input_path, stage_1_input_path_cropped, stage_2_input_path_cropped, stage_5_and_7_input_path_cropped):
     # Stage 0 file is just two numbers: start, end
@@ -103,7 +99,7 @@ def cut_data(stage_0_input_path, stage_1_input_path, stage_2_input_path, stage_5
 def main():
     t0 = time.time()
 
-    data_name = "22_09_25_MILC/7_lyco_lab/"
+    data_name = "26_09_25_Lv4/2_mixed_straight/"
 
     stage_0_input_path = "../optical_flow_method_data/combined_samples/" + data_name + "data_times.csv"
     stage_1_input_path = "../optical_flow_method_data/combined_samples/" + data_name + "of_PMW3901.csv"
@@ -133,12 +129,6 @@ def main():
     
     print("\n=== Stage 6: convert the velocities to world frame ===")
     convert_to_world_frame()
-    
-    # print("\n=== Stage 7: IMU acceleration integration to position ===")
-    # imu_integration_to_position(stage_5_and_7_input_path_cropped)
-    
-    # print("\n=== Stage 8: estimator (EFK) ===")
-    # estimator()
 
     print(f"\nPipeline complete in {time.time() - t0:.2f}s")
 
