@@ -1,5 +1,5 @@
 """
-tof_map_with_rotation.py
+tof_map_V2.py
 -----------------------
 
 Generates a 3D point cloud and mesh of the environment from Time-of-Flight (ToF) sensor data,

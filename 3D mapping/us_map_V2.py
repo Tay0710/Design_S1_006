@@ -1,5 +1,5 @@
 """
-us_map_actual_and_extrapolated.py
+us_map_V2.py
 ---------------------------------
 Displays:
     • Actual ultrasonic points (pink)
