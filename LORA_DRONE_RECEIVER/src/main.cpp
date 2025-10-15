@@ -13,7 +13,7 @@ time_t lastMessage;
 Ticker loraTimer;
 
 #define FAILSAFE_LORA_TIMEOUT 5000 // ms
-#define LORA_TIMER_UDPATE_RATE 1000 // check every 1000 ms
+#define LORA_TIMER_UDPATE_RATE 1000 // check every 1000 ms 
 
 void triggerFailsafe() {
   Serial.println("Failsafe triggered. Land drone.");
@@ -131,6 +131,10 @@ void loraTimerCallback()
 {
   time_t currentTime = millis();
 
+  // TODO: check for 5 seconds and 30 seconds (not that it can hover anyway....)
+
+  // TODO: if less than 5 seconds, turn off hover flag
+
   if (currentTime - lastMessage > FAILSAFE_LORA_TIMEOUT)
   {
     Serial.printf("Communications lost to failsafe transceiver for %d ms. \n", currentTime - lastMessage);
@@ -151,7 +155,7 @@ void setup()
 
   setupLoRaModule();
 
-  loraTimer.attach_ms(LORA_TIMER_UDPATE_RATE, loraTimerCallback);
+  loraTimer.attach_ms(LORA_TIMER_UDPATE_RATE, loraTimerCallback); // TODO: only attach timer after first packet is received
 
   lastMessage = millis();
 }
