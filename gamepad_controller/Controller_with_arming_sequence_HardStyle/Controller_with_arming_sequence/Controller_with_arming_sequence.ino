@@ -611,7 +611,7 @@ void loop() {
     if (US_ready1) {
       // Serial.print("US1 Distance: ");
       CurrentDistance = round(distanceCm1 * 100) / 100;
-      // Serial.print("Top US: ");
+      // Serial.print("Top US:                   ");
       // Serial.print(distanceCm1, 2);
       // Serial.println(" cm");
       US_ready1 = false;  // Current distance of ultrasonic is saved in: distanceCm1
@@ -628,16 +628,21 @@ void loop() {
     // Serial.println("BEFORE YAW CHANGES");
     // // YAW Changes
     readCenterAverage(sensor1, measurementData1);
+    Serial.print("EOP: "); Serial.println(endofpath);    
     if(!endofpath){
+      Serial.println("Inside YAW IF "); 
+      Serial.print("Time Delay:: "); Serial.println(currentMillis - lastYAWtime);    
+      Serial.print("TOF: "); Serial.println(centerAvg);    
       if(currentMillis - lastYAWtime > 800){ // 800ms 
       // Serial.println("IN YAW if statement");
         if(centerAvg > 0 && centerAvg < 1000){ // centerAvg returns middle 4 tof average ranges in mm. 
-          rcChannels[YAW] = 1406;  // 125 ~ 15 degrees change. 188 ~ 22.56 degrees. 94 ~11.28
+          rcChannels[YAW] = 1312;  // 125 ~ 15 degrees change. 188 ~ 22.56 degrees. 94 ~11.28
           lastYAWtime = currentMillis;
         } else if(centerAvg > 1100){ // 1200mm = 1.2m
-          rcChannels[YAW] = 1594;
+          rcChannels[YAW] = 1688;
           lastYAWtime = currentMillis;
         }
+        Serial.print("YAW: "); Serial.println(rcChannels[YAW]);    
         // Serial.print("TurnLeft: "); Serial.println(TurnLeft);
       } 
     }
@@ -655,10 +660,10 @@ void loop() {
     //  Go straight, 180, turn left, 180, turn left, turn right, turn left, end. 
 
     // PITCH Changes
-    if (!endofpath){
-    rcChannels[PITCH] = 1530;
+    if (endofpath){
+    rcChannels[PITCH] = 1500;
     } else{ 
-      rcChannels[PITCH] = 1500; // appply pitch brakes and prepare to turn. 
+      rcChannels[PITCH] = 1550; // appply pitch brakes and prepare to turn. 
       // Serial.print("IN EOP PITCH: "); Serial.println(rcChannels[PITCH]);
     }
 
@@ -666,12 +671,13 @@ void loop() {
     if (US_readyF) { 
       // Serial.print("US1 Distance: ");
       CurrentDistanceF = round(distanceCmF * 100) / 100;
+      // Serial.print("CurrentMillis: "); Serial.println(currentMillis);
       Serial.print("LOOKY HERE AT THIS PART US FRONT :   ");
       Serial.print(distanceCmF, 2);
       Serial.println(" cm");
       US_readyF = false;  // Current distance of ultrasonic is saved in: distanceCm1
       
-      if(TurnLeft == 3 && CurrentDistanceF < 150.00){
+      if(TurnLeft == 3 && CurrentDistanceF < 30.00){
         endofpath = true; // Drone should be turning LEFT
         TurnLeft = 0;
       }  
@@ -688,6 +694,12 @@ void loop() {
 
     // END of if(armsequencecomplete) statement. 
   }
+
+// Future
+// Add ROLL? testing 1525 right, 1425 left, hold for 100ms then go back to 1500. (DPAD first) - remove wall follow for this. 
+// TurnLeft once complete go forward blindly for 2 seconds. 
+// TurnLeft increase to 45 degrees per iteration (Drone seems to undershoot). 
+
 
 
 // To TEST:
@@ -743,5 +755,8 @@ void loop() {
     // printSBUSPacket(sbusPacket);
     sbusTime = currentMillis + SBUS_UPDATE_RATE;
     // Serial.print("Current Throttle: "); Serial.println(rcChannels[THROTTLE]);
+    Serial.print("PITCH: "); Serial.println(rcChannels[PITCH]);
+    Serial.print("SBUS TOF: "); Serial.println(centerAvg);    
+    Serial.print("SBUS YAW:                 "); Serial.println(rcChannels[YAW]);
   }
 }
