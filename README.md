@@ -18,3 +18,6 @@
   - position
   - mapping
   - raw data
+ 
+Stuff not in main:
+- previous versions to show progress
