@@ -31,8 +31,8 @@ MAX_DIST_MATCH = 1.2
 
 # boosted wall fills (left and right)
 BOOST_STEPS = 28
-BOOST_MAX_DIST = 3.0
-BOOST_K_NEIGHBORS = 3
+BOOST_MAX_DIST = 2.0
+BOOST_K_NEIGHBORS = 2
 BOOST_OVERSHOOT = 0.10
 
 # === Load rotation matrices ===
@@ -146,11 +146,11 @@ def visualize_combined(actual_points, corner_points, interp_points, drone_positi
     vis.destroy_window()
 
 # ---------- main ----------
-def main():
+def main(us_input_cropped):
     # files
     traj = pd.read_csv("../optical_flow_method_data/xy_velocities_to_world_frame.csv")
     times_mat, rot_mats = load_rotation_matrices("../optical_flow_method_data/rotation_matrices.csv")
-    us = pd.read_csv("../optical_flow_method_data/combined_samples/26_09_25_Lv4/2_mixed_straight/fake_ultrasonic_cropped.csv")
+    us = pd.read_csv(us_input_cropped)
 
     traj_time = traj["time (s)"].values
     drone_positions = traj[["pos_world_x", "pos_world_y", "pos_world_z"]].values
@@ -245,6 +245,7 @@ def main():
     print(f"✅ Interpolated total: {len(interp_points)} (Left: {len(left_interp)}, Right: {len(right_interp)})")
 
     visualize_combined(all_actual_points, all_corners, interp_points, drone_positions)
+    return interp_points, all_actual_points, all_corners
 
 if __name__ == "__main__":
     main()

@@ -47,7 +47,7 @@ import time
 import os
 
 from tof_map_V2 import main as tof_map
-from us_map import main as us_map
+from us_map_V3 import main as us_map
 
 # === Data Cropping Function ===
 def cut_data(data_times, us_input_path, us_input_cropped):
@@ -78,25 +78,36 @@ def cut_data(data_times, us_input_path, us_input_cropped):
     filter_file(us_input_path, us_input_cropped, start_time, end_time)
     print(f"File updated and saved with cut data: start={start_time}, end={end_time}")
 
-def visualize_combined_map(tof_points, us_points, traj_positions):
-    """Display a combined ToF + Ultrasonic map in Open3D."""
-    import open3d as o3d
-
+def visualize_combined_map(tof_points, us_interp_points, us_actual_points, us_corner_points, traj_positions):
     geoms = []
 
     # === ToF points (blue) ===
     if tof_points is not None and len(tof_points) > 0:
         pc_tof = o3d.geometry.PointCloud()
         pc_tof.points = o3d.utility.Vector3dVector(tof_points[:, :3])
-        pc_tof.paint_uniform_color([0, 0, 1])  # blue
+        pc_tof.paint_uniform_color([0, 0, 1])
         geoms.append(pc_tof)
 
-    # === Ultrasonic points (orange) ===
-    if us_points is not None and len(us_points) > 0:
-        pc_us = o3d.geometry.PointCloud()
-        pc_us.points = o3d.utility.Vector3dVector(us_points[:, :3])
-        pc_us.paint_uniform_color([1, 0.5, 0])  # orange
-        geoms.append(pc_us)
+    # === Ultrasonic interpolated (orange) ===
+    if us_interp_points is not None and len(us_interp_points) > 0:
+        pc_us_interp = o3d.geometry.PointCloud()
+        pc_us_interp.points = o3d.utility.Vector3dVector(us_interp_points[:, :3])
+        pc_us_interp.paint_uniform_color([1, 0.5, 0])  # orange
+        geoms.append(pc_us_interp)
+
+    # === Ultrasonic actual (pink) ===
+    if us_actual_points is not None and len(us_actual_points) > 0:
+        pc_us_actual = o3d.geometry.PointCloud()
+        pc_us_actual.points = o3d.utility.Vector3dVector(us_actual_points[:, :3])
+        pc_us_actual.paint_uniform_color([1, 0.3, 0.8])  # pink
+        geoms.append(pc_us_actual)
+
+    # === Ultrasonic corners (cyan) ===
+    if us_corner_points is not None and len(us_corner_points) > 0:
+        pc_us_corners = o3d.geometry.PointCloud()
+        pc_us_corners.points = o3d.utility.Vector3dVector(us_corner_points[:, :3])
+        pc_us_corners.paint_uniform_color([0.3, 1, 1])  # light cyan
+        geoms.append(pc_us_corners)
 
     # === Drone trajectory ===
     if traj_positions is not None and len(traj_positions) > 1:
@@ -106,25 +117,21 @@ def visualize_combined_map(tof_points, us_points, traj_positions):
         traj.colors = o3d.utility.Vector3dVector([[1, 0, 0] for _ in range(len(traj_positions) - 1)])
         geoms.append(traj)
 
-        # Final drone position marker
-        drone_marker = o3d.geometry.TriangleMesh.create_sphere(radius=0.05)
-        drone_marker.translate(traj_positions[-1])
-        drone_marker.paint_uniform_color([1, 0, 0])
-        geoms.append(drone_marker)
+        marker = o3d.geometry.TriangleMesh.create_sphere(radius=0.05)
+        marker.translate(traj_positions[-1])
+        marker.paint_uniform_color([1, 0, 0])
+        geoms.append(marker)
 
-    # === Coordinate frame ===
     axis = o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.2)
     geoms.append(axis)
 
-    print("\n=== Stage 3: Combined ToF + Ultrasonic Map ===")
     o3d.visualization.draw_geometries(geoms, window_name="Combined ToF + Ultrasonic Map")
-
 
 # === Main Execution ===
 def main():
     t0 = time.time()
 
-    data_name = "26_09_25_Lv4/2_mixed_straight/"
+    data_name = "22_09_25_MILC/7_lyco_lab/"
     base_path = "../optical_flow_method_data/combined_samples/" + data_name
 
     data_times = base_path + "data_times.csv"
@@ -141,11 +148,10 @@ def main():
 
     # 3️⃣ Generate Ultrasonic map
     print("\n=== Stage 2: Generate Ultrasonic Point Cloud ===")
-    us_points, _ = us_map(us_input_cropped)
+    us_interp_points, us_actual_points, us_corner_points = us_map(us_input_cropped)
 
     # 4️⃣ Combined visualization
-    visualize_combined_map(tof_points, us_points, traj_positions)
-
+    visualize_combined_map(tof_points, us_interp_points, us_actual_points, us_corner_points, traj_positions)
 
     print(f"\nPipeline complete in {time.time() - t0:.2f}s")
 
