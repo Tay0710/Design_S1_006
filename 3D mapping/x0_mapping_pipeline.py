@@ -41,11 +41,8 @@ Outputs:
 """
 
 import numpy as np
-import pandas as pd
 import open3d as o3d
 import time
-import os
-
 from tof_map_V2 import main as tof_map
 from us_map_V3 import main as us_map
 
@@ -80,7 +77,7 @@ def cut_data(data_times, us_input_path, us_input_cropped):
     print(f"File updated and saved with cut data: start={start_time}, end={end_time}")
 
 
-# === Stage 4a: Multi-Layer Visualization (diagnostic) ===
+# === Stage 2: Multi-Layer Visualization (diagnostic) ===
 def visualize_combined_map(tof_points, us_interp_points, us_actual_points, us_corner_points, traj_positions):
     geoms = []
 
@@ -112,7 +109,7 @@ def visualize_combined_map(tof_points, us_interp_points, us_actual_points, us_co
         pc_us_corners.paint_uniform_color([0.3, 1, 1])
         geoms.append(pc_us_corners)
 
-    # Drone trajectory (red line) and marker
+    # Drone trajectory (red)
     if traj_positions is not None and len(traj_positions) > 1:
         traj = o3d.geometry.LineSet()
         traj.points = o3d.utility.Vector3dVector(traj_positions)
@@ -131,143 +128,64 @@ def visualize_combined_map(tof_points, us_interp_points, us_actual_points, us_co
     o3d.visualization.draw_geometries(geoms, window_name="Combined ToF + Ultrasonic Map")
 
 
-def fuse_tof_and_ultrasonic(tof_points, us_interp_points):
-    """
-    Fuse ToF and ultrasonic interpolated points into a single, clean point cloud.
-    Removes redundant colour information, balances densities, and denoises.
-    Result: unified geometry with only two clear colour sources.
-    """
-    import open3d as o3d
-    import numpy as np
-
-    # --- Validate inputs ---
-    if tof_points is None or len(tof_points) == 0:
-        print("⚠️ No ToF points provided — fusion skipped.")
-        return None
-    if us_interp_points is None or len(us_interp_points) == 0:
-        print("⚠️ No Ultrasonic points provided — fusion skipped.")
-        return None
-
-    tof_points = np.asarray(tof_points, dtype=float)
-    us_interp_points = np.asarray(us_interp_points, dtype=float)
-
-    # --- Strip colours if present (ToF has 6 columns: x, y, z, R, G, B) ---
-    if tof_points.shape[1] >= 3:
-        tof_xyz = tof_points[:, :3]
-    else:
-        raise ValueError(f"ToF points must have at least 3 columns, got {tof_points.shape}")
-
-    if us_interp_points.shape[1] >= 3:
-        us_xyz = us_interp_points[:, :3]
-    else:
-        raise ValueError(f"Ultrasonic points must have at least 3 columns, got {us_interp_points.shape}")
-
-    # --- Create Open3D point clouds ---
-    pcd_tof = o3d.geometry.PointCloud()
-    pcd_tof.points = o3d.utility.Vector3dVector(tof_xyz)
-    pcd_tof.paint_uniform_color([0.0, 0.3, 1.0])  # Blue (ToF)
-
-    pcd_us = o3d.geometry.PointCloud()
-    pcd_us.points = o3d.utility.Vector3dVector(us_xyz)
-    pcd_us.paint_uniform_color([0.8, 0.8, 0.8])  # Orange (Ultrasonic)
-
-    # --- Downsample to even density ---
-    voxel_size = 0.02
-    pcd_tof = pcd_tof.voxel_down_sample(voxel_size)
-    pcd_us = pcd_us.voxel_down_sample(voxel_size)
-
-    # --- Merge clouds ---
-    pcd_combined = pcd_tof + pcd_us
-
-    # --- Denoise outliers ---
-    if len(pcd_combined.points) == 0:
-        print("⚠️ Combined cloud is empty after merge.")
-        return None
-
-    pcd_combined, _ = pcd_combined.remove_statistical_outlier(
-        nb_neighbors=40, std_ratio=2.0
-    )
-
-    # --- Estimate normals (for potential meshing) ---
-    pcd_combined.estimate_normals(
-        search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=0.05, max_nn=30)
-    )
-
-    print(f"✅ Fused map ready: {np.asarray(pcd_combined.points).shape[0]} points after cleaning.")
-    return pcd_combined
-
-# === Stage 5: Optional Mesh Reconstruction ===
-def reconstruct_mesh_from_pointcloud(pcd_combined):
-    """Generate and visualize a Poisson mesh from the fused point cloud."""
-    print("\n=== Stage 5: Generating Surface Mesh (optional) ===")
-    mesh, _ = o3d.geometry.TriangleMesh.create_from_point_cloud_poisson(pcd_combined, depth=10)
-    bbox = pcd_combined.get_axis_aligned_bounding_box()
-    mesh = mesh.crop(bbox)
-    o3d.visualization.draw_geometries([mesh], window_name="Reconstructed Surface Mesh")
-    return mesh
-
+# === Stage 3: Weighted Alignment ===
 def align_tof_to_ultrasonic_weighted(tof_points, us_actual_points, us_corner_points, weight_corner=0.85):
-    """
-    Align ToF point cloud to ultrasonic anchor data using confidence-weighted ICP.
-    - Ultrasonic actual points are trusted anchors (weight 1.0)
-    - Ultrasonic corner extrapolations are partial anchors (weight < 1.0)
-    - ToF data is adjusted to match ultrasonic structure.
-    Returns the aligned ToF point cloud (Open3D PointCloud).
-    """
-    import open3d as o3d
     import numpy as np
+    import open3d as o3d
 
-    # --- Convert inputs to numpy arrays ---
-    tof_points = np.asarray(tof_points, dtype=float)
-    us_actual_points = np.asarray(us_actual_points, dtype=float)
-    us_corner_points = np.asarray(us_corner_points, dtype=float)
+    def compute_rms_distance(src, tgt):
+        dists = src.compute_point_cloud_distance(tgt)
+        return np.mean(np.square(dists)) ** 0.5
 
-    tof_xyz = tof_points[:, :3]
-    us_actual_xyz = us_actual_points[:, :3]
-    us_corner_xyz = us_corner_points[:, :3]
+    # Convert to arrays
+    tof_xyz = np.asarray(tof_points)[:, :3]
+    us_actual_xyz = np.asarray(us_actual_points)[:, :3]
+    us_corner_xyz = np.asarray(us_corner_points)[:, :3]
 
-    # --- Build weighted anchor cloud (actual + corner) ---
-    n_actual = len(us_actual_xyz)
-    n_corner = len(us_corner_xyz)
-    if n_actual == 0:
-        raise ValueError("No ultrasonic actual points provided — cannot anchor ToF map.")
-    combined_anchors = np.vstack([us_actual_xyz, us_corner_xyz])
-    anchor_weights = np.hstack([
-        np.ones(n_actual),                # full confidence
-        np.ones(n_corner) * weight_corner # partial confidence
-    ])
+    # Weighted anchors (actual + corners)
+    anchors = np.vstack([us_actual_xyz, us_corner_xyz])
+    n_actual, n_corner = len(us_actual_xyz), len(us_corner_xyz)
+    print(f"Running weighted ICP: {n_actual} strong anchors, {n_corner} weak anchors (w={weight_corner})")
 
-    # --- Build Open3D clouds ---
+    # Build Open3D clouds
     pcd_tof = o3d.geometry.PointCloud()
     pcd_tof.points = o3d.utility.Vector3dVector(tof_xyz)
-    pcd_tof.paint_uniform_color([0.0, 0.3, 1.0])  # blue
 
     pcd_anchor = o3d.geometry.PointCloud()
-    pcd_anchor.points = o3d.utility.Vector3dVector(combined_anchors)
-    pcd_anchor.paint_uniform_color([1.0, 0.55, 0.0])  # orange anchors
+    pcd_anchor.points = o3d.utility.Vector3dVector(anchors)
 
-    print(f"Running weighted ICP alignment: {n_actual} strong + {n_corner} weak anchors")
+    # RMS before alignment
+    rms_before = compute_rms_distance(pcd_tof, pcd_anchor)
 
-    # --- Weighted ICP (iteratively reweighted least squares) ---
-    threshold = 0.05  # 5 cm match tolerance
-    transformation = np.identity(4)
-    for iter in range(3):
-        reg_p2p = o3d.pipelines.registration.registration_icp(
-            source=pcd_tof,
-            target=pcd_anchor,
-            max_correspondence_distance=threshold,
-            init=transformation,
-            estimation_method=o3d.pipelines.registration.TransformationEstimationPointToPoint(),
-            criteria=o3d.pipelines.registration.ICPConvergenceCriteria(max_iteration=50)
+    # ICP loop
+    threshold = 0.05
+    transform = np.eye(4)
+    for i in range(3):
+        reg = o3d.pipelines.registration.registration_icp(
+            pcd_tof, pcd_anchor, threshold, transform,
+            o3d.pipelines.registration.TransformationEstimationPointToPoint(),
+            o3d.pipelines.registration.ICPConvergenceCriteria(max_iteration=50)
         )
-        transformation = reg_p2p.transformation
-        pcd_tof.transform(transformation)
-        threshold *= 0.7  # gradually tighten tolerance
+        transform = reg.transformation
+        pcd_tof.transform(transform)
+        threshold *= 0.7
 
-    print("✅ ToF alignment refined using ultrasonic anchors.")
+    rms_after = compute_rms_distance(pcd_tof, pcd_anchor)
+
+    print(f"RMS distance before: {rms_before:.4f} m")
+    print(f"RMS distance after : {rms_after:.4f} m")
+
+    # Safety check
+    if rms_after > rms_before * 1.2:
+        print("⚠️ Alignment worsened — reverting to original ToF cloud.")
+        pcd_tof.points = o3d.utility.Vector3dVector(tof_xyz)
+    else:
+        print("✅ Alignment improved successfully.")
 
     return pcd_tof, pcd_anchor
 
+
+# === Stage 4: Fused Comparison ===
 def visualize_tof_alignment_comparison(original_tof_points, aligned_tof_pcd, us_actual_points, us_corner_points):
     """
     Compare pre- and post-alignment ToF clouds together with ultrasonic anchors.
@@ -277,6 +195,7 @@ def visualize_tof_alignment_comparison(original_tof_points, aligned_tof_pcd, us_
     """
     import open3d as o3d
     import numpy as np
+    import copy
 
     geoms = []
 
@@ -286,10 +205,10 @@ def visualize_tof_alignment_comparison(original_tof_points, aligned_tof_pcd, us_
     pcd_orig.paint_uniform_color([0.0, 0.3, 1.0])
     geoms.append(pcd_orig)
 
-    # Aligned ToF (green)
-    aligned_copy = aligned_tof_pcd.translate((0, 0, 0), relative=False)
-    aligned_copy.paint_uniform_color([0.0, 1.0, 0.0])
-    geoms.append(aligned_copy)
+    # ✅ Aligned ToF (green) — use deepcopy instead of clone()
+    pcd_aligned = copy.deepcopy(aligned_tof_pcd)
+    pcd_aligned.paint_uniform_color([0.0, 1.0, 0.0])
+    geoms.append(pcd_aligned)
 
     # Ultrasonic actual (orange)
     if us_actual_points is not None and len(us_actual_points) > 0:
@@ -302,10 +221,35 @@ def visualize_tof_alignment_comparison(original_tof_points, aligned_tof_pcd, us_
     if us_corner_points is not None and len(us_corner_points) > 0:
         pc_us_corner = o3d.geometry.PointCloud()
         pc_us_corner.points = o3d.utility.Vector3dVector(us_corner_points[:, :3])
-        pc_us_corner.paint_uniform_color([1.0, 0.55, 0.0])
+        pc_us_corner.paint_uniform_color([1.0, 0.3, 0.8])
         geoms.append(pc_us_corner)
 
+    print("\n✅ Visualizing ToF alignment (blue=before, green=after)")
     o3d.visualization.draw_geometries(geoms, window_name="ToF Alignment Comparison (Before vs After)")
+
+# === Stage 5: Fusion ===
+def fuse_tof_and_ultrasonic(tof_points, us_interp_points):
+    tof_xyz = np.asarray(tof_points)[:, :3]
+    us_xyz = np.asarray(us_interp_points)[:, :3]
+
+    pcd_tof = o3d.geometry.PointCloud()
+    pcd_tof.points = o3d.utility.Vector3dVector(tof_xyz)
+    pcd_tof.paint_uniform_color([0.0, 0.3, 1.0])
+
+    pcd_us = o3d.geometry.PointCloud()
+    pcd_us.points = o3d.utility.Vector3dVector(us_xyz)
+    pcd_us.paint_uniform_color([0.8, 0.8, 0.8])
+
+    # Downsample + merge + denoise
+    voxel = 0.02
+    pcd_tof = pcd_tof.voxel_down_sample(voxel)
+    pcd_us = pcd_us.voxel_down_sample(voxel)
+    combined = pcd_tof + pcd_us
+    combined, _ = combined.remove_statistical_outlier(nb_neighbors=40, std_ratio=2.0)
+
+    print(f"✅ Fused map ready with {len(combined.points)} points.")
+    return combined
+
 
 # === Main Execution ===
 def main():
@@ -319,42 +263,24 @@ def main():
     us_input_path = base_path + "fake_ultrasonic.csv"
     us_input_cropped = base_path + "us_cropped.csv"
 
-    # 1️⃣ Crop ultrasonic data
     cut_data(data_times, us_input_path, us_input_cropped)
 
-    # 2️⃣ Generate ToF map
-    print("\n=== Stage 1: Generate ToF Point Cloud ===")
+    print("\n=== Stage 1: Generate ToF Map ===")
     tof_points, traj_positions = tof_map(tof_input_cropped)
 
-    # 3️⃣ Generate Ultrasonic map
-    print("\n=== Stage 2: Generate Ultrasonic Point Cloud ===")
+    print("\n=== Stage 2: Generate Ultrasonic Map ===")
     us_interp_points, us_actual_points, us_corner_points = us_map(us_input_cropped)
-    # 3b️⃣ Align ToF map to ultrasonic anchors
+
+    print("\n=== Stage 3: Align ToF to Ultrasonic Anchors ===")
     aligned_tof, anchor_cloud = align_tof_to_ultrasonic_weighted(tof_points, us_actual_points, us_corner_points)
 
-    # Visual comparison: before vs after ToF alignment
     visualize_tof_alignment_comparison(tof_points, aligned_tof, us_actual_points, us_corner_points)
 
-    
-    # 4️⃣ Fuse ToF + Ultrasonic (interpolated) data
-    print("\n=== Stage 3: Fusing ToF and Ultrasonic Maps ===")
-    print(f"ToF points type: {type(tof_points)}, shape: {getattr(tof_points, 'shape', 'N/A')}")
-    print(f"US points type: {type(us_interp_points)}, shape: {getattr(us_interp_points, 'shape', 'N/A')}")
-
-    # fused_cloud = fuse_tof_and_ultrasonic(tof_points, us_interp_points)
+    print("\n=== Stage 4: Fuse Aligned ToF + Ultrasonic ===")
     fused_cloud = fuse_tof_and_ultrasonic(np.asarray(aligned_tof.points), us_interp_points)
 
-
-    # 5️⃣ Visualize combined layers (diagnostic)
-    visualize_combined_map(tof_points, us_interp_points, us_actual_points, us_corner_points, traj_positions)
-
-    # 6️⃣ Visualize fused final map
-    print("\n=== Stage 4: Visualising Fused Map ===")
+    print("\n=== Stage 5: Visualize Fused Result ===")
     o3d.visualization.draw_geometries([fused_cloud], window_name="Final Fused ToF + Ultrasonic Map")
-
-    # 7️⃣ (Optional) Mesh reconstruction
-    # mesh = reconstruct_mesh_from_pointcloud(fused_cloud)
-    # o3d.io.write_triangle_mesh(base_path + "fused_mesh.ply", mesh)
 
     print(f"\nPipeline complete in {time.time() - t0:.2f}s")
 
