@@ -15,6 +15,8 @@ Ticker loraTimer;
 #define FAILSAFE_LORA_TIMEOUT 5000 // ms
 #define LORA_TIMER_UDPATE_RATE 1000 // check every 1000 ms 
 
+// TODO: make flag system
+
 void triggerFailsafe() {
   Serial.println("Failsafe triggered. Land drone.");
   // rcChannels[AUX3] = 1800;
