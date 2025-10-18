@@ -26,16 +26,16 @@
 #define SDA1 48  
 #define SCL1 47  
 #define SDA2 2
-#define SCL2 1
+#define SCL2 4
 #define PENA 40 // Power enable
 #define RESET 41 // I2C reset
 #define LPN 42
 
-#define USD 17 // (16 on the PCB) Downwards-mounted ultrasonic PW pin
+#define USD 15 // Downwards-mounted ultrasonic PW pin
 #define USU 4 // Upwards-mounted ultrasonic PW pin
 #define USL 18 // Left-mounted ultrasonic PW pin
 #define USR 5 // Right-mounted ultrasonic PW pin
-#define LED1 15 // Front-mounted ultrasonic PW pin
+#define LED1 6 // PCB LED
 
 #define BOOT_PIN 0
 
