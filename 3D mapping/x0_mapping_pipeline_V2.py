@@ -121,25 +121,25 @@ def visualize_directional_constraint(tof_points, adjusted_points, us_actual_poin
     # Original ToF (black)
     pcd_tof = o3d.geometry.PointCloud()
     pcd_tof.points = o3d.utility.Vector3dVector(tof_points[:, :3])
-    pcd_tof.paint_uniform_color([0.0, 0.0, 0.0])
+    pcd_tof.paint_uniform_color([98/255, 200/255, 211/255])
     geoms.append(pcd_tof)
 
     # Adjusted ToF (black)
     pcd_adj = o3d.geometry.PointCloud()
     pcd_adj.points = o3d.utility.Vector3dVector(adjusted_points[:, :3])
-    pcd_adj.paint_uniform_color([0.0, 0.0, 0.0])
+    pcd_adj.paint_uniform_color([0/255, 113/255, 145/255])
     geoms.append(pcd_adj)
 
     # Ultrasonic actual + corners (dark blue)
     if us_actual_points is not None and len(us_actual_points) > 0:
         pc_us_actual = o3d.geometry.PointCloud()
         pc_us_actual.points = o3d.utility.Vector3dVector(us_actual_points[:, :3])
-        pc_us_actual.paint_uniform_color([0.0, 0.1, 0.6])
+        pc_us_actual.paint_uniform_color([1.0, 0.0, 0.0])
         geoms.append(pc_us_actual)
     if us_corner_points is not None and len(us_corner_points) > 0:
         pc_us_corner = o3d.geometry.PointCloud()
         pc_us_corner.points = o3d.utility.Vector3dVector(us_corner_points[:, :3])
-        pc_us_corner.paint_uniform_color([0.0, 0.1, 0.6])
+        pc_us_corner.paint_uniform_color([1.0, 0.0, 0.0])
         geoms.append(pc_us_corner)
 
     print("\n✅ Visualizing ToF constraint (overlay)")
@@ -160,13 +160,13 @@ def visualize_directional_comparison_matplotlib(tof_points, adjusted_points, us_
 
     # Before constraint (black)
     ax1.scatter(tof_xyz[:, 0], tof_xyz[:, 1], tof_xyz[:, 2],
-                c="black", s=1, label="Original ToF")
+                c=(98/255, 200/255, 211/255), s=1, label="Original ToF")
     if len(us_actual_xyz):
         ax1.scatter(us_actual_xyz[:, 0], us_actual_xyz[:, 1], us_actual_xyz[:, 2],
-                    c="navy", s=4, label="Ultrasonic Actual")
+                    c=(1.0, 0.0, 0.0), s=4, label="Ultrasonic Actual")
     if len(us_corner_xyz):
         ax1.scatter(us_corner_xyz[:, 0], us_corner_xyz[:, 1], us_corner_xyz[:, 2],
-                    c="royalblue", s=4, label="Ultrasonic Corners")
+                    c=(1.0, 0.0, 0.0), s=4, label="Ultrasonic Corners")
     ax1.set_title("Before Constraint (Original ToF)")
     ax1.set_xlabel("X (m)"); ax1.set_ylabel("Y (m)"); ax1.set_zlabel("Z (m)")
     ax1.legend(loc="upper right")
@@ -174,13 +174,13 @@ def visualize_directional_comparison_matplotlib(tof_points, adjusted_points, us_
 
     # After constraint (black)
     ax2.scatter(adj_xyz[:, 0], adj_xyz[:, 1], adj_xyz[:, 2],
-                c="black", s=1, label="Constrained ToF")
+                c=(0/255, 113/255, 145/255), s=1, label="Constrained ToF")
     if len(us_actual_xyz):
         ax2.scatter(us_actual_xyz[:, 0], us_actual_xyz[:, 1], us_actual_xyz[:, 2],
-                    c="navy", s=4, label="Ultrasonic Actual")
+                    c=(1.0, 0.0, 0.0), s=4, label="Ultrasonic Actual")
     if len(us_corner_xyz):
         ax2.scatter(us_corner_xyz[:, 0], us_corner_xyz[:, 1], us_corner_xyz[:, 2],
-                    c="royalblue", s=4, label="Ultrasonic Corners")
+                    c=(1.0, 0.0, 0.0), s=4, label="Ultrasonic Corners")
     ax2.set_title("After Constraint (Adjusted ToF)")
     ax2.set_xlabel("X (m)"); ax2.set_ylabel("Y (m)"); ax2.set_zlabel("Z (m)")
     ax2.legend(loc="upper right")
@@ -197,19 +197,19 @@ def visualize_fused_map(adjusted_points, us_actual_points, us_corner_points, tra
     # Adjusted ToF (black)
     pcd_adj = o3d.geometry.PointCloud()
     pcd_adj.points = o3d.utility.Vector3dVector(adjusted_points[:, :3])
-    pcd_adj.paint_uniform_color([0.0, 0.0, 0.0])
+    pcd_adj.paint_uniform_color([0/255, 113/255, 145/255])
     geoms.append(pcd_adj)
 
     # Ultrasonic (dark blue)
     if us_actual_points is not None and len(us_actual_points) > 0:
         pc_us_actual = o3d.geometry.PointCloud()
         pc_us_actual.points = o3d.utility.Vector3dVector(us_actual_points[:, :3])
-        pc_us_actual.paint_uniform_color([0.0, 0.1, 0.6])
+        pc_us_actual.paint_uniform_color([1.0, 0.0, 0.0])
         geoms.append(pc_us_actual)
     if us_corner_points is not None and len(us_corner_points) > 0:
         pc_us_corner = o3d.geometry.PointCloud()
         pc_us_corner.points = o3d.utility.Vector3dVector(us_corner_points[:, :3])
-        pc_us_corner.paint_uniform_color([0.0, 0.1, 0.6])
+        pc_us_corner.paint_uniform_color([1.0, 0.0, 0.0])
         geoms.append(pc_us_corner)
 
     # Drone trajectory (red)
@@ -217,11 +217,11 @@ def visualize_fused_map(adjusted_points, us_actual_points, us_corner_points, tra
         traj = o3d.geometry.LineSet()
         traj.points = o3d.utility.Vector3dVector(traj_positions)
         traj.lines = o3d.utility.Vector2iVector([[i, i + 1] for i in range(len(traj_positions) - 1)])
-        traj.colors = o3d.utility.Vector3dVector([[1, 0, 0] for _ in range(len(traj_positions) - 1)])
+        traj.colors = o3d.utility.Vector3dVector([[1.0, 0.176, 0.667] for _ in range(len(traj_positions) - 1)])
         geoms.append(traj)
         marker = o3d.geometry.TriangleMesh.create_sphere(radius=0.05)
         marker.translate(traj_positions[-1])
-        marker.paint_uniform_color([1, 0, 0])
+        marker.paint_uniform_color([1.0, 0.176, 0.667])
         geoms.append(marker)
 
     axis = o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.2)

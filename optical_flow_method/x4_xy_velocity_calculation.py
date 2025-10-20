@@ -221,53 +221,54 @@ def main():
 
     
 
-    # === Plot velocities ===
-    plt.figure(figsize=(12, 12))
-    plt.subplot(2, 2, 1)
-    plt.plot(times, vx_list, label="v_x (m/s)", color="blue")
-    plt.plot(times, vy_list, label="v_y (m/s)", color="red")
+    # === Plot velocities (single axes) ===
+    plt.figure(figsize=(12, 6))
+    plt.plot(times, vx_list, label="v_x (m/s)")
+    plt.plot(times, vy_list, label="v_y (m/s)")
     plt.xlabel("Time (s)")
     plt.ylabel("Velocity (m/s)")
     plt.title("Optical Flow Derived Velocities")
     plt.legend()
     plt.grid(True)
-
-    # === Plot trajectory (XY) ===
-    plt.subplot(2, 2, 2)
-    plt.plot(pos_x, pos_y, "-o", markersize=2)
-    plt.xlabel("X position (m)")
-    plt.ylabel("Y position (m)")
-    plt.title("Integrated XY Position")
-    plt.axis("equal")
-    plt.grid(True)
-
-    # === Plot trajectory (XY) ===
-    plt.subplot(2, 2, 3)
-    plt.plot(times, acc_x, label="acc_x (m/s^2)", color="blue")
-    plt.plot(times, acc_y, label="acc_y (m/s^2)", color="red")
-    plt.xlabel("Time (s)")
-    plt.ylabel("Acceleration (m/s^2)")
-    plt.title("Optical Flow Differentiated Acceleration")
-    plt.legend()
-    plt.grid(True)
-
-    # === Plot height of map (Z) === 
-    plt.subplot(2, 2, 4)
-    plt.plot(times_2, total_height_list, label="Total height", color="blue")
-    plt.axhline(y=average_height, color='blue', linestyle='--', label='Average height')
-    plt.plot(times_2, pos_z_h, label="Z position (m) - From Bottom ", color="red")
-    plt.plot(times_2, pos_z_r, label="Z position (m) - From Top" , color="green")
-    plt.plot(times_2, pos_z_avg, label="Z position (m) - Average" , color="black", linestyle='--')
-
-    plt.xlabel("Time (s)")
-    plt.ylabel("Total Height (m)")
-    plt.title("ToF Heights")
-    plt.legend()
-    plt.grid(True)
-
-
     plt.tight_layout()
-    plt.show()
+
+
+    # # === Plot trajectory (XY) ===
+    # plt.subplot(2, 2)
+    # plt.plot(pos_x, pos_y, "-o", markersize=2)
+    # plt.xlabel("X position (m)")
+    # plt.ylabel("Y position (m)")
+    # plt.title("Integrated XY Position")
+    # plt.axis("equal")
+    # plt.grid(True)
+
+    # # === Plot trajectory (XY) ===
+    # plt.subplot(2, 2, 3)
+    # plt.plot(times, acc_x, label="acc_x (m/s^2)", color="blue")
+    # plt.plot(times, acc_y, label="acc_y (m/s^2)", color="red")
+    # plt.xlabel("Time (s)")
+    # plt.ylabel("Acceleration (m/s^2)")
+    # plt.title("Optical Flow Differentiated Acceleration")
+    # plt.legend()
+    # plt.grid(True)
+
+    # # === Plot height of map (Z) === 
+    # plt.subplot(2, 2, 4)
+    # plt.plot(times_2, total_height_list, label="Total height", color="blue")
+    # plt.axhline(y=average_height, color='blue', linestyle='--', label='Average height')
+    # plt.plot(times_2, pos_z_h, label="Z position (m) - From Bottom ", color="red")
+    # plt.plot(times_2, pos_z_r, label="Z position (m) - From Top" , color="green")
+    # plt.plot(times_2, pos_z_avg, label="Z position (m) - Average" , color="black", linestyle='--')
+
+    # plt.xlabel("Time (s)")
+    # plt.ylabel("Total Height (m)")
+    # plt.title("ToF Heights")
+    # plt.legend()
+    # plt.grid(True)
+
+
+    # plt.tight_layout()
+    # plt.show()
 
 if __name__ == "__main__":
     main()

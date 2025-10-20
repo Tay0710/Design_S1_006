@@ -107,30 +107,30 @@ def visualize_combined(actual_points, corner_points, interp_points, drone_positi
     if len(actual_points) > 0:
         pc_actual = o3d.geometry.PointCloud()
         pc_actual.points = o3d.utility.Vector3dVector(np.array(actual_points))
-        pc_actual.paint_uniform_color([1.0, 0.3, 0.8])  # pink
+        pc_actual.paint_uniform_color([0, 0.44, 0.57])  # pink
         geoms.append(pc_actual)
 
     if len(corner_points) > 0:
         pc_corners = o3d.geometry.PointCloud()
         pc_corners.points = o3d.utility.Vector3dVector(np.array(corner_points))
-        pc_corners.paint_uniform_color([0.2, 0.5, 1.0])  # dark blue
+        pc_corners.paint_uniform_color([0, 0.44, 0.57])  # dark blue
         geoms.append(pc_corners)
 
     if len(interp_points) > 0:
         pc_interp = o3d.geometry.PointCloud()
         pc_interp.points = o3d.utility.Vector3dVector(np.array(interp_points))
-        pc_interp.paint_uniform_color([0.6, 0.8, 1.0])  # light blue
+        pc_interp.paint_uniform_color([0.38, 0.78, 0.78])  # light blue
         geoms.append(pc_interp)
 
     traj = o3d.geometry.LineSet()
     traj.points = o3d.utility.Vector3dVector(drone_positions)
     traj.lines = o3d.utility.Vector2iVector([[i, i + 1] for i in range(len(drone_positions) - 1)])
-    traj.colors = o3d.utility.Vector3dVector([[1, 0, 0] for _ in range(len(drone_positions) - 1)])
+    traj.colors = o3d.utility.Vector3dVector([[1.0, 0.176, 0.667] for _ in range(len(drone_positions) - 1)])
     geoms.append(traj)
 
     sphere = o3d.geometry.TriangleMesh.create_sphere(radius=0.05)
     sphere.translate(drone_positions[-1])
-    sphere.paint_uniform_color([1, 0, 0])
+    sphere.paint_uniform_color([1.0, 0.176, 0.667])
     geoms.append(sphere)
 
     axis = o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.2)

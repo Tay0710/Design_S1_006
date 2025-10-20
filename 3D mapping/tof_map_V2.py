@@ -107,7 +107,7 @@ def build_points_down(distances):
     fov = 60.0
     pitch = fov / 3.0  # 20 degrees between each pixel 
     points = []
-    R, G, B = 32, 214, 96
+    R, G, B = 0, 113, 145
     for row in range(4):
         for col in range(4):
             idx = row * 4 + col
@@ -129,7 +129,7 @@ def build_points_up(distances):
     fov = 60.0
     pitch = fov / 3.0  # 20 degrees between each pixel
     points = []
-    R, G, B = 141, 205, 240
+    R, G, B = 98, 200, 211
     for row in range(4):
         for col in range(4):
             idx = row * 4 + col
@@ -164,11 +164,11 @@ def build_points_side(distances, orientation):
                 continue
             lx, ly, lz = local
             if orientation == "L":
-                R, G, B = 175, 32, 214
+                R, G, B = 211, 31, 17
                 pt = np.array([-lx, lz, ly, R, G, B])  # left sensor looks -Y
                 pt[0:3] += offsetL
             else:  # "R"
-                R, G, B = 255, 0, 0
+                R, G, B = 244, 122, 0
                 pt = np.array([lx, -lz, ly, R, G, B])   # right sensor looks +Y
                 pt[0:3] += offsetR
             points.append(pt)
@@ -197,16 +197,28 @@ def visualize_open3d(points, drone_positions):
     traj = o3d.geometry.LineSet()
     traj.points = o3d.utility.Vector3dVector(drone_positions)
     traj.lines = o3d.utility.Vector2iVector([[i, i+1] for i in range(len(drone_positions)-1)])
-    traj.colors = o3d.utility.Vector3dVector([[0, 0, 1] for _ in range(len(drone_positions)-1)])
+    traj.colors = o3d.utility.Vector3dVector([[1.0, 0.176, 0.667] for _ in range(len(drone_positions)-1)])
     geoms.append(traj)
 
     drone_marker = o3d.geometry.TriangleMesh.create_sphere(radius=0.1)
     drone_marker.translate(drone_positions[-1])
-    drone_marker.paint_uniform_color([0, 0, 1])
+    drone_marker.paint_uniform_color([1.0, 0.176, 0.667])
     geoms.append(drone_marker)
 
     axis = o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.2)
     geoms.append(axis)
+    
+    # --- thicker lines / bigger points ---
+    vis = o3d.visualization.Visualizer()
+    vis.create_window(window_name="Full ToF Mapping")
+    for g in geoms:
+        vis.add_geometry(g)
+
+    opt = vis.get_render_option()
+    opt.line_width = 6.0      # <-- make trajectory line thicker
+
+    vis.run()
+    vis.destroy_window()
 
     o3d.visualization.draw_geometries(geoms, window_name="Full ToF Mapping")
 
