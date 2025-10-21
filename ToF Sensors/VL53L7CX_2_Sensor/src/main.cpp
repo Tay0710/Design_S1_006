@@ -24,8 +24,8 @@
 // Power Enable pin
 #define PWR_EN_PIN 40
 
-#define SDA_PIN 2
-#define SCL_PIN 1
+#define SDA_PIN 48
+#define SCL_PIN 47
 
 // VL53L5CX default and new I2C addresses
 #define SENSOR1_ADDR 0x29
@@ -47,14 +47,14 @@ int imageWidth2 = 0;
 void setup()
 {
   Serial.begin(115200);
-  delay(1000);
+  while (!Serial) {
+  delay(10);}
   Serial.println("SparkFun VL53L5CX Dual Sensor Example");
   
 // Activating PWR_EN (Make High). 
   pinMode(PWR_EN_PIN, OUTPUT);
   digitalWrite(PWR_EN_PIN, HIGH); 
   delay(100);   
-
 
 // Activating I2C Reset pin to reset the addresses (Pulse High). 
   pinMode(I2C_RST_PIN, OUTPUT);

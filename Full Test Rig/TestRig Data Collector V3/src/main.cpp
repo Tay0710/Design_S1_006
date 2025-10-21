@@ -26,7 +26,7 @@
 #define SDA1 48  
 #define SCL1 47  
 #define SDA2 2
-#define SCL2 4
+#define SCL2 1
 #define PENA 40 // Power enable
 #define RESET 41 // I2C reset
 #define LPN 42
@@ -586,6 +586,10 @@ void logUltra() {
 }
 
 void setup() {
+  pinMode(LED1, OUTPUT);
+  delay(100);
+  digitalWrite(LED1, HIGH);
+  
   Serial.begin(115200);
   delay(1000);
   pinMode(BOOT_PIN, INPUT_PULLUP);
@@ -715,13 +719,12 @@ void setup() {
   Serial.println("Sensors are now ranging.");
 
   // Ultrasonics
-  pinMode(LED1, OUTPUT);
   // pinMode(USD, INPUT); // Note: Ultrasonics operate on a 49mS cycle.
   // pinMode(USL, INPUT);
   // pinMode(USR, INPUT);
   // pinMode(USU, INPUT); // USF is for object detection (front of drone). 
 
-  digitalWrite(LED1, HIGH);
+  // digitalWrite(LED1, HIGH);
   Serial.println("Set LED high"); delay(50);
 
   Serial.println("Setting up Ultrasonics...");

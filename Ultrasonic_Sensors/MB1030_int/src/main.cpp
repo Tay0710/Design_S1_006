@@ -5,7 +5,7 @@
 #include <Arduino.h>
 
 // US 1
-#define pwPin1 16
+#define pwPin1 5
 volatile unsigned long pulseStart1 = 0;
 volatile float distanceCm1 = 0;
 volatile bool US_ready1 = false;
