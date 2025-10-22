@@ -165,11 +165,11 @@ def build_points_side(distances, orientation):
             lx, ly, lz = local
             if orientation == "L":
                 R, G, B = 211, 31, 17
-                pt = np.array([-lx, lz, ly, R, G, B])  # left sensor looks -Y
+                pt = np.array([lz, -ly, -lx, R, G, B])  # left sensor looks -Y
                 pt[0:3] += offsetL
             else:  # "R"
                 R, G, B = 244, 122, 0
-                pt = np.array([lx, -lz, ly, R, G, B])   # right sensor looks +Y
+                pt = np.array([-lz, ly, -lx, R, G, B])   # right sensor looks +Y
                 pt[0:3] += offsetR
             points.append(pt)
     return points
