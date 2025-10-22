@@ -2,13 +2,13 @@
 #include <SPI.h>
 
 // ESP32-S3 - SX126x pin configuration
-int PIN_LORA_RESET = 1;	 // LORA RESET
-int PIN_LORA_DIO_1 = 2; // LORA DIO_1
-int PIN_LORA_BUSY = 3;	 // LORA SPI BUSY
-int PIN_LORA_NSS = 10;	 // LORA SPI CS
-int PIN_LORA_SCLK = 12;	 // LORA SPI CLK
-int PIN_LORA_MISO = 11;	 // LORA SPI MISO
-int PIN_LORA_MOSI = 13;	 // LORA SPI MOSI
+int PIN_LORA_RESET = 9;	 // LORA RESET
+int PIN_LORA_DIO_1 = 14; // LORA DIO_1
+int PIN_LORA_BUSY = 21;	 // LORA SPI BUSY
+int PIN_LORA_NSS = 8;	 // LORA SPI CS
+int PIN_LORA_SCLK = 13;	 // LORA SPI CLK
+int PIN_LORA_MISO = 12;	 // LORA SPI MISO
+int PIN_LORA_MOSI = 11;	 // LORA SPI MOSI
 
 // Define LoRa parameters
 #define RF_FREQUENCY 915000000	// Hz 

@@ -1,5 +1,5 @@
 // Adapted from PingPong Example from SX126x-Arduino Library
-// https://github.com/beegee-tokyo/SX126x-Arduino/blob/master/examples/PingPong/PingPong.ino 
+// https://github.com/beegee-tokyo/SX126x-Arduino/blob/master/examples/PingPong/PingPong.ino
 
 #include <Arduino.h>
 #include <Ticker.h>
@@ -12,15 +12,16 @@ time_t lastMessage;
 
 Ticker loraTimer;
 
-#define FAILSAFE_LORA_TIMEOUT 5000 // ms
-#define LORA_TIMER_UDPATE_RATE 1000 // check every 1000 ms 
+#define FAILSAFE_LORA_TIMEOUT 30000 // 30 secs
+#define HOVER_LORA_TIMEOUT 5000      // 5 secs
+#define LORA_TIMER_UDPATE_RATE 1000  // check every 1000 ms
 
-// TODO: make flag system
+boolean start_flag = false;
 
-void triggerFailsafe() {
+void triggerFailsafe()
+{
   Serial.println("Failsafe triggered. Land drone.");
   // rcChannels[AUX3] = 1800;
-
 }
 
 /**@brief Function to be executed on Radio Rx Timeout event
@@ -29,15 +30,17 @@ void OnRxTimeout(void)
 {
   Serial.println("On Rx Timeout CB");
   Serial.printf("OnRxTimeout: No message received in last %d ms \n", RX_TIMEOUT_VALUE);
-
-  // TODO: check if failsafe is required if LORA never connects in the first place
-
 }
 
 /**@brief Function to be executed on Radio Rx Done event
  */
 void OnRxDone(uint8_t *payload, uint16_t size, int16_t rssi, int8_t snr)
 {
+  if (!start_flag)
+  {
+    start_flag = true; // For first packet
+  }
+
   Serial.println("OnRxDone:");
 
   // Time from last message
@@ -51,7 +54,8 @@ void OnRxDone(uint8_t *payload, uint16_t size, int16_t rssi, int8_t snr)
 
   String payload_str = (const char *)payload;
 
-  if (payload_str == "STOP") {
+  if (payload_str == "STOP")
+  {
     triggerFailsafe();
   }
 
@@ -95,13 +99,7 @@ void setupLoRaModule()
 
   // Initialize the Radio
   Radio.Init(&RadioEvents);
-
-  // SX126xGetSyncWord
-
-  // Serial.println(Radio.GetSyncWord()); // 5156 is default?
-
   Radio.SetCustomSyncWord(0x1424);
-
 
   // Set radio to sleep for next setup
   Radio.Sleep();
@@ -123,21 +121,25 @@ void setupLoRaModule()
 
   // Start LoRa
   Serial.println("Starting Radio.Rx");
-  Radio.Rx(0); // Note: timeout only works for initial packet
+  Radio.Rx(0);
   // Receiver is non-blocking
+  while (!start_flag)
+  {
+    delay(1000);
+    Serial.println("Wait for first packet...");
+  }
 }
-
-
 
 void loraTimerCallback()
 {
   time_t currentTime = millis();
 
-  // TODO: check for 5 seconds and 30 seconds (not that it can hover anyway....)
-
-  // TODO: if less than 5 seconds, turn off hover flag
-
-  if (currentTime - lastMessage > FAILSAFE_LORA_TIMEOUT)
+  if (currentTime - lastMessage > HOVER_LORA_TIMEOUT)
+  {
+    Serial.printf("Communications lost to failsafe transceiver for %d ms. \n", currentTime - lastMessage);
+    // triggerHoverMode();
+  }
+  else if (currentTime - lastMessage > FAILSAFE_LORA_TIMEOUT)
   {
     Serial.printf("Communications lost to failsafe transceiver for %d ms. \n", currentTime - lastMessage);
     triggerFailsafe();
@@ -164,8 +166,6 @@ void setup()
 
 void loop()
 {
-  // Radio.Rx(0); // Note: this is non-blocking
-  // Serial.println("Wait for message...");
 
   delay(5000);
 }
