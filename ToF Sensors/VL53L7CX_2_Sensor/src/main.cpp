@@ -24,8 +24,8 @@
 // Power Enable pin
 #define PWR_EN_PIN 40
 
-#define SDA_PIN 48
-#define SCL_PIN 47
+#define SDA_PIN 2
+#define SCL_PIN 1
 
 // VL53L5CX default and new I2C addresses
 #define SENSOR1_ADDR 0x29
@@ -54,42 +54,42 @@ void setup()
 // Activating PWR_EN (Make High). 
   pinMode(PWR_EN_PIN, OUTPUT);
   digitalWrite(PWR_EN_PIN, HIGH); 
-  delay(100);   
+  delay(200);   
 
 // Activating I2C Reset pin to reset the addresses (Pulse High). 
   pinMode(I2C_RST_PIN, OUTPUT);
   digitalWrite(I2C_RST_PIN, HIGH); 
-  delay(100); 
+  delay(500); 
   digitalWrite(I2C_RST_PIN, LOW); 
-  delay(100); 
+  delay(500); 
 
 
-// Deactivating PWR_EN (Make Low). Reseting Sensors.  
+ // Deactivating PWR_EN (Make Low). Reseting Sensors.  
   digitalWrite(PWR_EN_PIN, LOW); 
-  delay(100);   
+  delay(500);   
   digitalWrite(PWR_EN_PIN, HIGH); // Make High again.
-  delay(100);  
+  delay(500);  
 
 
   // Configure LPn pins
   pinMode(LPN, OUTPUT);
   // Set Sensor 1 LPn low (Deactivate I2C communication). 
   digitalWrite(LPN, LOW); // One LPn should be set HIGH permanently
-  delay(100); 
+  delay(2000); 
 
   Wire.begin(SDA_PIN, SCL_PIN); // Initialize I2C bus
   Wire.setClock(400000); // Optional: 400 kHz I2C
 
   // Set sensor 2 to 0x30 before calling begin()
   Serial.println("Initializing Sensor 2 at 0x29 (It will become 0x30)...");
-
+  
   if (!sensor2.begin()) { 
     Serial.println("Sensor 2 not found at 0x29!");
     while (1);
   }
-
-  sensor2.setAddress(SENSOR2_ADDR);
-
+  delay(100); 
+  // sensor2.setAddress(SENSOR2_ADDR);
+  delay(100); 
   sensor2.setResolution(8 * 8);
   imageResolution2 = sensor2.getResolution();
   imageWidth2 = sqrt(imageResolution2);
@@ -114,7 +114,7 @@ void setup()
   // Start ranging on both sensors. 
   Serial.println("Starting ranging on both sensors...");
   sensor1.startRanging();
-  // sensor2.startRanging();
+  sensor2.startRanging();
 
   Serial.println("Both sensors are now ranging.");
 }

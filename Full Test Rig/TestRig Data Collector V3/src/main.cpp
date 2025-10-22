@@ -26,13 +26,13 @@
 #define SDA1 48  
 #define SCL1 47  
 #define SDA2 2
-#define SCL2 1
+#define SCL2 4
 #define PENA 40 // Power enable
 #define RESET 41 // I2C reset
 #define LPN 42
 
 #define USD 15 // Downwards-mounted ultrasonic PW pin
-#define USU 4 // Upwards-mounted ultrasonic PW pin
+// #define USU 4 // Upwards-mounted ultrasonic PW pin
 #define USL 18 // Left-mounted ultrasonic PW pin
 #define USR 5 // Right-mounted ultrasonic PW pin
 #define LED1 6 // PCB LED
@@ -540,17 +540,17 @@ void USR_ISR() {
   }
 }
 
-void USU_ISR() {
-  // Called when PW pin changes
-  if (digitalRead(USU) == HIGH) {
-    // Rising edge
-    pulseStartU = micros();
-  } else {
-    // Falling edge
-    pulseWidthU = micros() - pulseStartU;
-    usReadyU = true;
-  }
-}
+// void USU_ISR() {
+//   // Called when PW pin changes
+//   if (digitalRead(USU) == HIGH) {
+//     // Rising edge
+//     pulseStartU = micros();
+//   } else {
+//     // Falling edge
+//     pulseWidthU = micros() - pulseStartU;
+//     usReadyU = true;
+//   }
+// }
 
 // Log all 4 ultrasonic sensors (US1-US4) to CSV
 void logUltra() {
@@ -589,11 +589,13 @@ void setup() {
   pinMode(LED1, OUTPUT);
   delay(100);
   digitalWrite(LED1, HIGH);
-  
+
   Serial.begin(115200);
   delay(1000);
   pinMode(BOOT_PIN, INPUT_PULLUP);
   delay(10);
+
+  Serial.println("Slower Startup");
 
   // SPI Setup
   SPI.begin(VSPI_CLK, VSPI_MISO, VSPI_MOSI);
@@ -630,6 +632,32 @@ void setup() {
   Serial.println("SD Card initialized.");
 
   // Initialise 4 ToF sensors
+  // Address reset sequence for ToFL7 sensors.
+  // Activating PWR_EN (Make High). 
+  pinMode(PENA, OUTPUT);
+  delay(200); 
+  digitalWrite(PENA, HIGH); 
+  delay(200);   
+  // Activating I2C Reset pin to reset the addresses (Pulse High). 
+  pinMode(RESET, OUTPUT);
+  delay(200);
+  digitalWrite(RESET, HIGH); 
+  delay(200); 
+  digitalWrite(RESET, LOW); 
+  delay(200); 
+  // Deactivating PWR_EN (Make Low). Reseting sensors
+  digitalWrite(PENA, LOW); 
+  delay(200);   
+  digitalWrite(PENA, HIGH); // Make high again
+  delay(200);  
+  // Configure LPn pins
+  pinMode(LPN, OUTPUT);
+  delay(200);
+  // Set sensor 1 LPn low (Deactivate I2C communication) 
+  digitalWrite(LPN, LOW); // One LPn should be set HIGH permanently
+  delay(500); 
+  Serial.println("Successfully reset ToF sensors' I2C addresses.");
+
   I2C_bus1.begin(SDA1, SCL1); // This resets I2C bus to 100kHz
   I2C_bus1.setClock(400000); //Sensor (L7) has max I2C freq of 1MHz
   delay(100);
@@ -638,39 +666,20 @@ void setup() {
   // Serial.println(I2C_bus2.getClock());
   Serial.println("Clock Has been Set for I2Cs");
 
-  // Address reset sequence for ToFL7 sensors.
-  // Activating PWR_EN (Make High). 
-  pinMode(PENA, OUTPUT);
-  digitalWrite(PENA, HIGH); 
-  delay(100);   
-  // Activating I2C Reset pin to reset the addresses (Pulse High). 
-  pinMode(RESET, OUTPUT);
-  digitalWrite(RESET, HIGH); 
-  delay(100); 
-  digitalWrite(RESET, LOW); 
-  delay(100); 
-  // Deactivating PWR_EN (Make Low). Reseting sensors
-  digitalWrite(PENA, LOW); 
-  delay(100);   
-  digitalWrite(PENA, HIGH); // Make high again
-  delay(100);  
-  // Configure LPn pins
-  pinMode(LPN, OUTPUT);
-  // Set sensor 1 LPn low (Deactivate I2C communication) 
-  digitalWrite(LPN, LOW); // One LPn should be set HIGH permanently
-  delay(100); 
-  Serial.println("Succesfully reset ToF sensors' I2C addresses.");
-
   // I2C bus split: L + U on I2C_bus2; R + D on I2C_bus1
   // Have to change the address of the ToFs with no LPN pin attached.
   // U + D are the sensors that have their address changed
 
   // Change sensor address to 0x30 after calling begin()
+  delay(100);
+
   if (!sensorD.begin(0x29, I2C_bus1)) { 
     Serial.println("Sensor D not found at 0x29!");
     while (1);
   } 
   Serial.println("Sensor D good");
+
+  // delay(500);
 
   if (!sensorU.begin(0x29, I2C_bus2)) { 
     Serial.println("Sensor U not found at 0x29!");
@@ -731,7 +740,7 @@ void setup() {
   attachInterrupt(digitalPinToInterrupt(USD), USD_ISR, CHANGE);
   attachInterrupt(digitalPinToInterrupt(USL), USL_ISR, CHANGE);
   attachInterrupt(digitalPinToInterrupt(USR), USR_ISR, CHANGE);
-  attachInterrupt(digitalPinToInterrupt(USU), USU_ISR, CHANGE);
+  // attachInterrupt(digitalPinToInterrupt(USU), USU_ISR, CHANGE);
   Serial.println("Ultrasonics set up complete.");
 
   Serial.println("Setting up the CSV files!");
