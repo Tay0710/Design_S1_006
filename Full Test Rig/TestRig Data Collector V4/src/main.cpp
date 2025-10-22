@@ -31,9 +31,9 @@
 #define RESET 41 // I2C reset
 #define LPN 42
 
-#define USD 15 // Downwards-mounted ultrasonic PW pin
-// #define USU 4 // Upwards-mounted ultrasonic PW pin
-#define USL 18 // Left-mounted ultrasonic PW pin
+#define USL 15 // Downwards-mounted ultrasonic PW pin
+// #define USD 4 // Upwards-mounted ultrasonic PW pin
+#define USU 18 // Left-mounted ultrasonic PW pin
 #define USR 5 // Right-mounted ultrasonic PW pin
 #define LED1 6 // PCB LED
 
@@ -503,17 +503,17 @@ volatile unsigned long pulseStartU = 0;
 volatile unsigned long pulseWidthU = 0;
 volatile bool usReadyU = false;
 
-void USD_ISR() {
-  // Called when PW pin changes
-  if (digitalRead(USD) == HIGH) {
-    // Rising edge
-    pulseStartD = micros();
-  } else {
-    // Falling edge
-    pulseWidthD = micros() - pulseStartD;
-    usReadyD = true;
-  }
-}
+// void USD_ISR() {
+//   // Called when PW pin changes
+//   if (digitalRead(USD) == HIGH) {
+//     // Rising edge
+//     pulseStartD = micros();
+//   } else {
+//     // Falling edge
+//     pulseWidthD = micros() - pulseStartD;
+//     usReadyD = true;
+//   }
+// }
 
 void USL_ISR() {
   // Called when PW pin changes
@@ -539,17 +539,17 @@ void USR_ISR() {
   }
 }
 
-// void USU_ISR() {
-//   // Called when PW pin changes
-//   if (digitalRead(USU) == HIGH) {
-//     // Rising edge
-//     pulseStartU = micros();
-//   } else {
-//     // Falling edge
-//     pulseWidthU = micros() - pulseStartU;
-//     usReadyU = true;
-//   }
-// }
+void USU_ISR() {
+  // Called when PW pin changes
+  if (digitalRead(USU) == HIGH) {
+    // Rising edge
+    pulseStartU = micros();
+  } else {
+    // Falling edge
+    pulseWidthU = micros() - pulseStartU;
+    usReadyU = true;
+  }
+}
 
 // Log all 4 ultrasonic sensors (US1-US4) to CSV
 void logUltra() {
@@ -668,19 +668,19 @@ void setup() {
   // U + D are the sensors that have their address changed
 
   // Change sensor address to 0x30 after calling begin()
-  if (!sensorD.begin(0x29, I2C_bus1)) { 
-    Serial.println("Sensor D not found at 0x29!");
+  if (!sensorU.begin(0x29, I2C_bus1)) { 
+    Serial.println("Sensor U not found at 0x29!");
     while (1);
   } 
-  Serial.println("Sensor D good");
+  Serial.println("Sensor U good");
 
   delay(500);
 
-  if (!sensorU.begin(0x29, I2C_bus2)) { 
-    Serial.println("Sensor U not found at 0x29!");
+  if (!sensorD.begin(0x29, I2C_bus2)) { 
+    Serial.println("Sensor D not found at 0x29!");
     while (1);
   }
-  Serial.println("Sensor U good");
+  Serial.println("Sensor D good");
   sensorU.setAddress(CHANGE_ADDR);
   sensorD.setAddress(CHANGE_ADDR);
   sensorU.setResolution(4 * 4);
@@ -723,19 +723,19 @@ void setup() {
   Serial.println("Sensors are now ranging.");
 
   // Ultrasonics
-  // pinMode(USD, INPUT); // Note: Ultrasonics operate on a 49mS cycle.
+  pinMode(USD, INPUT); // Note: Ultrasonics operate on a 49mS cycle.
   // pinMode(USL, INPUT);
-  // pinMode(USR, INPUT);
-  // pinMode(USU, INPUT); // USF is for object detection (front of drone). 
+  pinMode(USR, INPUT);
+  pinMode(USU, INPUT); // USF is for object detection (front of drone). 
 
   // digitalWrite(LED1, HIGH);
   Serial.println("Set LED high"); delay(50);
 
   Serial.println("Setting up Ultrasonics...");
-  attachInterrupt(digitalPinToInterrupt(USD), USD_ISR, CHANGE);
+  // attachInterrupt(digitalPinToInterrupt(USD), USD_ISR, CHANGE);
   attachInterrupt(digitalPinToInterrupt(USL), USL_ISR, CHANGE);
   attachInterrupt(digitalPinToInterrupt(USR), USR_ISR, CHANGE);
-  // attachInterrupt(digitalPinToInterrupt(USU), USU_ISR, CHANGE);
+  attachInterrupt(digitalPinToInterrupt(USU), USU_ISR, CHANGE);
   Serial.println("Ultrasonics set up complete.");
 
   Serial.println("Setting up the CSV files!");
