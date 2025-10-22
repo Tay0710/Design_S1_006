@@ -255,12 +255,12 @@ def fuse_tof_and_ultrasonic(tof_points, us_interp_points):
 def main():
     t0 = time.time()
 
-    data_name = "22_09_25_MILC/7_lyco_lab/"
+    data_name = "22_10_25_MILC/"
     base_path = "../optical_flow_method_data/combined_samples/" + data_name
 
     data_times = base_path + "data_times.csv"
     tof_input_cropped = base_path + "download_tof_cropped.csv"
-    us_input_path = base_path + "fake_ultrasonic.csv"
+    us_input_path = base_path + "Ultra_MB1030.csv"
     us_input_cropped = base_path + "us_cropped.csv"
 
     cut_data(data_times, us_input_path, us_input_cropped)
