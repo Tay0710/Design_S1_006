@@ -696,11 +696,11 @@ void setup() {
   delay(100); 
 
   if (!sensorR.begin(0x29, I2C_bus1)) {
-    Serial.println("Sensor L not found at 0x29!");
+    Serial.println("Sensor R not found at 0x29!");
     while (1);
   } 
   if (!sensorL.begin(0x29, I2C_bus2)) {
-    Serial.println("Sensor R not found at 0x29!");
+    Serial.println("Sensor L not found at 0x29!");
     while (1);
   }
   sensorR.setResolution(8 * 8);
@@ -723,9 +723,9 @@ void setup() {
   Serial.println("Sensors are now ranging.");
 
   // Ultrasonics
-  // pinMode(USD, INPUT); // Note: Ultrasonics operate on a 49mS cycle.
-  // pinMode(USL, INPUT);
-  // pinMode(USR, INPUT);
+  pinMode(USD, INPUT); // Note: Ultrasonics operate on a 49mS cycle.
+  pinMode(USL, INPUT);
+  pinMode(USR, INPUT);
   // pinMode(USU, INPUT); // USF is for object detection (front of drone). 
 
   // digitalWrite(LED1, HIGH);
