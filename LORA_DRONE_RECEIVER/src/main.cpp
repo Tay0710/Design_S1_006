@@ -4,6 +4,7 @@
 #include <Arduino.h>
 #include <Ticker.h>
 
+#include "SBUS.h"
 #include "LoRa_SX1262.h"
 
 static RadioEvents_t RadioEvents;
@@ -11,17 +12,36 @@ hw_config hwConfig;
 time_t lastMessage;
 
 Ticker loraTimer;
+Ticker SBUSTimer;
 
 #define FAILSAFE_LORA_TIMEOUT 30000 // 30 secs
-#define HOVER_LORA_TIMEOUT 5000      // 5 secs
-#define LORA_TIMER_UDPATE_RATE 1000  // check every 1000 ms
+#define HOVER_LORA_TIMEOUT 5000     // 5 secs
+#define LORA_TIMER_UDPATE_RATE 1000 // check every 1000 ms
+
+// Using UART0 on ESP32-S3
+#define RX_PIN 44
+#define TX_PIN 43
+
+#define THROTTLE_MIN 890
+#define THROTTLE_MID 1150
+#define THROTTLE_MAX 1410 // shrink range of throttle
+
+uint8_t sbusPacket[SBUS_PACKET_LENGTH];
+int rcChannels[SBUS_CHANNEL_NUMBER];
+uint32_t sbusTime = 0;
+
+uint32_t currentMillis;
+uint32_t armingMillis;
+
+bool armingSequenceFlag = false;
 
 boolean start_flag = false;
 
 void triggerFailsafe()
 {
   Serial.println("Failsafe triggered. Land drone.");
-  // rcChannels[AUX3] = 1800;
+  armingSequenceFlag = false;
+  rcChannels[AUX3] = 1800;
 }
 
 /**@brief Function to be executed on Radio Rx Timeout event
@@ -39,6 +59,8 @@ void OnRxDone(uint8_t *payload, uint16_t size, int16_t rssi, int8_t snr)
   if (!start_flag)
   {
     start_flag = true; // For first packet
+    armingSequenceFlag = true;
+    armingMillis = millis();
   }
 
   Serial.println("OnRxDone:");
@@ -146,6 +168,7 @@ void loraTimerCallback()
   }
 }
 
+
 void setup()
 {
   // Initialize Serial for debug output
@@ -157,15 +180,65 @@ void setup()
   Serial.println("LoRa Drone Receiver");
   Serial.println("=====================================");
 
+  Serial.println(" --- Setup SBUS --- ");
+
+  // Initialise all channels to 1500
+  for (uint8_t i = 0; i < SBUS_CHANNEL_NUMBER; i++)
+  {
+    rcChannels[i] = 1500;
+  }
+  rcChannels[THROTTLE] = THROTTLE_MIN;
+
+  Serial1.begin(100000, SERIAL_8E2, RX_PIN, TX_PIN, true); // Initialize Serial1 with 100000 baud rate
+
   setupLoRaModule();
 
-  loraTimer.attach_ms(LORA_TIMER_UDPATE_RATE, loraTimerCallback); // TODO: only attach timer after first packet is received
+  loraTimer.attach_ms(LORA_TIMER_UDPATE_RATE, loraTimerCallback);
 
   lastMessage = millis();
+
+  Serial.println(" --- Setup Complete --- ");
 }
 
 void loop()
 {
+  currentMillis = millis();
 
-  delay(5000);
+  // Arming sequence hard coded
+  if (armingSequenceFlag)
+  {
+    // wait 5 seconds then arm
+    if (currentMillis > 5000 + armingMillis && currentMillis < 10000 + armingMillis)
+    {
+      rcChannels[THROTTLE] = THROTTLE_MIN;
+      rcChannels[AUX1] = 1800;
+      Serial.println("Arm drone.");
+    }
+    else if (currentMillis > 10000 + armingMillis && currentMillis < 15000 + armingMillis)
+    { // Wait another 5 seconds before turning on throttle and leave on for 10 seconds
+      rcChannels[THROTTLE] = 1350;
+      Serial.println("Throttle 1350.");
+      rcChannels[AUX1] = 1800;
+    }
+    else if (currentMillis > 15000 + armingMillis)
+    {
+      Serial.println("Arming sequence finished");
+
+      rcChannels[THROTTLE] = THROTTLE_MIN;
+      rcChannels[AUX1] = 1500;
+
+      armingSequenceFlag = false;
+    }
+  }
+
+  if (currentMillis > sbusTime)
+  {
+    sbusPreparePacket(sbusPacket, rcChannels, false, false);
+    Serial1.write(sbusPacket, SBUS_PACKET_LENGTH);
+    // printSBUSChannel(rcChannels);
+    // printSBUSPacket(sbusPacket);
+    sbusTime = currentMillis + SBUS_UPDATE_RATE;
+  }
+
+  // delay(5000);
 }
