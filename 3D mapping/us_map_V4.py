@@ -29,7 +29,7 @@ TIME_TOL = 0.055
 POINT_SIZE = 5.5
 
 # Ceiling acceptance threshold (metres): keep Up only if distance >= 0.9 m
-ROOF_MIN_DIST_M = 0.9
+ROOF_MIN_DIST_M = 1.4
 
 # === Load rotation matrices ===
 def load_rotation_matrices(rot_csv):
