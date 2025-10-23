@@ -140,14 +140,11 @@ def main(us_input_cropped):
     actual_U, actual_L, actual_R = [], [], []
     us["type"] = us["type"].astype(str).str.strip().str.upper()
 
-<<<<<<< HEAD
-    # Collect Up timestamps for floor synthesis (only for accepted Up samples)
-=======
+
     # Moving average of y velocities
     vel_y = vel["v_y (m/s)"].rolling(window=5).mean()
 
     # Collect Up timestamps for floor synthesis
->>>>>>> 36a40e23530b3518d9fade7366930f73e3e4816b
     up_times = []
 
     for _, row in us.iterrows():
@@ -170,19 +167,7 @@ def main(us_input_cropped):
         drone_pos = drone_positions[idx]
         vel_y_u = vel_y[min(idx, len(rot_mats) - 1)]
 
-<<<<<<< HEAD
-        if s == "U":
-            v = np.array([0, 0, d]) + offsetU
-            up_times.append(t)  # only append for accepted Up (passes threshold)
-            actual_U.append(to_world(v, rot_mat, drone_pos))
-        elif s == "L":
-            # Using X ± d convention per your latest snippet
-            v = np.array([ d, 0, 0]) + offsetL
-            actual_L.append(to_world(v, rot_mat, drone_pos))
-        elif s == "R":
-            v = np.array([-d, 0, 0]) + offsetR
-            actual_R.append(to_world(v, rot_mat, drone_pos))
-=======
+
         if abs(vel_y_u) > 0.5:
             if s == "U":
                 v = np.array([0, 0, d]) + offsetU
@@ -194,8 +179,7 @@ def main(us_input_cropped):
             elif s == "R":
                 v = np.array([-d, 0, 0]) + offsetR
                 actual_R.append(to_world(v, rot_mat, drone_pos))
->>>>>>> 36a40e23530b3518d9fade7366930f73e3e4816b
-
+                
     actual_U = np.array(actual_U) if len(actual_U) else np.empty((0,3))
     actual_L = np.array(actual_L) if len(actual_L) else np.empty((0,3))
     actual_R = np.array(actual_R) if len(actual_R) else np.empty((0,3))
