@@ -138,7 +138,7 @@ def visualize_actual_only(actual_U, actual_L, actual_R, floor_D, drone_positions
     vis.destroy_window()
 
 # ---------- main ----------
-def main(us_input_cropped="../ultrasonic_cropped.csv"):
+def main(us_input_cropped):
     # files
     traj = pd.read_csv("../optical_flow_method_data/xy_velocities_to_world_frame.csv")
     times_mat, rot_mats = load_rotation_matrices("../optical_flow_method_data/rotation_matrices.csv")

@@ -347,15 +347,37 @@ def visualize_open3d_final(points_xyz: np.ndarray,
 # Main
 # =============================================================================
 
-def cut_data(data_times_csv, us_input_csv, us_output_csv):
-    """Your existing cropper. Placeholder to keep this file stand-alone."""
-    pass
+# === Stage 1: Crop ultrasonic dataset ===
+def cut_data(data_times, us_input_path, us_input_cropped):
+    data_0 = np.genfromtxt(data_times, delimiter=",", skip_header=1)
+    start_time, end_time = data_0[0], data_0[1]
+
+    def filter_file(input_path, output_path, start, end):
+        with open(input_path, "r") as f:
+            lines = f.readlines()
+        header = lines[0]
+        kept = [header]
+        for line in lines[1:]:
+            if not line.strip():
+                continue
+            parts = line.split(",")
+            try:
+                t = float(parts[0])
+            except ValueError:
+                continue
+            if start <= t <= end:
+                kept.append(line)
+        with open(output_path, "w") as f:
+            f.writelines(kept)
+
+    filter_file(us_input_path, us_input_cropped, start_time, end_time)
+    print(f"✔ Ultrasonic data cropped to {start_time:.2f}–{end_time:.2f}s")
 
 def main():
     t0 = time.time()
 
     # Paths
-    data_name = "22_10_25_MILC/2_L_shape_2/"
+    data_name = "23_10_25_MILC/"
     base_path = "../optical_flow_method_data/combined_samples/" + data_name
 
     data_times = base_path + "data_times.csv"
