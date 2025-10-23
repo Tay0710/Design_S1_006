@@ -203,6 +203,7 @@ void loraTimerCallback()
   {
     Serial.printf("Communications lost to failsafe transceiver for %d ms. \n", currentTime - lastMessage);
     // triggerHoverMode();
+    triggerFailsafe();
   }
   else if (currentTime - lastMessage > FAILSAFE_LORA_TIMEOUT)
   {
@@ -309,7 +310,7 @@ void readCenterAverage(SparkFun_VL53L5CX &sensor, VL53L5CX_ResultsData &measurem
       Serial.println("Failed to get Data!");
     }
   } else{
-    Serial.println("Data was not ready");
+    // Serial.println("Data was not ready");
   }
 
 }
@@ -335,9 +336,6 @@ void setup()
   rcChannels[THROTTLE] = THROTTLE_MIN;
 
   Serial1.begin(100000, SERIAL_8E2, RX_PIN, TX_PIN, true); // Initialize Serial1 with 100000 baud rate
-  setupLoRaModule();
-  loraTimer.attach_ms(LORA_TIMER_UDPATE_RATE, loraTimerCallback);
-  lastMessage = millis();
 
   // Ultrasonic Interrupt Setup
   pinMode(pwPinTop, INPUT_PULLUP);
@@ -364,6 +362,9 @@ void setup()
   sensor1.startRanging();
   Serial.println("sensor tof is now ranging.");
 
+  setupLoRaModule();
+  loraTimer.attach_ms(LORA_TIMER_UDPATE_RATE, loraTimerCallback);
+  lastMessage = millis();
 
   Serial.println(" --- Setup Complete --- ");
 }
@@ -379,13 +380,13 @@ void loop()
       rcChannels[THROTTLE] = THROTTLE_MIN;
       rcChannels[AUX1] = 1800;
       Serial.println("Arm drone.");
-    } else if (currentMillis > 10000 + armingMillis && currentMillis < 15000 + armingMillis){ // Wait another 5 seconds before turning on throttle and leave on for 10 seconds
-      rcChannels[THROTTLE] = 1350;
+    } else if (currentMillis > 10000 + armingMillis && currentMillis < 11500 + armingMillis){ // Wait another 5 seconds before turning on throttle and leave on for 10 seconds
+      rcChannels[THROTTLE] = 1360;
       rcChannels[AUX1] = 1800;
-      Serial.println("Throttle 1350.");
-    } else if (currentMillis > 15000 + armingMillis){
+      Serial.println("Throttle 1360.");
+    } else if (currentMillis > 11500 + armingMillis){
       Serial.println("Arming sequence finished");
-      rcChannels[THROTTLE] = 1350;
+      rcChannels[THROTTLE] = 1360;
       rcChannels[AUX1] = 1800; 
       armingSequenceFlag = false;
       armsequencecomplete = true;
@@ -411,7 +412,7 @@ void loop()
       }
     }
 
-      // ROLL Changes
+    // ROLL Changes
     // Serial.println("READ CENTER AVG");
     if(sbusmeesagesent){
       totalAvg = -1;
@@ -419,9 +420,9 @@ void loop()
       backAvg = -1;
     }
     readCenterAverage(sensor1, measurementData1);
-    Serial.print("Total roll-TOF: "); Serial.println(totalAvg);    
-    Serial.print("FRONT-TOF: "); Serial.println(frontAvg);   
-    Serial.print("BACK aERY -TOF: "); Serial.println(backAvg);   
+    // Serial.print("Total roll-TOF: "); Serial.println(totalAvg);    
+    // Serial.print("FRONT-TOF: "); Serial.println(frontAvg);   
+    // Serial.print("BACK aERY -TOF: "); Serial.println(backAvg);   
     // Serial.print("TLTC: "); Serial.println(currentMillis - TurnLefttimecomplete);    
     if(currentMillis - TurnLefttimecomplete > 500){   
       // Serial.println("IN ROLL if statement");
@@ -479,19 +480,22 @@ void loop()
       // PITCH CONTROL.
       if(currentMillis - TurnLefttimecomplete < 500 && !endofpath){ // go for after turning for 1.0s
         rcChannels[PITCH] = 1500;
-      } else if(currentMillis > 15000 + armingMillis) { // Could remove - to check. 
+      } else if(currentMillis > 11500 + armingMillis) { // Could remove - to check. 
           if(CurrentDistanceF > 10.00 && CurrentDistanceF <= 200.00 && currentMillis - brakingtime < 1000){
-            rcChannels[PITCH] = 1390;
+            // rcChannels[PITCH] = 1390;
+            rcChannels[PITCH] = 1500; // Replace with 1500 so it won't go backwards when distance is wrong?
             CurrentDistanceF = 0.00;
+            Serial.println("Pitch backwards");
           } else if(CurrentDistanceF > 10.00 && CurrentDistanceF <= 200.00 && currentMillis - brakingtime > 1000){
             rcChannels[PITCH] = 1500;
             CurrentDistanceF = 0.00;
             endofpath = true;
             endofpathtime = currentMillis;
           } else if(CurrentDistanceF > 200.00){
-            rcChannels[PITCH] = 1550; // appply pitch brakes and prepare to turn. 
+            rcChannels[PITCH] = 1550; // apply pitch brakes and prepare to turn. 
             CurrentDistanceF = 0.00;
             brakingtime = currentMillis;
+            Serial.print("Pitch forward");
             // Serial.print("IN EOP PITCH: "); Serial.println(rcChannels[PITCH]);
           } else{
             rcChannels[PITCH] = 1500;
@@ -503,7 +507,7 @@ void loop()
 
     // // YAW CORNERING
     if(currentMillis - endofpathtime < 360 && endofpath){ // (endofpath && ) endofpath is assumed to be true if it is not false?
-      Serial.println("TURNING NOW!!");
+      // Serial.println("TURNING NOW!!");
       rcChannels[PITCH] = 1500; // Override the Front Ultrasonic PITCH commands
       rcChannels[YAW] =  1300;
       TurnLefttimecomplete = currentMillis;  // used to block Wall following
@@ -517,20 +521,20 @@ void loop()
   // End of Arming Complete Sequence. If statement. 
   }
 
-  Serial.println(" --- SBUS OUTPUT --- ");
+  // Serial.println(" --- SBUS OUTPUT --- ");
   if (currentMillis > sbusTime)
   {
     sbusPreparePacket(sbusPacket, rcChannels, false, false);
     Serial1.write(sbusPacket, SBUS_PACKET_LENGTH);
-    printSBUSChannel(rcChannels);
-    printSBUSPacket(sbusPacket);
+    // printSBUSChannel(rcChannels);
+    // printSBUSPacket(sbusPacket);
     sbusTime = currentMillis + SBUS_UPDATE_RATE;
     sbusmeesagesent = true;
 
-    Serial.print("PITCH: "); Serial.println(rcChannels[PITCH]);
-    Serial.print("SBUS ROLL:                 "); Serial.println(rcChannels[ROLL]);
-    Serial.print("SBUS YAW:  "); Serial.println(rcChannels[YAW]);
-    Serial.print("SBUS THROTTLE: "); Serial.println(rcChannels[THROTTLE]);
+    // Serial.print("PITCH: "); Serial.println(rcChannels[PITCH]);
+    // Serial.print("SBUS ROLL:                 "); Serial.println(rcChannels[ROLL]);
+    // Serial.print("SBUS YAW:  "); Serial.println(rcChannels[YAW]);
+    // Serial.print("SBUS THROTTLE: "); Serial.println(rcChannels[THROTTLE]);
   } 
   else{
     sbusmeesagesent = false;
