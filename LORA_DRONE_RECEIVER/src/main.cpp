@@ -7,6 +7,36 @@
 #include "SBUS.h"
 #include "LoRa_SX1262.h"
 
+#include <Wire.h>
+#include <SparkFun_VL53L5CX_Library.h> //http://librarymanager/All#SparkFun_VL53L5CX
+
+
+#define pwPinTop 15  // Top US
+volatile unsigned long pulseStart1 = 0;
+volatile double distanceCm1 = 0;
+volatile bool US_ready1 = false;
+volatile double CurrentDistance = 0; // read from ultrasonic
+
+#define pwPinFront 4  // Front US
+volatile unsigned long pulseStartF = 0;
+volatile double distanceCmF = 0;
+volatile bool US_readyF = false;
+volatile double CurrentDistanceF = 0; // read from ultrasonic
+
+// Sensor objects and measurement data
+SparkFun_VL53L5CX sensor1;
+VL53L5CX_ResultsData measurementData1; // Result data class structure, 1356 byes of RAM
+int imageResolution1 = 0;
+int imageWidth1 = 0;
+int frontAvg = -1;
+int backAvg = -1;
+int totalAvg = -1;
+
+// TOF RIGHT
+#define SDA_PIN 48
+#define SCL_PIN 47
+
+
 static RadioEvents_t RadioEvents;
 hw_config hwConfig;
 time_t lastMessage;
@@ -30,10 +60,23 @@ uint8_t sbusPacket[SBUS_PACKET_LENGTH];
 int rcChannels[SBUS_CHANNEL_NUMBER];
 uint32_t sbusTime = 0;
 
+// Timing variables
 uint32_t currentMillis;
 uint32_t armingMillis;
+uint32_t endofpathtime = 0;
+uint32_t TurnLefttimecomplete = 0;
+uint32_t brakingtime = 0;
+uint32_t adjustingYAWtime = 0;
 
+// Logic Booleans for Naviagtion
 bool armingSequenceFlag = false;
+volatile bool endofpath = false; // Used to decide when to turn drone
+volatile bool turningsoon = false; // used to activate endofpath
+volatile bool busychnagingYAW = false;
+volatile int turningYAW = 1500;
+bool armsequencecomplete = false;
+bool runoncePITCH = false;
+volatile bool sbusmeesagesent = false;
 
 boolean start_flag = false;
 
@@ -171,7 +214,7 @@ void loraTimerCallback()
 // Ultrasonic Top Interupt Function
 void US1_ISR() {
   // Called when pwPin changes
-  if (digitalRead(pwPin1) == HIGH) {
+  if (digitalRead(pwPinTop) == HIGH) {
     // Rising edge
     pulseStart1 = micros();
     US_ready1 = false;
@@ -197,6 +240,7 @@ void USFront_ISR() {
     US_readyF = true;
   }
 }
+
 
 /// Reading RIGHT TOF sensor. 
 void readCenterAverage(SparkFun_VL53L5CX &sensor, VL53L5CX_ResultsData &measurementData) {
@@ -296,8 +340,8 @@ void setup()
   lastMessage = millis();
 
   // Ultrasonic Interrupt Setup
-  pinMode(pwPin1, INPUT_PULLUP);
-  attachInterrupt(digitalPinToInterrupt(pwPin1), US1_ISR, CHANGE); // USFront_ISR
+  pinMode(pwPinTop, INPUT_PULLUP);
+  attachInterrupt(digitalPinToInterrupt(pwPinTop), US1_ISR, CHANGE); // USFront_ISR
   attachInterrupt(digitalPinToInterrupt(pwPinFront), USFront_ISR, CHANGE);
 
   Wire.begin(SDA_PIN, SCL_PIN); // Initialize I2C bus
@@ -329,7 +373,7 @@ void loop()
   currentMillis = millis();
 
   // Arming sequence hard coded
-  if (armingSequenceFlag){
+  if (armingSequenceFlag){ // armingSequenceFlag
     // wait 5 seconds then arm
     if (currentMillis > 5000 + armingMillis && currentMillis < 10000 + armingMillis){
       rcChannels[THROTTLE] = THROTTLE_MIN;
@@ -337,16 +381,18 @@ void loop()
       Serial.println("Arm drone.");
     } else if (currentMillis > 10000 + armingMillis && currentMillis < 15000 + armingMillis){ // Wait another 5 seconds before turning on throttle and leave on for 10 seconds
       rcChannels[THROTTLE] = 1350;
+      rcChannels[AUX1] = 1800;
       Serial.println("Throttle 1350.");
     } else if (currentMillis > 15000 + armingMillis){
       Serial.println("Arming sequence finished");
       rcChannels[THROTTLE] = 1350;
+      rcChannels[AUX1] = 1800; 
       armingSequenceFlag = false;
       armsequencecomplete = true;
     }
   }
 
-  if(armsequencecomplete){
+  if(armsequencecomplete){ //armsequencecomplete
 
     // THROTTLE CHANGES - TOP side Ultrasonic Sensor
     if (US_ready1) {
@@ -363,20 +409,26 @@ void loop()
       } else if (CurrentDistance > 159.41){ // 159.41176 
         rcChannels[THROTTLE] = 1355; 
       }
+    }
 
       // ROLL Changes
-    Serial.println("READ CENTER AVG");
+    // Serial.println("READ CENTER AVG");
+    if(sbusmeesagesent){
+      totalAvg = -1;
+      frontAvg = -1;
+      backAvg = -1;
+    }
     readCenterAverage(sensor1, measurementData1);
-    Serial.print("commanding roll-TOF: "); Serial.println(totalAvg);    
+    Serial.print("Total roll-TOF: "); Serial.println(totalAvg);    
+    Serial.print("FRONT-TOF: "); Serial.println(frontAvg);   
+    Serial.print("BACK aERY -TOF: "); Serial.println(backAvg);   
     // Serial.print("TLTC: "); Serial.println(currentMillis - TurnLefttimecomplete);    
     if(currentMillis - TurnLefttimecomplete > 500){   
       // Serial.println("IN ROLL if statement");
         if(totalAvg > 0 && totalAvg < 1000){ // centerAvg returns middle 4 tof average ranges in mm. 
           rcChannels[ROLL] = 1470; 
-          totalAvg = -1; 
         } else if(totalAvg > 1050){ // 1200mm = 1.2m
           rcChannels[ROLL] = 1530;
-          totalAvg = -1; 
         } else{
           rcChannels[ROLL] = 1500;
         }
@@ -392,18 +444,12 @@ void loop()
         if(frontAvg - backAvg > 100){ // turn left slightly
           turningYAW = 1700; 
           adjustingYAWtime = currentMillis;
-          frontAvg = -1;
-          backAvg = -1;
         } else if(frontAvg - backAvg < 100){ // turn right
           turningYAW = 1300;
           adjustingYAWtime = currentMillis;
-          frontAvg = -1;
-          backAvg = -1;
         } else{
           turningYAW = 1500;
           adjustingYAWtime = currentMillis;
-          frontAvg = -1;
-          backAvg = -1;
         }
       } else{
         turningYAW = 1500;
@@ -471,22 +517,25 @@ void loop()
   // End of Arming Complete Sequence. If statement. 
   }
 
-
+  Serial.println(" --- SBUS OUTPUT --- ");
   if (currentMillis > sbusTime)
   {
     sbusPreparePacket(sbusPacket, rcChannels, false, false);
     Serial1.write(sbusPacket, SBUS_PACKET_LENGTH);
-    // printSBUSChannel(rcChannels);
-    // printSBUSPacket(sbusPacket);
+    printSBUSChannel(rcChannels);
+    printSBUSPacket(sbusPacket);
     sbusTime = currentMillis + SBUS_UPDATE_RATE;
+    sbusmeesagesent = true;
 
     Serial.print("PITCH: "); Serial.println(rcChannels[PITCH]);
     Serial.print("SBUS ROLL:                 "); Serial.println(rcChannels[ROLL]);
     Serial.print("SBUS YAW:  "); Serial.println(rcChannels[YAW]);
     Serial.print("SBUS THROTTLE: "); Serial.println(rcChannels[THROTTLE]);
+  } 
+  else{
+    sbusmeesagesent = false;
   }
 
-  // delay(5000);
 }
 
 
@@ -526,15 +575,10 @@ void loop()
 
 // // Turn Side Ways Ultrasonic
 // // When it is not turning or just turned and is flying straight
-  if(leftUS > 250.00 && !endofpath && currentMillis - TurnLefttimecomplete > 1000 && !hallwayturn){
-    // brake then turn into the empty hallway
-    hallwayturn = true;
-  } else if(leftUS < 250.00 && hallwayturn){
-    // do not allow turn until it is in the new hallway. 
-    hallwayturn = false;
-  }
-
-
-
-
-}
+  // if(leftUS > 250.00 && !endofpath && currentMillis - TurnLefttimecomplete > 1000 && !hallwayturn){
+  //   // brake then turn into the empty hallway
+  //   hallwayturn = true;
+  // } else if(leftUS < 250.00 && hallwayturn){
+  //   // do not allow turn until it is in the new hallway. 
+  //   hallwayturn = false;
+  // }
