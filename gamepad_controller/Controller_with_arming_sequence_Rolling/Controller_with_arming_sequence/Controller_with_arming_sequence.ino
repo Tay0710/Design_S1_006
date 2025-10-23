@@ -56,9 +56,13 @@ SparkFun_VL53L5CX sensor1;
 VL53L5CX_ResultsData measurementData1; // Result data class structure, 1356 byes of RAM
 int imageResolution1 = 0;
 int imageWidth1 = 0;
-volatile int centerAvg = -1;  // Global variable to hold the latest average
-volatile int leftavg = -1;
-volatile int rightavg = -1;
+int frontAvg = -1;
+int backAvg = -1;
+int totalAvg = -1;
+volatile bool busychnagingYAW = false;
+volatile int turningYAW = 1500;
+
+
 
 // Using UART2 on ESP32
 #define RX_PIN 16
@@ -91,6 +95,7 @@ uint32_t LastRightPress = 0;
 uint32_t LastLeftPress = 0; 
 uint32_t TurnLefttimecomplete = 0;
 uint32_t brakingtime = 0;
+uint32_t adjustingYAWtime = 0;
 
 bool armingSequenceFlag = false;
 bool armsequencecomplete = false;
@@ -521,7 +526,7 @@ void setup() {
     delay(50); // small delay to avoid spamming I2C or Serial
   }
 
-  sensor1.setResolution(4*4);
+  sensor1.setResolution(8*8);
   imageResolution1 = sensor1.getResolution();
   imageWidth1 = sqrt(imageResolution1);
   Serial.println("Sensor 1 initialized successfully at 0x29");
@@ -530,7 +535,7 @@ void setup() {
 
   // Start ranging on both sensors. 
   Serial.println("Starting ranging on tof sensors...");
-  sensor1.setRangingFrequency(60);
+  sensor1.setRangingFrequency(15);
   sensor1.startRanging();
   Serial.println("sensor tof is now ranging.");
 
@@ -572,57 +577,63 @@ void readCenterAverage(SparkFun_VL53L5CX &sensor, VL53L5CX_ResultsData &measurem
   if (sensor.isDataReady()) {
     if (sensor.getRangingData(&measurementData)) {
 
-      //   // take this out and make it universal
-      // int leftIdx[] = {
-      //   5,6,7,13,14,15,21,22,23,29,30,31,37,38,39,45,46,47,53,54,55,61,62,63
-      // };
-      // int rightIdx[] = {
-      //   0,1,2,8,9,10,16,17,18,24,25,26,32,33,34,40,41,42,48,49,50,56,57,58
-      // };
+      int frontSum = 0;
+      int backSum = 0;
+      int totalSum = 0;
 
-      // int sumleft = 0; int countleft = 0; // looks only at the left values
-      // int sumright = 0; int countright = 0; // looks only at the right values
-      int sumCenter = 0; int countCenter = 0; // center does looks at all values
+      int frontCount = 0;
+      int backCount = 0;
+      int totalCount = 0;
 
-      // int lefti = 0;
-      // int righti = 0;
+      frontAvg = 0;
+      backAvg = 0;
+      totalAvg = 0;
 
-      for (int i = 0; i < 16; i++) {
+      for (int i = 0; i < 64; i++) {
         uint8_t status = measurementData.target_status[i];
         int distance = measurementData.distance_mm[i];
         if (status == 5) { // valid return
-          sumCenter +=  distance;
-          countCenter++;
+          totalSum +=  distance;
+          totalCount++;
+          if (i < 24) {
+            // Front 3 columns: D0 to D23
+            frontSum += distance;
+            frontCount++;
+          } else if (i > 39) {
+            // Back 3 columns: D40 to D63
+            backSum += distance;
+            backCount++;
+          }
         }
-
-        // if(i == leftIdx[lefti]){
-        //   lefti++;
-        //   if(status == 5) {
-        //     sumleft += distance;
-        //   }
-        // }
-        // if(i == rightIdx[righti]){
-        //   righti++;
-        //   if(status == 5) {
-        //     sumright += distance;
-        //   }
-        // }
       }
 
-      if (countCenter > 0) {
-        centerAvg = sumCenter / countCenter;
-        Serial.print("Average center distance (mm): ");
-        Serial.println(centerAvg);
+      if (totalCount > 0) {
+        totalAvg = totalSum / totalCount;
+        Serial.print("Average total distance (mm): ");
+        Serial.println(totalAvg);
       } else {
-        centerAvg = -1;
-        Serial.println("No valid center pixels.");
+        totalAvg = -1;
+        Serial.println("No valid pixels.");
       }
 
-      // if(countleft > 0) leftavg = sumleft / countleft;
-      // else leftavg = -1;
+      if (frontCount > 0) {
+        frontAvg = frontSum / frontCount;
+        Serial.print("Average front distance (mm): ");
+        Serial.println(frontAvg);
+      } else {
+        frontAvg = -1;
+        Serial.println("No valid front pixels.");
+      }
 
-      // if(countright > 0) rightavg = sumright / countright;
-      // else rightavg = -1;
+    
+      if (backCount > 0) {
+        backAvg = backSum / backCount;
+        Serial.print("Average back distance (mm): ");
+        Serial.println(backAvg);
+      } else {
+        backAvg = -1;
+        Serial.println("No valid back pixels.");
+      }
 
     } else{
       Serial.println("Failed to get Data!");
@@ -724,16 +735,16 @@ void loop() {
     // ROLL Changes
     Serial.println("READ CENTER AVG");
     readCenterAverage(sensor1, measurementData1);
-    Serial.print("commanding roll-TOF: "); Serial.println(centerAvg);    
+    Serial.print("commanding roll-TOF: "); Serial.println(totalAvg);    
     // Serial.print("TLTC: "); Serial.println(currentMillis - TurnLefttimecomplete);    
-    if(currentMillis - TurnLefttimecomplete > 1000){   
+    if(currentMillis - TurnLefttimecomplete > 500){   
       // Serial.println("IN ROLL if statement");
-        if(centerAvg > 0 && centerAvg < 1000){ // centerAvg returns middle 4 tof average ranges in mm. 
+        if(totalAvg > 0 && totalAvg < 1000){ // centerAvg returns middle 4 tof average ranges in mm. 
           rcChannels[ROLL] = 1470; 
-          centerAvg = -1; 
-        } else if(centerAvg > 1050){ // 1200mm = 1.2m
+          totalAvg = -1; 
+        } else if(totalAvg > 1050){ // 1200mm = 1.2m
           rcChannels[ROLL] = 1530;
-          centerAvg = -1; 
+          totalAvg = -1; 
         } else{
           rcChannels[ROLL] = 1500;
         }
@@ -741,6 +752,39 @@ void loop() {
       rcChannels[ROLL] = 1500;
       // Serial.println("IN ROLL ELSE");
     }
+
+    // //YAW angle fixes
+    // if(!endofpath && currentMillis - TurnLefttimecomplete > 500 && !busychnagingYAW){   
+    //   if(frontAvg > 30 && backAvg > 30 && frontAvg < 2000 && backAvg < 2000 && frontAvg - backAvg < 1000 && frontAvg - backAvg > 1000){ // prevent changing when too close, too far or too greater difference
+    //     if(frontAvg - backAvg > 100){ // turn left slightly
+    //       turningYAW = 1700; 
+    //       currentMillis = adjustingYAWtime;
+    //       frontAvg = -1;
+    //       backAvg = -1;
+    //     } else if(frontAvg - backAvg < 100){ // turn right
+    //       turningYAW = 1300;
+    //       currentMillis = adjustingYAWtime;
+    //       frontAvg = -1;
+    //       backAvg = -1;
+    //     } else{
+    //       turningYAW = 1500;
+    //       currentMillis = adjustingYAWtime;
+    //       frontAvg = -1;
+    //       backAvg = -1;
+    //     }
+    //   } else{
+    //     turningYAW = 1500;
+    //     currentMillis = adjustingYAWtime;
+    //   }
+    // } 
+
+    // // turning for time
+    // if(currentMillis - adjustingYAWtime < 40 && currentMillis - TurnLefttimecomplete > 500 && !endofpath){ // change YAW for 40ms
+    //   rcChannels[YAW] = turningYAW;
+    //   busychnagingYAW = true; 
+    // } else if(currentMillis - adjustingYAWtime > 40 && busychnagingYAW){
+    //   busychnagingYAW = false;
+    // }
     
 
     // // FRONT Ultrasonic Sensor (MB1000) - CHECKING for upcoming obstacle infront (assume obstacle is wall)
@@ -755,11 +799,11 @@ void loop() {
       
       // PITCH CONTROL.
       // next addition P control
-      if(currentMillis - TurnLefttimecomplete < 1000 && !endofpath){ // go for after turning for 1.0s
+      if(currentMillis - TurnLefttimecomplete < 500 && !endofpath){ // go for after turning for 1.0s
         rcChannels[PITCH] = 1500;
       } else if(currentMillis > 11800 + armingMillis) {
-          if(CurrentDistanceF > 10.00 && CurrentDistanceF <= 200.00 && currentMillis - brakingtime < 1000){
-            rcChannels[PITCH] = 1420;
+          if(CurrentDistanceF > 10.00 && CurrentDistanceF <= 200.00 && currentMillis - brakingtime < 500){
+            rcChannels[PITCH] = 1390;
             CurrentDistanceF = 0.00;
           } else if(CurrentDistanceF > 10.00 && CurrentDistanceF <= 200.00 && currentMillis - brakingtime > 1000){
             rcChannels[PITCH] = 1500;
@@ -786,7 +830,7 @@ void loop() {
       rcChannels[YAW] =  1300;
       TurnLefttimecomplete = currentMillis;  // used to block Wall following
     } 
-    else if(currentMillis - endofpathtime > 600 && endofpath){ // Only allow turning YAW to run for 300ms. 
+    else if(currentMillis - endofpathtime > 360 && endofpath){ // Only allow turning YAW to run for 300ms. 
       endofpath = false; // Path is no longer at an end.
       turningsoon = false;
       TurnLefttimecomplete = currentMillis; 
@@ -837,6 +881,17 @@ void loop() {
 // // define lowmodetime as unit32 (timestamp)
 // // define low and upper throttle period as variables (check requirements for transition period)
 
+
+
+// // Turn Side Ways Ultrasonic
+// // When it is not turning or just turned and is flying straight
+//   if(leftUS > 250.00 && !endofpath && currentMillis - TurnLefttimecomplete > 1000 && !hallwayturn){
+//     // brake then turn into the empty hallway
+//     hallwayturn = true;
+//   } else if(leftUS < 250.00 && hallwayturn){
+//     // do not allow turn until it is in the new hallway. 
+//     hallwayturn = false;
+//   }
 
 
   // The main loop must have some kind of "yield to lower priority task" event.
