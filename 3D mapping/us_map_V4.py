@@ -2,7 +2,9 @@
 us_map_V3.py
 ------------------------------
 Shows only ACTUAL ultrasonic points plus a synthetic floor (Down) point
-at z = 0 for each Up timestamp. Extrapolation/interpolation is disabled.
+at z = 0 for each kept Up timestamp. Extrapolation/interpolation is disabled.
+
+Assumes ultrasonic distances in **centimetres** in the CSV (cm → m).
 
 Colours:
   • Up (U)      : purple        [0.75, 0.20, 0.90]
@@ -15,7 +17,6 @@ Colours:
 import numpy as np
 import pandas as pd
 import open3d as o3d
-from scipy.spatial import cKDTree  # kept for future use, not used now
 
 # === Sensor Offsets (m) ===
 offsetU = np.array([0.021,  0.0,   0.132])
@@ -27,13 +28,8 @@ offsetR = np.array([0.040, -0.052, 0.035])
 TIME_TOL = 0.055
 POINT_SIZE = 5.5
 
-# (Extrapolation parameters kept for future; not used now)
-INTERP_STEPS = 12
-MAX_DIST_MATCH = 1.2
-BOOST_STEPS = 28
-BOOST_MAX_DIST = 2.0
-BOOST_K_NEIGHBORS = 2
-BOOST_OVERSHOOT = 0.10
+# Ceiling acceptance threshold (metres): keep Up only if distance >= 0.9 m
+ROOF_MIN_DIST_M = 0.9
 
 # === Load rotation matrices ===
 def load_rotation_matrices(rot_csv):
@@ -42,33 +38,25 @@ def load_rotation_matrices(rot_csv):
     return times, rot.reshape(-1, 3, 3)
 
 def parse_distance(v):
+    """
+    Convert raw ultrasonic reading to metres.
+    Expecting **centimetres** in CSV → divide by 100.
+    """
     try:
         val = float(v)
         if val <= 0:
             return np.nan
-        return val / 100.0  # mm → m
+        return val / 100.0  # cm → m
     except:
         return np.nan
 
 def to_world(local_vec, rot_mat, drone_pos):
     return drone_pos + rot_mat @ local_vec
 
-def align_pair(df, t1, t2, tol=TIME_TOL):
-    sub1 = df[df["type"] == t1][["time", "distance"]].copy()
-    sub2 = df[df["type"] == t2][["time", "distance"]].copy()
-    sub1["dist_m"] = sub1["distance"].apply(parse_distance)
-    sub2["dist_m"] = sub2["distance"].apply(parse_distance)
-    sub1 = sub1.dropna(subset=["time", "dist_m"]).sort_values("time").rename(columns={"dist_m": t1})
-    sub2 = sub2.dropna(subset=["time", "dist_m"]).sort_values("time").rename(columns={"dist_m": t2})
-    if sub1.empty or sub2.empty:
-        return pd.DataFrame(columns=["time", t1, t2])
-    merged = pd.merge_asof(sub1, sub2, on="time", direction="nearest", tolerance=tol)
-    return merged.dropna()
-
-# === NEW: create synthetic floor points (Down at z=0) for each Up timestamp ===
+# === Synthetic floor points (Down at z=0) for each kept Up timestamp ===
 def create_floor(up_times, traj_time, rot_mats, drone_positions):
     """
-    For each Up timestamp, generate a single 'Down' world point on the floor plane (z=0)
+    For each kept Up timestamp, generate a single 'Down' world point on the floor plane (z=0)
     located horizontally under the Down sensor:
       world_point = (drone_pos + R * offsetD) with z forced to 0
     Returns: np.ndarray (N,3)
@@ -151,17 +139,20 @@ def main(us_input_cropped):
     actual_U, actual_L, actual_R = [], [], []
     us["type"] = us["type"].astype(str).str.strip().str.upper()
 
-    # Collect Up timestamps for floor synthesis
+    # Collect Up timestamps for floor synthesis (only for accepted Up samples)
     up_times = []
 
     for _, row in us.iterrows():
         t = row["time"]
         d = parse_distance(row["distance"])
         s = row["type"]
+
+        # Require valid reading and one of expected sensors
         if s not in {"U", "L", "R"} or np.isnan(d):
-            if s == "U":  # still track timestamps even if distance invalid? safer to require valid
-                # only add if valid distance so alignment matches real U points
-                pass
+            continue
+
+        # Apply ceiling distance gate: keep Up only if >= ROOF_MIN_DIST_M
+        if s == "U" and d < ROOF_MIN_DIST_M:
             continue
 
         idx = np.searchsorted(traj_time, t, side="right")
@@ -172,10 +163,11 @@ def main(us_input_cropped):
 
         if s == "U":
             v = np.array([0, 0, d]) + offsetU
-            up_times.append(t)
+            up_times.append(t)  # only append for accepted Up (passes threshold)
             actual_U.append(to_world(v, rot_mat, drone_pos))
         elif s == "L":
-            v = np.array([d, 0, 0]) + offsetL
+            # Using X ± d convention per your latest snippet
+            v = np.array([ d, 0, 0]) + offsetL
             actual_L.append(to_world(v, rot_mat, drone_pos))
         elif s == "R":
             v = np.array([-d, 0, 0]) + offsetR
@@ -185,31 +177,26 @@ def main(us_input_cropped):
     actual_L = np.array(actual_L) if len(actual_L) else np.empty((0,3))
     actual_R = np.array(actual_R) if len(actual_R) else np.empty((0,3))
 
-    # --- Synthesize floor (Down) points at z=0 for each Up timestamp ---
+    # --- Synthesize floor (Down) points at z=0 for each kept Up timestamp ---
     floor_D = create_floor(up_times, traj_time, rot_mats, drone_positions)
 
-    # ====== EVERYTHING BELOW (corners/interpolation/boosts) DISABLED ======
-    # # Pairs / corners
-    # pairs = {"UR": ("U", "R"), "UL": ("U", "L")}  # (D removed)
-    # ... (commented out)
-
-    # # Generic / boosted interpolation
-    # generic_interp = np.empty((0,3))
-    # left_interp = np.empty((0,3))
-    # right_interp = np.empty((0,3))
-    # ======================================================================
-
-    print(f"✅ Up points:   {len(actual_U)}")
-    print(f"✅ Left points: {len(actual_L)}")
-    print(f"✅ Right points:{len(actual_R)}")
-    print(f"✅ Floor (D*):  {len(floor_D)}")
+    print(f"✅ Up points (kept):   {len(actual_U)}  (threshold >= {ROOF_MIN_DIST_M:.2f} m)")
+    print(f"✅ Left points:        {len(actual_L)}")
+    print(f"✅ Right points:       {len(actual_R)}")
+    print(f"✅ Floor (D*):         {len(floor_D)}")
 
     visualize_actual_only(actual_U, actual_L, actual_R, floor_D, drone_positions)
 
-    # Return only the actuals + floor for now
-    all_actual = np.vstack([a for a in [actual_U, actual_L, actual_R, floor_D] if len(a)]) \
-                 if any(len(a) for a in [actual_U, actual_L, actual_R, floor_D]) else np.empty((0,3))
-    return all_actual, actual_U, actual_L, actual_R, floor_D
+    # -------- Return triple to match pipeline --------
+    # interp_points disabled → empty
+    interp_points = np.empty((0,3))
+    # actual points → combine U, L, R, and synthetic floor
+    us_actual_points = np.vstack([a for a in [actual_U, actual_L, actual_R, floor_D] if len(a)]) \
+                       if any(len(a) for a in [actual_U, actual_L, actual_R, floor_D]) else np.empty((0,3))
+    # corners disabled → empty
+    us_corner_points = np.empty((0,3))
+
+    return interp_points, us_actual_points, us_corner_points
 
 if __name__ == "__main__":
     main()
