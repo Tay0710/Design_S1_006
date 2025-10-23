@@ -17,11 +17,14 @@ volatile double distanceCm1 = 0;
 volatile bool US_ready1 = false;
 volatile double CurrentDistance = 0; // read from ultrasonic
 
-#define pwPinFront 4  // Front US
+// #define pwPinFront 4  // Front US
+#define pwPinFront 5 // Note: this is the one originally located on the left side
 volatile unsigned long pulseStartF = 0;
 volatile double distanceCmF = 0;
 volatile bool US_readyF = false;
 volatile double CurrentDistanceF = 0; // read from ultrasonic
+
+
 
 // Sensor objects and measurement data
 SparkFun_VL53L5CX sensor1;
