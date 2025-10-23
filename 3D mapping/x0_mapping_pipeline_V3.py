@@ -28,7 +28,7 @@ except Exception:
 
 # Project imports
 from tof_map_V2 import main as tof_map   # -> (tof_points, traj_positions)
-from us_map_V3  import main as us_map    # -> (us_interp_points, us_actual_points, us_corner_points)
+from us_map_V4  import main as us_map    # -> (us_interp_points, us_actual_points, us_corner_points)
 
 # =============================================================================
 # Utilities
