@@ -26,5 +26,7 @@ The firmware is based on the open-source project *BetaFlight*, with a custom con
 1. Using an ST-Link, connect SWDIO, SWDCLK, VDD and GND on the flight controller PCB to a PC running STM32CubeProgrammer.
 1. Select 'ST-LINK' as the flashing method.
 1. Go to the 'Erase & Programming' tab and select the file path of the FLIGHT_CONTROLLER_V1.hex file.
-1. Click 'Start Programming' to flash the firmware onto 
+1. Click 'Start Programming' to flash the firmware onto the flight controller PCB.
+
+Note: the LED on the flight controller PCB will start to flash, indicating that the firmware has been uploaded correctly.
 
