@@ -35,6 +35,7 @@
 #define USU 18 // Left-mounted ultrasonic PW pin
 #define USR 5  // Right-mounted ultrasonic PW pin
 #define LED1 6 // PCB LED
+#define rxPin 16
 
 #define BOOT_PIN 4 // To change to 0
 
@@ -735,15 +736,6 @@ void setup()
   delay(100);
   // Activating I2C Reset pin to reset the addresses (Pulse High).
   pinMode(RESET, OUTPUT);
-<<<<<<< HEAD
-  digitalWrite(RESET, HIGH);
-  delay(100);
-  digitalWrite(RESET, LOW);
-  delay(100);
-  // Deactivating PWR_EN (Make Low). Reseting sensors
-  digitalWrite(PENA, LOW);
-  delay(100);
-=======
   digitalWrite(RESET, HIGH); 
   delay(40); // Change to 10 ms to trigger RX of ultrasonic sensors
   digitalWrite(RESET, LOW); 
@@ -751,7 +743,6 @@ void setup()
   // Deactivating PWR_EN (Make Low). Resetting sensors
   digitalWrite(PENA, LOW); 
   delay(100);   
->>>>>>> d7e615049719971520ee89f5a88843328a0fa688
   digitalWrite(PENA, HIGH); // Make high again
   delay(100);
   // Configure LPn pins
@@ -843,16 +834,9 @@ void setup()
 
   // Ultrasonics
   // pinMode(USD, INPUT); // Note: Ultrasonics operate on a 49mS cycle.
-<<<<<<< HEAD
-  pinMode(USR, INPUT);
-  pinMode(USU, INPUT); // USF is for object detection (front of drone).
-  pinMode(USL, INPUT);
-  // pinMode(USU, INPUT); // USF is for object detection (front of drone).
-=======
   pinMode(USL, INPUT);
   pinMode(USR, INPUT);
   pinMode(USU, INPUT); // USF is for object detection (front of drone). 
->>>>>>> d7e615049719971520ee89f5a88843328a0fa688
 
   // digitalWrite(LED1, HIGH);
   Serial.println("Set LED high");
@@ -863,6 +847,12 @@ void setup()
   attachInterrupt(digitalPinToInterrupt(USL), USL_ISR, CHANGE);
   attachInterrupt(digitalPinToInterrupt(USR), USR_ISR, CHANGE);
   attachInterrupt(digitalPinToInterrupt(USU), USU_ISR, CHANGE);
+  
+  digitalWrite(rxPin, HIGH);
+  delayMicroseconds(25);
+  digitalWrite(rxPin, LOW);
+  delayMicroseconds(25);
+  pinMode(rxPin, INPUT);
   Serial.println("Ultrasonics set up complete.");
 
   Serial.println("Setting up the CSV files!");
