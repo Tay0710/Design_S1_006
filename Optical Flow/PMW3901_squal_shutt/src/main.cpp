@@ -38,12 +38,22 @@ uint16_t readShutter() {
   return (uint16_t(hi) << 8) | lo;
 }
 
+int16_t deltaX = 0;
+int16_t deltaY = 0;
+
 void loop() {
-  flow.readFrameBuffer(frame);
-  for (int i = 0; i < 1225; i++) { // 1 frame of 1225 pixels (35*35)
-    Serial.printf("%d, ", frame[i]);
-  }
+  // flow.readFrameBuffer(frame);
+  // for (int i = 0; i < 1225; i++) { // 1 frame of 1225 pixels (35*35)
+  //   Serial.printf("%d, ", frame[i]);
+  // }
+  flow.readMotionCount(&deltaX, &deltaY);
   Serial.println(" ");
+
+  Serial.print("X: ");
+  Serial.println(deltaX);
+
+  Serial.print("Y: ");
+  Serial.println(deltaY);
   
   uint8_t squal = readRegister(0x07);
   Serial.print("SQUAL = ");
