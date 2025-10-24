@@ -137,23 +137,13 @@ def main(us_input_cropped):
     times_mat, rot_mats = load_rotation_matrices("../optical_flow_method_data/rotation_matrices.csv")
     us = pd.read_csv(us_input_cropped)
 
-    drone_positions = []
-
     traj_time = traj["time (s)"].values
+    drone_positions = traj[["pos_world_x", "pos_world_y", "pos_world_z"]].values
 
-    # Build drone trajectory positions
-    for i in range(len(traj)):
-        drone_pos = (
-            traj["pos_world_x"].iloc[i],
-            traj["pos_world_y"].iloc[i],
-            traj["pos_world_z"].iloc[i],
-        )
-        drone_positions.append(drone_pos)
-    
     # --- actual points per-sensor (U, L, R only) ---
     actual_U, actual_L, actual_R = [], [], []
     us["type"] = us["type"].astype(str).str.strip().str.upper()
-    print(us["type"])
+
 
     # Moving average of y velocities
     vel_y = vel["v_y (m/s)"].rolling(window=5).mean()
@@ -177,29 +167,20 @@ def main(us_input_cropped):
         idx = np.searchsorted(traj_time, t, side="right")
         if idx >= len(traj_time):
             continue
-
-        # Get nearest rotation matrix
-        rot_idx = np.searchsorted(times_mat, t, side="right")
-        if rot_idx >= len(rot_mats):
-            rot_mat = rot_mats[-1]
-        else:
-            rot_mat = rot_mats[rot_idx]
-
+        rot_mat = rot_mats[min(idx, len(rot_mats) - 1)]
         drone_pos = drone_positions[idx]
-
         vel_y_u = vel_y[min(idx, len(rot_mats) - 1)]
 
-        if abs(vel_y_u) > 0.5:
-            if s == "U":
-                v = np.array([0, 0, d]) + offsetU
-                up_times.append(t)
-                actual_U.append(to_world(v, rot_mat, drone_pos))
-            elif s == "L":
-                v = np.array([d, 0, 0]) + offsetL
-                actual_L.append(to_world(v, rot_mat, drone_pos))
-            elif s == "R":
-                v = np.array([-d, 0, 0]) + offsetR
-                actual_R.append(to_world(v, rot_mat, drone_pos))
+        if s == "U":
+            v = np.array([0, 0, d]) + offsetU
+            up_times.append(t)
+            actual_U.append(to_world(v, rot_mat, drone_pos))
+        elif s == "L":
+            v = np.array([d, 0, 0]) + offsetL
+            actual_L.append(to_world(v, rot_mat, drone_pos))
+        elif s == "R":
+            v = np.array([-d, 0, 0]) + offsetR
+            actual_R.append(to_world(v, rot_mat, drone_pos))
                 
     actual_U = np.array(actual_U) if len(actual_U) else np.empty((0,3))
     actual_L = np.array(actual_L) if len(actual_L) else np.empty((0,3))
