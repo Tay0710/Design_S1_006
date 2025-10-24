@@ -384,12 +384,12 @@ void loop()
       rcChannels[AUX1] = 1800;
       Serial.println("Arm drone.");
     } else if (currentMillis > 10000 + armingMillis && currentMillis < 11500 + armingMillis){ // Wait another 5 seconds before turning on throttle and leave on for 10 seconds
-      rcChannels[THROTTLE] = 1360;
+      rcChannels[THROTTLE] = 1370;
       rcChannels[AUX1] = 1800;
       Serial.println("Throttle 1360.");
     } else if (currentMillis > 11500 + armingMillis){
       Serial.println("Arming sequence finished");
-      rcChannels[THROTTLE] = 1360;
+      rcChannels[THROTTLE] = 1370;
       rcChannels[AUX1] = 1800; 
       armingSequenceFlag = false;
       armsequencecomplete = true;
@@ -406,12 +406,12 @@ void loop()
       Serial.print(distanceCm1, 2);
       Serial.println(" cm");
       US_ready1 = false;  // Current distance of ultrasonic is saved in: distanceCm1
-      if (CurrentDistance <  156.70 ){ 
-        rcChannels[THROTTLE] = 1333; // 156.70588 
-      } else if (CurrentDistance >  156.70 && CurrentDistance < 159.41){ 
+      if (CurrentDistance <  158.23 ){ 
+        rcChannels[THROTTLE] = 1345; 
+      } else if (CurrentDistance >  158.23 && CurrentDistance < 162.35){ 
         rcChannels[THROTTLE] = 8.5*CurrentDistance; // if height is lowered then add C = 8.5*loweredheight
-      } else if (CurrentDistance > 159.41){ // 159.41176 
-        rcChannels[THROTTLE] = 1355; 
+      } else if (CurrentDistance > 162.35){ 
+        rcChannels[THROTTLE] = 1380; 
       }
     }
 
@@ -442,32 +442,32 @@ void loop()
     }
   
   
-    //YAW angle fixes
-    if(!endofpath && currentMillis - TurnLefttimecomplete > 500 && !busychnagingYAW){   
-      if(frontAvg > 30 && backAvg > 30 && frontAvg < 2000 && backAvg < 2000 && frontAvg - backAvg < 1000 && frontAvg - backAvg > 1000){ // prevent changing when too close, too far or too greater difference
-        if(frontAvg - backAvg > 100){ // turn left slightly
-          turningYAW = 1700; 
-          adjustingYAWtime = currentMillis;
-        } else if(frontAvg - backAvg < 100){ // turn right
-          turningYAW = 1300;
-          adjustingYAWtime = currentMillis;
-        } else{
-          turningYAW = 1500;
-          adjustingYAWtime = currentMillis;
-        }
-      } else{
-        turningYAW = 1500;
-        adjustingYAWtime = currentMillis;
-      }
-    } 
+    // //YAW angle fixes
+    // if(!endofpath && currentMillis - TurnLefttimecomplete > 500 && !busychnagingYAW){   
+    //   if(frontAvg > 30 && backAvg > 30 && frontAvg < 2000 && backAvg < 2000 && frontAvg - backAvg < 1000 && frontAvg - backAvg > 1000){ // prevent changing when too close, too far or too greater difference
+    //     if(frontAvg - backAvg > 100){ // turn left slightly
+    //       turningYAW = 1700; 
+    //       adjustingYAWtime = currentMillis;
+    //     } else if(frontAvg - backAvg < 100){ // turn right
+    //       turningYAW = 1300;
+    //       adjustingYAWtime = currentMillis;
+    //     } else{
+    //       turningYAW = 1500;
+    //       adjustingYAWtime = currentMillis;
+    //     }
+    //   } else{
+    //     turningYAW = 1500;
+    //     adjustingYAWtime = currentMillis;
+    //   }
+    // } 
 
-    // turning for time
-    if(currentMillis - adjustingYAWtime < 40 && currentMillis - TurnLefttimecomplete > 500 && !endofpath){ // change YAW for 40ms
-      rcChannels[YAW] = turningYAW;
-      busychnagingYAW = true; 
-    } else if(currentMillis - adjustingYAWtime > 40 && busychnagingYAW){
-      busychnagingYAW = false;
-    }
+    // // turning for time
+    // if(currentMillis - adjustingYAWtime < 40 && currentMillis - TurnLefttimecomplete > 500 && !endofpath){ // change YAW for 40ms
+    //   rcChannels[YAW] = turningYAW;
+    //   busychnagingYAW = true; 
+    // } else if(currentMillis - adjustingYAWtime > 40 && busychnagingYAW){
+    //   busychnagingYAW = false;
+    // }
 
 
     // // FRONT Ultrasonic Sensor (MB1000) - CHECKING for upcoming obstacle infront (assume obstacle is wall)
@@ -484,21 +484,21 @@ void loop()
       if(currentMillis - TurnLefttimecomplete < 500 && !endofpath){ // go for after turning for 1.0s
         rcChannels[PITCH] = 1500;
       } else if(currentMillis > 11500 + armingMillis) { // Could remove - to check. 
-          if(CurrentDistanceF > 10.00 && CurrentDistanceF <= 200.00 && currentMillis - brakingtime < 1000){
+          if(CurrentDistanceF > 10.00 && CurrentDistanceF <= 10.00 && currentMillis - brakingtime < 1000){
             // rcChannels[PITCH] = 1390;
             rcChannels[PITCH] = 1500; // Replace with 1500 so it won't go backwards when distance is wrong?
             CurrentDistanceF = 0.00;
             Serial.println("Pitch backwards");
-          } else if(CurrentDistanceF > 10.00 && CurrentDistanceF <= 200.00 && currentMillis - brakingtime > 1000){
+          } else if(CurrentDistanceF > 10.00 && CurrentDistanceF <= 10.00 && currentMillis - brakingtime > 1000){
             rcChannels[PITCH] = 1500;
             CurrentDistanceF = 0.00;
-            endofpath = true;
+            // endofpath = true;
             endofpathtime = currentMillis;
-          } else if(CurrentDistanceF > 200.00){
+          } else if(CurrentDistanceF > 10.00){
             rcChannels[PITCH] = 1550; // apply pitch brakes and prepare to turn. 
             CurrentDistanceF = 0.00;
             brakingtime = currentMillis;
-            Serial.print("Pitch forward");
+            Serial.println("Pitch forward");
             // Serial.print("IN EOP PITCH: "); Serial.println(rcChannels[PITCH]);
           } else{
             rcChannels[PITCH] = 1500;
