@@ -259,7 +259,7 @@ void US_LEFT() {
     US_readyL = false;
   } else {
     // Falling edge
-    unsigned long pulseWidthL = micros() - pulseStart1;
+    unsigned long pulseWidthL = micros() - pulseStartL;
     CurrentDistance_US_L = pulseWidthL / 57.87;
     US_readyL = true;
   }
@@ -437,11 +437,11 @@ void loop()
       Serial.print(distanceCm1, 2);
       Serial.println(" cm");
       US_ready1 = false;  // Current distance of ultrasonic is saved in: distanceCm1
-      if (CurrentDistance <  128.23 ){ 
+      if (CurrentDistance <  118.23 ){  // +10
         rcChannels[THROTTLE] = 1345; 
-      } else if (CurrentDistance >  128.23 && CurrentDistance < 132.35){ 
-        rcChannels[THROTTLE] = 8.5*CurrentDistance + 255; // if height is lowered then add C = 8.5*loweredheight
-      } else if (CurrentDistance > 132.35){ 
+      } else if (CurrentDistance >  118.23 && CurrentDistance < 122.35){ 
+        rcChannels[THROTTLE] = 8.5*CurrentDistance + 340; // if height is lowered then add C = 8.5*loweredheight
+      } else if (CurrentDistance > 122.35){ 
         rcChannels[THROTTLE] = 1380; 
       }
     }
