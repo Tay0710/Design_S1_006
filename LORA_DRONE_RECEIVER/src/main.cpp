@@ -414,13 +414,13 @@ void loop()
       rcChannels[THROTTLE] = THROTTLE_MIN;
       rcChannels[AUX1] = 1800;
       Serial.println("Arm drone.");
-    } else if (currentMillis > 10000 + armingMillis && currentMillis < 11350 + armingMillis){ // Wait another 5 seconds before turning on throttle and leave on for 10 seconds
-      rcChannels[THROTTLE] = 1370;
+    } else if (currentMillis > 10000 + armingMillis && currentMillis < 11250 + armingMillis){ // Wait another 5 seconds before turning on throttle and leave on for 10 seconds
+      rcChannels[THROTTLE] = 1360;
       rcChannels[AUX1] = 1800;
       Serial.println("Throttle 1360.");
-    } else if (currentMillis > 11350 + armingMillis){
+    } else if (currentMillis > 11250 + armingMillis){
       Serial.println("Arming sequence finished");
-      rcChannels[THROTTLE] = 1370;
+      rcChannels[THROTTLE] = 1360;
       rcChannels[AUX1] = 1800; 
       armingSequenceFlag = false;
       armsequencecomplete = true;
@@ -437,12 +437,12 @@ void loop()
       Serial.print(distanceCm1, 2);
       Serial.println(" cm");
       US_ready1 = false;  // Current distance of ultrasonic is saved in: distanceCm1
-      if (CurrentDistance <  118.23 ){  // +10
+      if (CurrentDistance <  117.00 ){  // 118.23
         rcChannels[THROTTLE] = 1345; 
-      } else if (CurrentDistance >  118.23 && CurrentDistance < 122.35){ 
-        rcChannels[THROTTLE] = 8.5*CurrentDistance + 340; // if height is lowered then add C = 8.5*loweredheight
-      } else if (CurrentDistance > 122.35){ 
-        rcChannels[THROTTLE] = 1380; 
+      } else if (CurrentDistance >  117.00 && CurrentDistance < 122.00){ 
+        rcChannels[THROTTLE] = 5*CurrentDistance + 760; // 8.5*CurrentDistance + 340
+      } else if (CurrentDistance > 122.00){  // 122.35
+        rcChannels[THROTTLE] = 1370; 
       }
     }
 
@@ -457,9 +457,11 @@ void loop()
       // Serial.println("IN ROLL if statement");
         if(CurrentDistance_US_L > 10.00 && CurrentDistance_US_L < 60.00){ 
           rcChannels[ROLL] = 1530; // right
-        } else if(CurrentDistance_US_L > 70.00){ // 1200mm = 1.2m
+        } else if(CurrentDistance_US_L > 60.00 && CurrentDistance_US_L < 80.00){ 
+          rcChannels[ROLL] = -3*CurrentDistance_US_L + 1710; // Dampen the turn
+        } else if(CurrentDistance_US_L > 80.00){ 
           rcChannels[ROLL] = 1470; // left
-        } else{
+        } else{  
           rcChannels[ROLL] = 1500;
         }
     } else{
@@ -526,7 +528,7 @@ void loop()
             endofpath = true;
             endofpathtime = currentMillis;
           } else if(CurrentDistanceF > 10.00){
-            rcChannels[PITCH] = 1550; // apply pitch brakes and prepare to turn. 
+            rcChannels[PITCH] = 1540; // apply pitch brakes and prepare to turn. 
             CurrentDistanceF = 0.00;
             brakingtime = currentMillis;
             Serial.println("Pitch forward");
