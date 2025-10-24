@@ -455,10 +455,10 @@ void loop()
       US_readyL = false;  // Current distance of ultrasonic is saved in: distanceCm1
       if(currentMillis - TurnLefttimecomplete > 500){   
       // Serial.println("IN ROLL if statement");
-        if(CurrentDistance_US_L > 10.00 && CurrentDistance_US_L < 70.00){ // centerAvg returns middle 4 tof average ranges in mm. 
-          rcChannels[ROLL] = 1460; 
-        } else if(CurrentDistance_US_L > 80.00){ // 1200mm = 1.2m
-          rcChannels[ROLL] = 1540;
+        if(CurrentDistance_US_L > 10.00 && CurrentDistance_US_L < 60.00){ 
+          rcChannels[ROLL] = 1530; // right
+        } else if(CurrentDistance_US_L > 70.00){ // 1200mm = 1.2m
+          rcChannels[ROLL] = 1470; // left
         } else{
           rcChannels[ROLL] = 1500;
         }
@@ -543,7 +543,7 @@ void loop()
     if(currentMillis - endofpathtime < 360 && endofpath){ // (endofpath && ) endofpath is assumed to be true if it is not false?
       // Serial.println("TURNING NOW!!");
       rcChannels[PITCH] = 1500; // Override the Front Ultrasonic PITCH commands
-      rcChannels[YAW] =  1300;
+      // rcChannels[YAW] =  1300; // THIS IS FOR LEFT TURN use 1700 for RIGHT TURN
       TurnLefttimecomplete = currentMillis;  // used to block Wall following
     } 
     else if(currentMillis - endofpathtime > 360 && endofpath){ // Only allow turning YAW to run for 300ms. 
