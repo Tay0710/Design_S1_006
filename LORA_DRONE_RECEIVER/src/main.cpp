@@ -18,14 +18,18 @@ volatile double distanceCm1 = 0;
 volatile bool US_ready1 = false;
 volatile double CurrentDistance = 0; // read from ultrasonic
 
-// #define pwPinFront 4  // Front US
-#define pwPinFront 5 // Note: this is the one originally located on the left side
+#define pwPinFront 4  // Front US
 volatile unsigned long pulseStartF = 0;
 volatile double distanceCmF = 0;
 volatile bool US_readyF = false;
 volatile double CurrentDistanceF = 0; // read from ultrasonic
 
 
+#define pwPinLeftUS  5 // LEFT US
+volatile unsigned long pulseStartL = 0;
+volatile double distanceCmL = 0;
+volatile bool US_readyL = false;
+volatile double CurrentDistance_US_L = 0; // read from ultrasonic
 
 // Sensor objects and measurement data
 SparkFun_VL53L5CX sensor1;
@@ -49,7 +53,7 @@ Ticker loraTimer;
 Ticker SBUSTimer;
 
 #define FAILSAFE_LORA_TIMEOUT 30000 // 30 secs
-#define HOVER_LORA_TIMEOUT 5000     // 5 secs
+#define HOVER_LORA_TIMEOUT 10000     // 5 secs
 #define LORA_TIMER_UDPATE_RATE 1000 // check every 1000 ms
 
 // Using UART0 on ESP32-S3
@@ -246,6 +250,20 @@ void USFront_ISR() {
   }
 }
 
+// Ultrasonic LEFT Interupt Function
+void US_LEFT() {
+  // Called when pwPin changes
+  if (digitalRead(pwPinLeftUS) == HIGH) {
+    // Rising edge
+    pulseStartL = micros();
+    US_readyL = false;
+  } else {
+    // Falling edge
+    unsigned long pulseWidthL = micros() - pulseStart1;
+    CurrentDistance_US_L = pulseWidthL / 57.87;
+    US_readyL = true;
+  }
+}
 
 /// Reading RIGHT TOF sensor. 
 void readCenterAverage(SparkFun_VL53L5CX &sensor, VL53L5CX_ResultsData &measurementData) {
@@ -345,6 +363,7 @@ void setup()
   pinMode(pwPinTop, INPUT_PULLUP);
   attachInterrupt(digitalPinToInterrupt(pwPinTop), US1_ISR, CHANGE); // USFront_ISR
   attachInterrupt(digitalPinToInterrupt(pwPinFront), USFront_ISR, CHANGE);
+  attachInterrupt(digitalPinToInterrupt(pwPinLeftUS),US_LEFT , CHANGE);
 
   Wire.begin(SDA_PIN, SCL_PIN); // Initialize I2C bus
   Wire.setClock(100000); // Optional: 400 kHz I2C
@@ -374,7 +393,9 @@ void setup()
   delay(1);
   pinMode(Ultrasonic_Rx_initialiser, INPUT);
 
+  delay(100); 
   // Ensure that LoRa is at the END!. 
+
   setupLoRaModule();
   loraTimer.attach_ms(LORA_TIMER_UDPATE_RATE, loraTimerCallback);
   lastMessage = millis();
@@ -393,11 +414,11 @@ void loop()
       rcChannels[THROTTLE] = THROTTLE_MIN;
       rcChannels[AUX1] = 1800;
       Serial.println("Arm drone.");
-    } else if (currentMillis > 10000 + armingMillis && currentMillis < 11500 + armingMillis){ // Wait another 5 seconds before turning on throttle and leave on for 10 seconds
+    } else if (currentMillis > 10000 + armingMillis && currentMillis < 11350 + armingMillis){ // Wait another 5 seconds before turning on throttle and leave on for 10 seconds
       rcChannels[THROTTLE] = 1370;
       rcChannels[AUX1] = 1800;
       Serial.println("Throttle 1360.");
-    } else if (currentMillis > 11500 + armingMillis){
+    } else if (currentMillis > 11350 + armingMillis){
       Serial.println("Arming sequence finished");
       rcChannels[THROTTLE] = 1370;
       rcChannels[AUX1] = 1800; 
@@ -416,43 +437,43 @@ void loop()
       Serial.print(distanceCm1, 2);
       Serial.println(" cm");
       US_ready1 = false;  // Current distance of ultrasonic is saved in: distanceCm1
-      if (CurrentDistance <  158.23 ){ 
+      if (CurrentDistance <  128.23 ){ 
         rcChannels[THROTTLE] = 1345; 
-      } else if (CurrentDistance >  158.23 && CurrentDistance < 162.35){ 
-        rcChannels[THROTTLE] = 8.5*CurrentDistance; // if height is lowered then add C = 8.5*loweredheight
-      } else if (CurrentDistance > 162.35){ 
+      } else if (CurrentDistance >  128.23 && CurrentDistance < 132.35){ 
+        rcChannels[THROTTLE] = 8.5*CurrentDistance + 255; // if height is lowered then add C = 8.5*loweredheight
+      } else if (CurrentDistance > 132.35){ 
         rcChannels[THROTTLE] = 1380; 
       }
     }
 
-    // ROLL Changes
-    // Serial.println("READ CENTER AVG");
+    // // ROLL Changes
+    if (US_readyL) {
+      // Serial.print("US1 Distance: ");
+      Serial.print("LEFT US:      ");
+      Serial.print(CurrentDistance_US_L, 2);
+      Serial.println(" cm");
+      US_readyL = false;  // Current distance of ultrasonic is saved in: distanceCm1
+      if(currentMillis - TurnLefttimecomplete > 500){   
+      // Serial.println("IN ROLL if statement");
+        if(CurrentDistance_US_L > 10.00 && CurrentDistance_US_L < 70.00){ // centerAvg returns middle 4 tof average ranges in mm. 
+          rcChannels[ROLL] = 1460; 
+        } else if(CurrentDistance_US_L > 80.00){ // 1200mm = 1.2m
+          rcChannels[ROLL] = 1540;
+        } else{
+          rcChannels[ROLL] = 1500;
+        }
+    } else{
+      rcChannels[ROLL] = 1500;
+    }
+  }
+
+     // //YAW angle fixes
     if(sbusmeesagesent){
       totalAvg = -1;
       frontAvg = -1;
       backAvg = -1;
     }
     readCenterAverage(sensor1, measurementData1);
-    // Serial.print("Total roll-TOF: "); Serial.println(totalAvg);    
-    // Serial.print("FRONT-TOF: "); Serial.println(frontAvg);   
-    // Serial.print("BACK aERY -TOF: "); Serial.println(backAvg);   
-    // Serial.print("TLTC: "); Serial.println(currentMillis - TurnLefttimecomplete);    
-    if(currentMillis - TurnLefttimecomplete > 500){   
-      // Serial.println("IN ROLL if statement");
-        if(totalAvg > 0 && totalAvg < 1000){ // centerAvg returns middle 4 tof average ranges in mm. 
-          rcChannels[ROLL] = 1470; 
-        } else if(totalAvg > 1050){ // 1200mm = 1.2m
-          rcChannels[ROLL] = 1530;
-        } else{
-          rcChannels[ROLL] = 1500;
-        }
-    } else{
-      rcChannels[ROLL] = 1500;
-      // Serial.println("IN ROLL ELSE");
-    }
-  
-  
-    // //YAW angle fixes
     // if(!endofpath && currentMillis - TurnLefttimecomplete > 500 && !busychnagingYAW){   
     //   if(frontAvg > 30 && backAvg > 30 && frontAvg < 2000 && backAvg < 2000 && frontAvg - backAvg < 1000 && frontAvg - backAvg > 1000){ // prevent changing when too close, too far or too greater difference
     //     if(frontAvg - backAvg > 100){ // turn left slightly
@@ -493,16 +514,16 @@ void loop()
       // PITCH CONTROL.
       if(currentMillis - TurnLefttimecomplete < 500 && !endofpath){ // go for after turning for 1.0s
         rcChannels[PITCH] = 1500;
-      } else if(currentMillis > 11500 + armingMillis) { // Could remove - to check. 
+      } else if(currentMillis > 11400 + armingMillis) { // Could remove - to check. 
           if(CurrentDistanceF > 10.00 && CurrentDistanceF <= 10.00 && currentMillis - brakingtime < 1000){
-            // rcChannels[PITCH] = 1390;
-            rcChannels[PITCH] = 1500; // Replace with 1500 so it won't go backwards when distance is wrong?
+            rcChannels[PITCH] = 1390;
+            // rcChannels[PITCH] = 1500; // Replace with 1500 so it won't go backwards when distance is wrong?
             CurrentDistanceF = 0.00;
             Serial.println("Pitch backwards");
           } else if(CurrentDistanceF > 10.00 && CurrentDistanceF <= 10.00 && currentMillis - brakingtime > 1000){
             rcChannels[PITCH] = 1500;
             CurrentDistanceF = 0.00;
-            // endofpath = true;
+            endofpath = true;
             endofpathtime = currentMillis;
           } else if(CurrentDistanceF > 10.00){
             rcChannels[PITCH] = 1550; // apply pitch brakes and prepare to turn. 
@@ -539,8 +560,8 @@ void loop()
   {
     sbusPreparePacket(sbusPacket, rcChannels, false, false);
     Serial1.write(sbusPacket, SBUS_PACKET_LENGTH);
-    // printSBUSChannel(rcChannels);
-    // printSBUSPacket(sbusPacket);
+    printSBUSChannel(rcChannels);
+    printSBUSPacket(sbusPacket);
     sbusTime = currentMillis + SBUS_UPDATE_RATE;
     sbusmeesagesent = true;
 
@@ -589,27 +610,7 @@ void loop()
 // // define low and upper throttle period as variables (check requirements for transition period)
 
 
-//STILL NEED TO CHANGE SOME THINGS
-// #define pwPinLeftUS   // LEFT US
-// volatile unsigned long pulseStartL = 0;
-// volatile double distanceCmL = 0;
-// volatile bool US_readyL = false;
-// volatile double CurrentDistance_US_L = 0; // read from ultrasonic
 
-// // Ultrasonic Top Interupt Function
-// void US1_ISR() {
-//   // Called when pwPin changes
-//   if (digitalRead(pwPinLeftUS) == HIGH) {
-//     // Rising edge
-//     pulseStartL = micros();
-//     US_readyL = false;
-//   } else {
-//     // Falling edge
-//     unsigned long pulseWidthT = micros() - pulseStart1;
-//     distanceCm1 = pulseWidthT / 57.87;
-//     US_readyL = true;
-//   }
-// }
 
 
 // // Turn Side Ways Ultrasonic
@@ -621,3 +622,24 @@ void loop()
   //   // do not allow turn until it is in the new hallway. 
   //   hallwayturn = false;
   // }
+
+
+
+  // OLD ToF Wall Following Code
+     // // Serial.print("Total roll-TOF: "); Serial.println(totalAvg);    
+    // // Serial.print("FRONT-TOF: "); Serial.println(frontAvg);   
+    // // Serial.print("BACK aERY -TOF: "); Serial.println(backAvg);   
+    // // Serial.print("TLTC: "); Serial.println(currentMillis - TurnLefttimecomplete);    
+    // if(currentMillis - TurnLefttimecomplete > 500){   
+    //   // Serial.println("IN ROLL if statement");
+    //     if(totalAvg > 0 && totalAvg < 1000){ // centerAvg returns middle 4 tof average ranges in mm. 
+    //       rcChannels[ROLL] = 1460; 
+    //     } else if(totalAvg > 1050){ // 1200mm = 1.2m
+    //       rcChannels[ROLL] = 1540;
+    //     } else{
+    //       rcChannels[ROLL] = 1500;
+    //     }
+    // } else{
+    //   rcChannels[ROLL] = 1500;
+    //   // Serial.println("IN ROLL ELSE");
+    // }
