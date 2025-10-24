@@ -4,9 +4,10 @@
 
 #include <Arduino.h>
 
+#define rxPin 16
+
 // US L
 #define pwPin1 15
-#define rxPin 41
 volatile unsigned long pulseStart1 = 0;
 volatile float distanceCm1 = 0;
 volatile bool US_ready1 = false;
@@ -95,9 +96,10 @@ void setup()
   Serial.println("MB1030 pulse width distance measurement");
 
   digitalWrite(rxPin, HIGH);
-  delay(1);
+  delayMicroseconds(25);
   digitalWrite(rxPin, LOW);
-  delay(1);
+  delayMicroseconds(25);
+
   pinMode(rxPin, INPUT);
 }
 
@@ -125,5 +127,8 @@ void loop()
     Serial.print(distanceCm3, 2);
     Serial.println(" cm");
     US3_ready = false;
+    // digitalWrite(rxPin, HIGH);
+    // delayMicroseconds(25);
+    // digitalWrite(rxPin, LOW);
   }
 }
