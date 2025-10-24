@@ -639,10 +639,10 @@ void setup() {
   // Activating I2C Reset pin to reset the addresses (Pulse High). 
   pinMode(RESET, OUTPUT);
   digitalWrite(RESET, HIGH); 
-  delay(100); 
+  delay(40); // Change to 10 ms to trigger RX of ultrasonic sensors
   digitalWrite(RESET, LOW); 
   delay(100); 
-  // Deactivating PWR_EN (Make Low). Reseting sensors
+  // Deactivating PWR_EN (Make Low). Resetting sensors
   digitalWrite(PENA, LOW); 
   delay(100);   
   digitalWrite(PENA, HIGH); // Make high again
@@ -723,16 +723,10 @@ void setup() {
   Serial.println("Sensors are now ranging.");
 
   // Ultrasonics
-  pinMode(USD, INPUT); // Note: Ultrasonics operate on a 49mS cycle.
-<<<<<<< HEAD
-  // pinMode(USL, INPUT);
-  pinMode(USR, INPUT);
-  pinMode(USU, INPUT); // USF is for object detection (front of drone). 
-=======
+  // pinMode(USD, INPUT); // Note: Ultrasonics operate on a 49mS cycle.
   pinMode(USL, INPUT);
   pinMode(USR, INPUT);
-  // pinMode(USU, INPUT); // USF is for object detection (front of drone). 
->>>>>>> 85e62b1dc8b17e505169e6277615dfa7d7d73767
+  pinMode(USU, INPUT); // USF is for object detection (front of drone). 
 
   // digitalWrite(LED1, HIGH);
   Serial.println("Set LED high"); delay(50);
