@@ -119,6 +119,75 @@ void setup()
   Serial.println("Both sensors are now ranging.");
 }
 
+void readCenterAverage(SparkFun_VL53L5CX &sensor, VL53L5CX_ResultsData &measurementData) {
+  if (sensor.isDataReady()) {
+    if (sensor.getRangingData(&measurementData)) {
+
+      int frontSum = 0;
+      int backSum = 0;
+      int totalSum = 0;
+
+      int frontCount = 0;
+      int backCount = 0;
+      int totalCount = 0;
+
+      int frontAvg = 0;
+      int backAvg = 0;
+      int totalAvg = 0;
+
+      for (int i = 0; i < 64; i++) {
+        uint8_t status = measurementData.target_status[i];
+        int distance = measurementData.distance_mm[i];
+        if (status == 5) { // valid return
+          totalSum +=  distance;
+          totalCount++;
+          if (i < 24) {
+            // Front 3 columns: D0 to D23
+            frontSum += distance;
+            frontCount++;
+          } else if (i > 39) {
+            // Back 3 columns: D40 to D63
+            backSum += distance;
+            backCount++;
+          }
+        }
+      }
+
+      if (totalCount > 0) {
+        totalAvg = totalSum / totalCount;
+        Serial.print("Average total distance (mm): ");
+        Serial.println(totalAvg);
+      } else {
+        totalAvg = -1;
+        Serial.println("No valid pixels.");
+      }
+
+      if (frontCount > 0) {
+        frontAvg = frontSum / frontCount;
+        Serial.print("Average front distance (mm): ");
+        Serial.println(frontAvg);
+      } else {
+        frontAvg = -1;
+        Serial.println("No valid front pixels.");
+      }
+
+    
+      if (backCount > 0) {
+        backAvg = backSum / backCount;
+        Serial.print("Average back distance (mm): ");
+        Serial.println(backAvg);
+      } else {
+        backAvg = -1;
+        Serial.println("No valid back pixels.");
+      }
+
+    } else{
+      Serial.println("Failed to get Data!");
+    }
+  } else{
+    Serial.println("Data was not ready");
+  }
+
 void loop()
 {
   // Sensor 1 data ready check and read
@@ -136,20 +205,22 @@ void loop()
     }
   }
 
+  
+
   // Sensor 2 data ready check and read
-  if (sensor2.isDataReady()) {
-    if (sensor2.getRangingData(&measurementData2)) {
-      Serial.println("Sensor 2 data:");
-      for (int y = 0; y <= imageWidth2 * (imageWidth2 - 1); y += imageWidth2) {
-        for (int x = imageWidth2 - 1; x >= 0; x--) {
-          Serial.print(measurementData2.distance_mm[x + y]);
-          Serial.print("\t");
-        }
-        Serial.println();
-      }
-      Serial.println();
-    }
-  }
+  // if (sensor2.isDataReady()) {
+  //   if (sensor2.getRangingData(&measurementData2)) {
+  //     Serial.println("Sensor 2 data:");
+  //     for (int y = 0; y <= imageWidth2 * (imageWidth2 - 1); y += imageWidth2) {
+  //       for (int x = imageWidth2 - 1; x >= 0; x--) {
+  //         Serial.print(measurementData2.distance_mm[x + y]);
+  //         Serial.print("\t");
+  //       }
+  //       Serial.println();
+  //     }
+  //     Serial.println();
+  //   }
+  // }
 
   delay(5); // Small delay between polling
 }
