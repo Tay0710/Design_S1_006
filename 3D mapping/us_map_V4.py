@@ -19,17 +19,21 @@ import pandas as pd
 import open3d as o3d
 
 # === Sensor Offsets (m) ===
-offsetU = np.array([0.021,  0.0,   0.132])
-offsetD = np.array([0.019,  0.0,   0.000])  # used only for horizontal XY under the drone
-offsetL = np.array([0.012,  0.080, 0.035])
-offsetR = np.array([0.040, -0.052, 0.035])
+# offsetU = np.array([0.021,  0.0,   0.132])
+# offsetD = np.array([0.019,  0.0,   0.000])  # used only for horizontal XY under the drone
+# offsetL = np.array([0.012,  0.080, 0.035])
+# offsetR = np.array([0.040, -0.052, 0.035])
+offsetU = np.array([0.0, 0.0, 0.0])
+offsetD = np.array([0.0, 0.0, 0.0])
+offsetL = np.array([0.0, 0.0, 0.0])
+offsetR = np.array([0.0, 0.0, 0.0])
 
 # === Parameters ===
 TIME_TOL = 0.055
 POINT_SIZE = 5.5
 
-# Ceiling acceptance threshold (metres): keep Up only if distance >= 0.9 m
-ROOF_MIN_DIST_M = 1.4
+# Ceiling acceptance threshold (metres): keep Up only if distance >= 0.5 m
+ROOF_MIN_DIST_M = 0.5
 
 # === Load rotation matrices ===
 def load_rotation_matrices(rot_csv):
@@ -133,13 +137,23 @@ def main(us_input_cropped):
     times_mat, rot_mats = load_rotation_matrices("../optical_flow_method_data/rotation_matrices.csv")
     us = pd.read_csv(us_input_cropped)
 
-    traj_time = traj["time (s)"].values
-    drone_positions = traj[["pos_world_x", "pos_world_y", "pos_world_z"]].values
+    drone_positions = []
 
+    traj_time = traj["time (s)"].values
+
+    # Build drone trajectory positions
+    for i in range(len(traj)):
+        drone_pos = (
+            traj["pos_world_x"].iloc[i],
+            traj["pos_world_y"].iloc[i],
+            traj["pos_world_z"].iloc[i],
+        )
+        drone_positions.append(drone_pos)
+    
     # --- actual points per-sensor (U, L, R only) ---
     actual_U, actual_L, actual_R = [], [], []
     us["type"] = us["type"].astype(str).str.strip().str.upper()
-
+    print(us["type"])
 
     # Moving average of y velocities
     vel_y = vel["v_y (m/s)"].rolling(window=5).mean()
@@ -163,10 +177,17 @@ def main(us_input_cropped):
         idx = np.searchsorted(traj_time, t, side="right")
         if idx >= len(traj_time):
             continue
-        rot_mat = rot_mats[min(idx, len(rot_mats) - 1)]
-        drone_pos = drone_positions[idx]
-        vel_y_u = vel_y[min(idx, len(rot_mats) - 1)]
 
+        # Get nearest rotation matrix
+        rot_idx = np.searchsorted(times_mat, t, side="right")
+        if rot_idx >= len(rot_mats):
+            rot_mat = rot_mats[-1]
+        else:
+            rot_mat = rot_mats[rot_idx]
+
+        drone_pos = drone_positions[idx]
+
+        vel_y_u = vel_y[min(idx, len(rot_mats) - 1)]
 
         if abs(vel_y_u) > 0.5:
             if s == "U":
