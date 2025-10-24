@@ -85,6 +85,7 @@ volatile int turningYAW = 1500;
 bool armsequencecomplete = false;
 bool runoncePITCH = false;
 volatile bool sbusmeesagesent = false;
+int BatteryCompensation = 0; // increase by increments of 5. 
 
 boolean start_flag = false;
 
@@ -438,11 +439,11 @@ void loop()
       Serial.println(" cm");
       US_ready1 = false;  // Current distance of ultrasonic is saved in: distanceCm1
       if (CurrentDistance <  117.00 ){  // 118.23
-        rcChannels[THROTTLE] = 1345; 
-      } else if (CurrentDistance >  117.00 && CurrentDistance < 122.00){ 
-        rcChannels[THROTTLE] = 5*CurrentDistance + 760; // 8.5*CurrentDistance + 340
-      } else if (CurrentDistance > 122.00){  // 122.35
-        rcChannels[THROTTLE] = 1370; 
+        rcChannels[THROTTLE] = 1345 + BatteryCompensation; 
+      } else if (CurrentDistance >  117.00 && CurrentDistance < 121.00){ 
+        rcChannels[THROTTLE] = 5*CurrentDistance + 760 + BatteryCompensation; // 8.5*CurrentDistance + 340
+      } else if (CurrentDistance > 121.00){  // 122.35
+        rcChannels[THROTTLE] = 1365 + BatteryCompensation; 
       }
     }
 
@@ -456,11 +457,11 @@ void loop()
       if(currentMillis - TurnLefttimecomplete > 500){   
       // Serial.println("IN ROLL if statement");
         if(CurrentDistance_US_L > 10.00 && CurrentDistance_US_L < 60.00){ 
-          rcChannels[ROLL] = 1530; // right
+          rcChannels[ROLL] = 1525; // right
         } else if(CurrentDistance_US_L > 60.00 && CurrentDistance_US_L < 80.00){ 
-          rcChannels[ROLL] = -3*CurrentDistance_US_L + 1710; // Dampen the turn
+          rcChannels[ROLL] = -2.5*CurrentDistance_US_L + 1675; // Dampen the turn
         } else if(CurrentDistance_US_L > 80.00){ 
-          rcChannels[ROLL] = 1470; // left
+          rcChannels[ROLL] = 1475; // left
         } else{  
           rcChannels[ROLL] = 1500;
         }
