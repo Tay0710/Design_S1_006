@@ -75,6 +75,7 @@ uint32_t endofpathtime = 0;
 uint32_t TurnLefttimecomplete = 0;
 uint32_t brakingtime = 0;
 uint32_t adjustingYAWtime = 0;
+uint32_t BatteryCompensationtimer;
 
 // Logic Booleans for Naviagtion
 bool armingSequenceFlag = false;
@@ -86,6 +87,7 @@ bool armsequencecomplete = false;
 bool runoncePITCH = false;
 volatile bool sbusmeesagesent = false;
 int BatteryCompensation = 0; // increase by increments of 5. 
+bool BatteryCompensationBol = true;
 
 boolean start_flag = false;
 
@@ -440,12 +442,25 @@ void loop()
       US_ready1 = false;  // Current distance of ultrasonic is saved in: distanceCm1
       if (CurrentDistance <  117.00 ){  // 118.23
         rcChannels[THROTTLE] = 1345 + BatteryCompensation; 
-      } else if (CurrentDistance >  117.00 && CurrentDistance < 121.00){ 
+        BatteryCompensationBol = true;
+        BatteryCompensationtimer = currentMillis;
+      } else if (CurrentDistance >  117.00 && CurrentDistance < 121.60){ 
         rcChannels[THROTTLE] = 5*CurrentDistance + 760 + BatteryCompensation; // 8.5*CurrentDistance + 340
-      } else if (CurrentDistance > 121.00){  // 122.35
-        rcChannels[THROTTLE] = 1365 + BatteryCompensation; 
+        BatteryCompensationBol = true;
+        BatteryCompensationtimer = currentMillis;
+      } else if (CurrentDistance > 121.60){  // 122.35
+        rcChannels[THROTTLE] = 1368 + BatteryCompensation; 
+        if (BatteryCompensationBol){
+          BatteryCompensationBol = false;
+          BatteryCompensationtimer = currentMillis;
+        }
       }
     }
+    if(currentMillis - BatteryCompensationtimer > 5000 && !BatteryCompensationBol){ // every 5 seconds increase compensation by 5
+      BatteryCompensation = BatteryCompensation + 5;
+      BatteryCompensationtimer = currentMillis;
+    }
+
 
     // // ROLL Changes
     if (US_readyL) {
