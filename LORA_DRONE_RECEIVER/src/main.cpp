@@ -10,6 +10,7 @@
 #include <Wire.h>
 #include <SparkFun_VL53L5CX_Library.h> //http://librarymanager/All#SparkFun_VL53L5CX
 
+#define Ultrasonic_Rx_initialiser 40 // Rx Front US to initialise ultrasonic sensors'
 
 #define pwPinTop 15  // Top US
 volatile unsigned long pulseStart1 = 0;
@@ -365,6 +366,15 @@ void setup()
   sensor1.startRanging();
   Serial.println("sensor tof is now ranging.");
 
+  // Ultrasonic Begin sensing. 
+  pinMode(Ultrasonic_Rx_initialiser, OUTPUT);
+  digitalWrite(Ultrasonic_Rx_initialiser, HIGH);
+  delay(1);
+  digitalWrite(Ultrasonic_Rx_initialiser, LOW);
+  delay(1);
+  pinMode(Ultrasonic_Rx_initialiser, INPUT);
+
+  // Ensure that LoRa is at the END!. 
   setupLoRaModule();
   loraTimer.attach_ms(LORA_TIMER_UDPATE_RATE, loraTimerCallback);
   lastMessage = millis();
@@ -578,6 +588,28 @@ void loop()
 // // define lowmodetime as unit32 (timestamp)
 // // define low and upper throttle period as variables (check requirements for transition period)
 
+
+//STILL NEED TO CHANGE SOME THINGS
+// #define pwPinLeftUS   // LEFT US
+// volatile unsigned long pulseStartL = 0;
+// volatile double distanceCmL = 0;
+// volatile bool US_readyL = false;
+// volatile double CurrentDistance_US_L = 0; // read from ultrasonic
+
+// // Ultrasonic Top Interupt Function
+// void US1_ISR() {
+//   // Called when pwPin changes
+//   if (digitalRead(pwPinLeftUS) == HIGH) {
+//     // Rising edge
+//     pulseStartL = micros();
+//     US_readyL = false;
+//   } else {
+//     // Falling edge
+//     unsigned long pulseWidthT = micros() - pulseStart1;
+//     distanceCm1 = pulseWidthT / 57.87;
+//     US_readyL = true;
+//   }
+// }
 
 
 // // Turn Side Ways Ultrasonic
