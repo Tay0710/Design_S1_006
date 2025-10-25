@@ -456,9 +456,10 @@ void loop()
         }
       }
     }
-    if(currentMillis - BatteryCompensationtimer > 5000 && !BatteryCompensationBol){ // every 5 seconds increase compensation by 5
+    if(currentMillis - BatteryCompensationtimer > 4000 && !BatteryCompensationBol){ // every 4 seconds increase compensation by 5
       BatteryCompensation = BatteryCompensation + 5;
       BatteryCompensationtimer = currentMillis;
+      BatteryCompensationBol = true;
     }
 
 
