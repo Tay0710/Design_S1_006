@@ -460,6 +460,7 @@ void loop()
       }
       else if (CurrentDistance <  94.20 ){  // 118.23
         rcChannels[THROTTLE] = 1361 + BatteryCompensation; // 1365 (rides roof but not touch)
+        // lower by 5 then let battery compensation increase it again.
         BatteryCompensationBol = true;
         BatteryCompensationtimer = currentMillis;
       } else if (CurrentDistance >  94.20 && CurrentDistance < 101.00){ 
@@ -472,8 +473,11 @@ void loop()
         if (BatteryCompensationBol){
           BatteryCompensationBol = false;
           BatteryCompensationtimer = currentMillis;
+          //BatteryCompensation = BatteryCompensation + 5; idea 1. 
+          // 
         }
       }
+      // other idea 2. make extreme throttle values when very close and very far from roof. e.g. < 30cm = 1350, > 180cm = 1410;; + Battery compensation. Then make battery copensation + 5 every time it goes into the 1410 region. 
     }
     if(currentMillis - BatteryCompensationtimer > 1000 && !BatteryCompensationBol){ // every 4 seconds increase compensation by 5
       BatteryCompensation = BatteryCompensation + 5;
