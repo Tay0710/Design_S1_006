@@ -61,8 +61,8 @@ Ticker SBUSTimer;
 #define TX_PIN 43
 
 #define THROTTLE_MIN 890
-#define THROTTLE_MID 1150
-#define THROTTLE_MAX 1410 // shrink range of throttle
+#define THROTTLE_MID 1445
+#define THROTTLE_MAX 2000 // shrink range of throttle
 
 uint8_t sbusPacket[SBUS_PACKET_LENGTH];
 int rcChannels[SBUS_CHANNEL_NUMBER];
@@ -86,8 +86,10 @@ volatile int turningYAW = 1500;
 bool armsequencecomplete = false;
 bool runoncePITCH = false;
 volatile bool sbusmeesagesent = false;
-int BatteryCompensation = 0; // increase by increments of 5. 
+float BatteryCompensation = 0; // increase by increments of 5. 
 bool BatteryCompensationBol = true;
+bool armingthrottledone = true;
+bool beginpitching = false;
 
 boolean start_flag = false;
 
@@ -417,18 +419,24 @@ void loop()
       rcChannels[THROTTLE] = THROTTLE_MIN;
       rcChannels[AUX1] = 1800;
       Serial.println("Arm drone.");
-    } else if (currentMillis > 10000 + armingMillis && currentMillis < 11250 + armingMillis){ // Wait another 5 seconds before turning on throttle and leave on for 10 seconds
-      rcChannels[THROTTLE] = 1360;
+    } else if (currentMillis > 10000 + armingMillis && currentMillis < 11000 + armingMillis){ // Wait another 5 seconds before turning on throttle and leave on for 10 seconds
+      rcChannels[THROTTLE] = 1375;
       rcChannels[AUX1] = 1800;
       Serial.println("Throttle 1360.");
-    } else if (currentMillis > 11250 + armingMillis){
+      BatteryCompensation = 0; // reset battery compensation
+      BatteryCompensationBol = true;
+    } else if (currentMillis > 11000 + armingMillis){ // 11000 - <11300
       Serial.println("Arming sequence finished");
-      rcChannels[THROTTLE] = 1360;
+      rcChannels[THROTTLE] = 1375;
       rcChannels[AUX1] = 1800; 
       armingSequenceFlag = false;
       armsequencecomplete = true;
+      armingthrottledone = true;
     }
   }
+
+ //  25/10/2025
+ // THe last attempt ended with the drone hitting the ceiling and then riding it. 
 
   if(armsequencecomplete){ //armsequencecomplete
 
@@ -440,26 +448,39 @@ void loop()
       Serial.print(distanceCm1, 2);
       Serial.println(" cm");
       US_ready1 = false;  // Current distance of ultrasonic is saved in: distanceCm1
-      if (CurrentDistance <  117.00 ){  // 118.23
-        rcChannels[THROTTLE] = 1345 + BatteryCompensation; 
+
+      if(armingthrottledone){ // hold throttle until it passes upper limit then commence flight navigation.
+        rcChannels[THROTTLE] = 1373; // 1370> ?? <1375
+        if(CurrentDistance < 105.00 ){  
+          beginpitching = true; //
+        }
+        else if(CurrentDistance < 97.00 ){  // 1385 at 99 (in the dampening zone)
+          armingthrottledone = false; //
+        } // THIS WORKS!!
+      }
+      else if (CurrentDistance <  94.20 ){  // 118.23
+        rcChannels[THROTTLE] = 1361 + BatteryCompensation; // 1365 (rides roof but not touch)
         BatteryCompensationBol = true;
         BatteryCompensationtimer = currentMillis;
-      } else if (CurrentDistance >  117.00 && CurrentDistance < 121.60){ 
-        rcChannels[THROTTLE] = 5*CurrentDistance + 760 + BatteryCompensation; // 8.5*CurrentDistance + 340
+      } else if (CurrentDistance >  94.20 && CurrentDistance < 101.00){ 
+        rcChannels[THROTTLE] = 5*CurrentDistance + 890 + BatteryCompensation; // 8.5*CurrentDistance + 340
         BatteryCompensationBol = true;
         BatteryCompensationtimer = currentMillis;
-      } else if (CurrentDistance > 121.60){  // 122.35
-        rcChannels[THROTTLE] = 1368 + BatteryCompensation; 
+      } else if (CurrentDistance > 101.00){  // 122.35
+        rcChannels[THROTTLE] = 1395 + BatteryCompensation; // 1385-1390. 
+        // at 1400 it is very strong upshoot, therefore would required low top side throttle (more osciliations, no good). 
         if (BatteryCompensationBol){
           BatteryCompensationBol = false;
           BatteryCompensationtimer = currentMillis;
         }
       }
     }
-    if(currentMillis - BatteryCompensationtimer > 4000 && !BatteryCompensationBol){ // every 4 seconds increase compensation by 5
+    if(currentMillis - BatteryCompensationtimer > 1000 && !BatteryCompensationBol){ // every 4 seconds increase compensation by 5
       BatteryCompensation = BatteryCompensation + 5;
       BatteryCompensationtimer = currentMillis;
       BatteryCompensationBol = true;
+      Serial.print("Battery Compensation increased to: ");
+      Serial.println(BatteryCompensation);  
     }
 
 
@@ -472,11 +493,11 @@ void loop()
       US_readyL = false;  // Current distance of ultrasonic is saved in: distanceCm1
       if(currentMillis - TurnLefttimecomplete > 500){   
       // Serial.println("IN ROLL if statement");
-        if(CurrentDistance_US_L > 10.00 && CurrentDistance_US_L < 60.00){ 
-          rcChannels[ROLL] = 1525; // right
-        } else if(CurrentDistance_US_L > 60.00 && CurrentDistance_US_L < 80.00){ 
-          rcChannels[ROLL] = -2.5*CurrentDistance_US_L + 1675; // Dampen the turn
-        } else if(CurrentDistance_US_L > 80.00){ 
+        if(CurrentDistance_US_L > 10.00 && CurrentDistance_US_L < 65.00){ 
+          rcChannels[ROLL] = 1530; // right
+        } else if(CurrentDistance_US_L > 65.00 && CurrentDistance_US_L < 85.00){ 
+          rcChannels[ROLL] = -2.75*CurrentDistance_US_L + 1708.75; // Dampen the turn
+        } else if(CurrentDistance_US_L > 85.00){ 
           rcChannels[ROLL] = 1475; // left
         } else{  
           rcChannels[ROLL] = 1500;
@@ -533,7 +554,7 @@ void loop()
       // PITCH CONTROL.
       if(currentMillis - TurnLefttimecomplete < 500 && !endofpath){ // go for after turning for 1.0s
         rcChannels[PITCH] = 1500;
-      } else if(currentMillis > 11400 + armingMillis) { // Could remove - to check. 
+      } else if(beginpitching) {
           if(CurrentDistanceF > 10.00 && CurrentDistanceF <= 10.00 && currentMillis - brakingtime < 1000){
             rcChannels[PITCH] = 1390;
             // rcChannels[PITCH] = 1500; // Replace with 1500 so it won't go backwards when distance is wrong?
