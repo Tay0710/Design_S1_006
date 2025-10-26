@@ -76,6 +76,8 @@ uint32_t TurnLefttimecomplete = 0;
 uint32_t brakingtime = 0;
 uint32_t adjustingYAWtime = 0;
 uint32_t BatteryCompensationtimer;
+uint32_t lastvelmillis;
+
 
 // Logic Booleans for Naviagtion
 bool armingSequenceFlag = false;
@@ -90,6 +92,11 @@ float BatteryCompensation = 0; // increase by increments of 5.
 bool BatteryCompensationBol = true;
 bool armingthrottledone = true;
 bool beginpitching = false;
+
+volatile float throttlevelocity = 0;
+volatile float olddistance = 0;
+bool goingup = false;
+bool goingdown = false;
 
 boolean start_flag = false;
 
@@ -440,7 +447,7 @@ void loop()
 
   if(armsequencecomplete){ //armsequencecomplete
 
-    // THROTTLE CHANGES - TOP side Ultrasonic Sensor
+        // THROTTLE CHANGES - TOP side Ultrasonic Sensor
     if (US_ready1) {
       // Serial.print("US1 Distance: ");
       CurrentDistance = round(distanceCm1 * 100) / 100;
@@ -449,42 +456,84 @@ void loop()
       Serial.println(" cm");
       US_ready1 = false;  // Current distance of ultrasonic is saved in: distanceCm1
 
+      // Velocity determination
+      throttlevelocity = (CurrentDistance - olddistance) / (millis() - lastvelmillis) * 1000; // cm/s
+      lastvelmillis = millis();
+      olddistance = CurrentDistance;
+      Serial.print("THROTTLE VELOCITY: ");
+      Serial.println(throttlevelocity, 2);
+      if(throttlevelocity < -5.00){ // falling towards the roof so distance decreases and velocity is negative. 
+        goingdown = false;
+        goingup = true;
+        throttlevelocity = 0.00;
+      } else{
+        goingdown = true;
+        goingup = false;
+        throttlevelocity = 0.00;
+      }
+      // Initial luanch control
       if(armingthrottledone){ // hold throttle until it passes upper limit then commence flight navigation.
-        rcChannels[THROTTLE] = 1373; // 1370> ?? <1375
-        if(CurrentDistance < 105.00 ){  
+        rcChannels[THROTTLE] = 1375; // 1370> ?? <1375
+        BatteryCompensation = 0; // reset battery compensation
+        if(CurrentDistance < 100.00 ){  
           beginpitching = true; //
-        }
-        else if(CurrentDistance < 97.00 ){  // 1385 at 99 (in the dampening zone)
           armingthrottledone = false; //
-        } // THIS WORKS!!
-      }
-      else if (CurrentDistance <  94.20 ){  // 118.23
-        rcChannels[THROTTLE] = 1361 + BatteryCompensation; // 1365 (rides roof but not touch)
-        // lower by 5 then let battery compensation increase it again.
-        BatteryCompensationBol = true;
-        BatteryCompensationtimer = currentMillis;
-      } else if (CurrentDistance >  94.20 && CurrentDistance < 101.00){ 
-        rcChannels[THROTTLE] = 5*CurrentDistance + 890 + BatteryCompensation; // 8.5*CurrentDistance + 340
-        BatteryCompensationBol = true;
-        BatteryCompensationtimer = currentMillis;
-      } else if (CurrentDistance > 101.00){  // 122.35
-        rcChannels[THROTTLE] = 1395 + BatteryCompensation; // 1385-1390. 
-        // at 1400 it is very strong upshoot, therefore would required low top side throttle (more osciliations, no good). 
-        if (BatteryCompensationBol){
-          BatteryCompensationBol = false;
-          BatteryCompensationtimer = currentMillis;
-          //BatteryCompensation = BatteryCompensation + 5; idea 1. 
-          // 
         }
       }
-      // other idea 2. make extreme throttle values when very close and very far from roof. e.g. < 30cm = 1350, > 180cm = 1410;; + Battery compensation. Then make battery copensation + 5 every time it goes into the 1410 region. 
-    }
-    if(currentMillis - BatteryCompensationtimer > 1000 && !BatteryCompensationBol){ // every 4 seconds increase compensation by 5
-      BatteryCompensation = BatteryCompensation + 5;
-      BatteryCompensationtimer = currentMillis;
-      BatteryCompensationBol = true;
-      Serial.print("Battery Compensation increased to: ");
-      Serial.println(BatteryCompensation);  
+      // Flight Control
+      if(!armingthrottledone){
+        if(goingup && !goingdown){
+          if(CurrentDistance < 50.00){
+            rcChannels[THROTTLE] = 1350 + BatteryCompensation; // descend quickly
+            // if(BatteryCompensationBol || millis() - BatteryCompensationtimer > 500){
+            //   BatteryCompensationBol = false;
+            //   BatteryCompensation = BatteryCompensation - 2;
+            //   BatteryCompensationtimer = millis();
+            // }
+          } else if(CurrentDistance > 50.00 && CurrentDistance <  95.00 ){  // 118.23
+            rcChannels[THROTTLE] = ((5*CurrentDistance) / 9) + 1322.2 + BatteryCompensation; 
+            BatteryCompensationBol = true;
+          } else if (CurrentDistance > 95.00 && CurrentDistance <  110.00){ 
+            rcChannels[THROTTLE] = 1375 + BatteryCompensation; 
+            BatteryCompensationBol = true;
+          } else if (CurrentDistance > 110.00 && CurrentDistance <  150.00){  // 122.35
+            rcChannels[THROTTLE] = 0.875*CurrentDistance + 1278.75 + BatteryCompensation; 
+            BatteryCompensationBol = true;
+          } else if(CurrentDistance > 150.00){
+            rcChannels[THROTTLE] = 1410 + BatteryCompensation;
+            BatteryCompensationBol = true; 
+          }
+        }
+        else if(goingdown && !goingup){
+          if(CurrentDistance < 50.00){
+            rcChannels[THROTTLE] = 1360 + BatteryCompensation; // descend quickly
+          } else if(CurrentDistance > 50.00 && CurrentDistance <  95.00 ){  // 118.23
+            rcChannels[THROTTLE] = ((5*CurrentDistance)/9) + 1332.20 + BatteryCompensation; 
+            BatteryCompensationBol = true;
+          } else if (CurrentDistance > 95.00 && CurrentDistance <  110.00){ 
+            rcChannels[THROTTLE] = 1385 + BatteryCompensation; 
+            BatteryCompensationBol = true;
+          } else if (CurrentDistance > 110.00 && CurrentDistance <  150.00){  // 122.35
+            rcChannels[THROTTLE] = 1.125*CurrentDistance + 1261.25 + BatteryCompensation; 
+            BatteryCompensationBol = true;
+          } else if(CurrentDistance > 150.00){
+            rcChannels[THROTTLE] = 1430 + BatteryCompensation; 
+            // if(BatteryCompensationBol || millis() - BatteryCompensationtimer > 500){
+            //   BatteryCompensationBol = false;
+            //   BatteryCompensation = BatteryCompensation + 5;
+            //   BatteryCompensationtimer = millis();
+            // }
+          } 
+        }
+      }
+
+      if(beginpitching){
+        if(CurrentDistance < 150.00 ){  
+          rcChannels[PITCH] = 1540; // pitch backwards
+        } else{  
+          rcChannels[PITCH] = 1500; // neutral
+        } 
+      }
     }
 
 
@@ -545,43 +594,43 @@ void loop()
     // }
 
 
-    // // FRONT Ultrasonic Sensor (MB1000) - CHECKING for upcoming obstacle infront (assume obstacle is wall)
-    if (US_readyF) { 
-      // Serial.print("US1 Distance: ");
-      CurrentDistanceF = round(distanceCmF * 100) / 100;
-      // Serial.print("CurrentMillis: "); Serial.println(currentMillis);
-      Serial.print("LOOKY HERE AT THIS PART US FRONT :   ");
-      Serial.print(distanceCmF, 2);
-      Serial.println(" cm");
-      US_readyF = false;  // Current distance of ultrasonic is saved in: distanceCm1
+    // // // FRONT Ultrasonic Sensor (MB1000) - CHECKING for upcoming obstacle infront (assume obstacle is wall)
+    // if (US_readyF) { 
+    //   // Serial.print("US1 Distance: ");
+    //   CurrentDistanceF = round(distanceCmF * 100) / 100;
+    //   // Serial.print("CurrentMillis: "); Serial.println(currentMillis);
+    //   Serial.print("LOOKY HERE AT THIS PART US FRONT :   ");
+    //   Serial.print(distanceCmF, 2);
+    //   Serial.println(" cm");
+    //   US_readyF = false;  // Current distance of ultrasonic is saved in: distanceCm1
       
-      // PITCH CONTROL.
-      if(currentMillis - TurnLefttimecomplete < 500 && !endofpath){ // go for after turning for 1.0s
-        rcChannels[PITCH] = 1500;
-      } else if(beginpitching) {
-          if(CurrentDistanceF > 10.00 && CurrentDistanceF <= 10.00 && currentMillis - brakingtime < 1000){
-            rcChannels[PITCH] = 1390;
-            // rcChannels[PITCH] = 1500; // Replace with 1500 so it won't go backwards when distance is wrong?
-            CurrentDistanceF = 0.00;
-            Serial.println("Pitch backwards");
-          } else if(CurrentDistanceF > 10.00 && CurrentDistanceF <= 10.00 && currentMillis - brakingtime > 1000){
-            rcChannels[PITCH] = 1500;
-            CurrentDistanceF = 0.00;
-            endofpath = true;
-            endofpathtime = currentMillis;
-          } else if(CurrentDistanceF > 10.00){
-            rcChannels[PITCH] = 1540; // apply pitch brakes and prepare to turn. 
-            CurrentDistanceF = 0.00;
-            brakingtime = currentMillis;
-            Serial.println("Pitch forward");
-            // Serial.print("IN EOP PITCH: "); Serial.println(rcChannels[PITCH]);
-          } else{
-            rcChannels[PITCH] = 1500;
-            CurrentDistanceF = 0.00;
-            brakingtime = currentMillis;
-          }
-        }
-    }
+    //   // PITCH CONTROL.
+    //   if(currentMillis - TurnLefttimecomplete < 500 && !endofpath){ // go for after turning for 1.0s
+    //     rcChannels[PITCH] = 1500;
+    //   } else if(beginpitching) {
+    //       if(CurrentDistanceF > 10.00 && CurrentDistanceF <= 10.00 && currentMillis - brakingtime < 1000){
+    //         rcChannels[PITCH] = 1390;
+    //         // rcChannels[PITCH] = 1500; // Replace with 1500 so it won't go backwards when distance is wrong?
+    //         CurrentDistanceF = 0.00;
+    //         Serial.println("Pitch backwards");
+    //       } else if(CurrentDistanceF > 10.00 && CurrentDistanceF <= 10.00 && currentMillis - brakingtime > 1000){
+    //         rcChannels[PITCH] = 1500;
+    //         CurrentDistanceF = 0.00;
+    //         endofpath = true;
+    //         endofpathtime = currentMillis;
+    //       } else if(CurrentDistanceF > 10.00){
+    //         rcChannels[PITCH] = 1540; // apply pitch brakes and prepare to turn. 
+    //         CurrentDistanceF = 0.00;
+    //         brakingtime = currentMillis;
+    //         Serial.println("Pitch forward");
+    //         // Serial.print("IN EOP PITCH: "); Serial.println(rcChannels[PITCH]);
+    //       } else{
+    //         rcChannels[PITCH] = 1500;
+    //         CurrentDistanceF = 0.00;
+    //         brakingtime = currentMillis;
+    //       }
+    //     }
+    // }
 
     // // YAW CORNERING
     if(currentMillis - endofpathtime < 360 && endofpath){ // (endofpath && ) endofpath is assumed to be true if it is not false?
@@ -687,3 +736,5 @@ void loop()
     //   rcChannels[ROLL] = 1500;
     //   // Serial.println("IN ROLL ELSE");
     // }
+
+
