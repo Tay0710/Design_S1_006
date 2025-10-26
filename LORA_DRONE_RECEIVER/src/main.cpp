@@ -79,6 +79,7 @@ uint32_t BatteryCompensationtimer;
 uint32_t lastvelmillis;
 uint32_t turningtime = 0;
 uint32_t lastvelmillisl;
+uint32_t lastforwardvelmillis;
 
 // Logic Booleans for Naviagtion
 bool armingSequenceFlag = false;
@@ -101,6 +102,9 @@ bool goingdown = false;
 
 volatile float rollvelocity = 0;
 volatile float olddistancel = 0;
+
+volatile float forwardvelocity = 0;
+volatile float oldforwarddistance = 0;
 
 
 boolean start_flag = false;
@@ -499,7 +503,7 @@ void loop()
         }
       }
 
-      if(beginpitching && !endofpath && !turningsoon && millis() - turningtime > 360){
+      if(beginpitching && !endofpath && !turningsoon){
         if(CurrentDistance < 150.00){  
           rcChannels[PITCH] = 1540; // pitch backwards
         } else{  
@@ -545,64 +549,99 @@ void loop()
     }
   }
 
-     // //YAW angle fixes
-    if(sbusmeesagesent){
-      totalAvg = -1;
-    }
     readCenterAverage(sensor1, measurementData1);
-    if(totalAvg < 2000 && totalAvg > 0){
-        if(!turningsoon && !endofpath){
-          endofpath = true; // Path is at an end.
-          endofpathtime = millis(); // timestamp when end of path is detected. 
+
+    if (totalAvg > 0){
+    forwardvelocity = (totalAvg - oldforwarddistance) / (millis() - lastforwardvelmillis) * 100; // cm/s
+    lastforwardvelmillis = millis();
+    oldforwarddistance = totalAvg;
+    Serial.print("FORWARD VELOCITY: ");
+    Serial.println(forwardvelocity, 2);
+    }
+    // target distance 1000 mm
+    // if vel is positivie drone is moving forawrd
+    // if vel is negative drone is moving backwards
+
+    if(totalAvg < 2000 && totalAvg > 0 && !turningsoon){
+      endofpath = true; // Path is not at an end.
+      if(totalAvg > 1700 && totalAvg < 2200){
+        endofpathtime = millis(); // timestamp when end of path is detected. 
+        if(forwardvelocity > 1000.00){
+          rcChannels[PITCH] = 1400; // slow down harshly
+      } else if(forwardvelocity > 500.00){
+          rcChannels[PITCH] = 1450; // slow down
+        } else if(forwardvelocity < -250.00){
+          rcChannels[PITCH] = 1540; // speed up
+        } else{
+          rcChannels[PITCH] = 1520; // go forward
         }
-      } else{
-          endofpath = false; // Path is at an end.
+      } else if(totalAvg > 1300 && totalAvg < 1700){
+        if(forwardvelocity > 250.00){
+          rcChannels[PITCH] = 1450; // slow down
+        } else if(forwardvelocity > 150.00) {
+          rcChannels[PITCH] = 1470; // slow down gently
+        } else if(forwardvelocity < -250.00){
+          rcChannels[PITCH] = 1540; // speed up
+        } else{
+          rcChannels[PITCH] = (totalAvg/20) + 1435; // go forward slowly
+        }
+      } else if(totalAvg > 1100 && totalAvg < 1300){
+        if(forwardvelocity > 150.00){
+          rcChannels[PITCH] = 1450; // slow down 
+        } else if(forwardvelocity > 40.00){
+          rcChannels[PITCH] = 1485; // slow down very gently
+        } else if(forwardvelocity < -40.00){
+          rcChannels[PITCH] = 1515; // speed up slowly
+        } else if(forwardvelocity < -150.00){
+          rcChannels[PITCH] = 1540; // speed up
+        } else{
+          rcChannels[PITCH] = 1500; // neutral P control
+        }
+      } else if(totalAvg > 600 && totalAvg < 1100){
+        if(forwardvelocity > 500.00){
+          rcChannels[PITCH] = 1400; // slow down harshly
+        } else if(forwardvelocity > 150.00) {
+          rcChannels[PITCH] = 1450; // slow down 
+        } else if (forwardvelocity < -250.00){
+          rcChannels[PITCH] = 1540; // speed up 
+        } else{
+          rcChannels[PITCH] =  (totalAvg/20) + 1445; // slowly reverse
+        }
+      } else if(totalAvg < 600){
+        endofpathtime = millis(); // timestamp when end of path is detected. 
+        if(forwardvelocity > 150.00){
+          rcChannels[PITCH] = 1400; // slow down harshly
+        } else if(forwardvelocity > 80.00) {
+          rcChannels[PITCH] = 1450; // slow down 
+        } else if (forwardvelocity < -250.00){
+          rcChannels[PITCH] = 1540; // speed up 
+        } else if (forwardvelocity < -150.00){
+          rcChannels[PITCH] = 1520; // speed up 
+        } else {
+          rcChannels[PITCH] =  1475; // reverse 
+        }
       }
-// totalAvg
-    // if(totalAvg > 30 && totalAvg <)
-
-    // if (US_readyF) { // REpurposed as the RIGHT side Ultrasonic
-    //   // Serial.print("US1 Distance: ");
-    //   CurrentDistanceF = round(distanceCmF * 100) / 100;
-    //   // Serial.print("CurrentMillis: "); Serial.println(currentMillis);
-    //   Serial.print("LOOKY HERE AT THIS PART US FRONT :   ");
-    //   Serial.print(distanceCmF, 2);
-    //   Serial.println(" cm");
-    //   US_readyF = false; 
-
-    //   if(CurrentDistanceF > 200.00 && totalAvg < 2200 && totalAvg > 0){
-    //     if(!turningsoon && !endofpath){
-    //       endofpath = true; // Path is at an end.
-    //       endofpathtime = millis(); // timestamp when end of path is detected. 
-    //     }
-    //   } else{
-    //       endofpath = false; // Path is at an end.
-    //   }
-      
-    // }
+    } else{
+      endofpath = false; // Path is at an end.
+      endofpathtime = millis(); // timestamp when end of path is detected. 
+    }
   
     // PITCH Braking
-    if(endofpath && millis() - endofpathtime < 1000){ // if end of path is detected then start braking for 300ms
-      rcChannels[PITCH] = 1350; // 
-      // TurnLefttimecomplete = millis(); // for any turning direction. 
-    } else if(endofpath && millis() - endofpathtime > 1000){
+    if(endofpath && millis() - endofpathtime > 2000){
       // TurnLefttimecomplete = millis(); 
       turningsoon = true; //
       turningtime = millis();
       endofpath = false;
     }
-
     // // YAW CORNERING
     if(millis() - turningtime < 360 && turningsoon){ // (endofpath && ) endofpath is assumed to be true if it is not false?
       // Serial.println("TURNING NOW!!");
       rcChannels[PITCH] = 1500; // Override the Front Ultrasonic PITCH commands
       rcChannels[YAW] =  1700; // THIS IS FOR LEFT TURN; use 1700 for RIGHT TURN (1300 for LEFT)
-      // TurnLefttimecomplete = millis();  // used to block Wall following
     } 
     else if(currentMillis - endofpathtime > 360 && turningsoon){ // Only allow turning YAW to run for 300ms. 
       turningsoon = false; // not doing anything. 
       rcChannels[YAW] =  1500;
-      // TurnLefttimecomplete = millis(); 
     }
   
   // End of Arming Complete Sequence. If statement. 
