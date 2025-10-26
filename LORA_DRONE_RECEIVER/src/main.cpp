@@ -72,13 +72,12 @@ uint32_t sbusTime = 0;
 uint32_t currentMillis;
 uint32_t armingMillis;
 uint32_t endofpathtime = 0;
-uint32_t TurnLefttimecomplete = 0; // not used anymore. 
+uint32_t TurnLefttimecomplete = 0;
 uint32_t brakingtime = 0;
 uint32_t adjustingYAWtime = 0;
 uint32_t BatteryCompensationtimer;
 uint32_t lastvelmillis;
-uint32_t turningtime = 0;
-uint32_t lastvelmillisl;
+
 
 // Logic Booleans for Naviagtion
 bool armingSequenceFlag = false;
@@ -98,10 +97,6 @@ volatile float throttlevelocity = 0;
 volatile float olddistance = 0;
 bool goingup = false;
 bool goingdown = false;
-
-volatile float rollvelocity = 0;
-volatile float olddistancel = 0;
-
 
 boolean start_flag = false;
 
@@ -286,20 +281,34 @@ void US_LEFT() {
 void readCenterAverage(SparkFun_VL53L5CX &sensor, VL53L5CX_ResultsData &measurementData) {
   if (sensor.isDataReady()) {
     if (sensor.getRangingData(&measurementData)) {
-      // total is acutally center average value. 
 
+      int frontSum = 0;
+      int backSum = 0;
       int totalSum = 0;
-      int totalCount = 0;
-      totalAvg = 0;
-      int indcenter[] = {5,6,9,10}; // center pixels
 
-      for (int i = 0; i < 4; i++) {
-        int index = indcenter[i];
-        uint8_t status = measurementData.target_status[index];
-        int distance = measurementData.distance_mm[index];
+      int frontCount = 0;
+      int backCount = 0;
+      int totalCount = 0;
+
+      frontAvg = 0;
+      backAvg = 0;
+      totalAvg = 0;
+
+      for (int i = 0; i < 64; i++) {
+        uint8_t status = measurementData.target_status[i];
+        int distance = measurementData.distance_mm[i];
         if (status == 5) { // valid return
           totalSum +=  distance;
           totalCount++;
+          if (i < 24) {
+            // Front 3 columns: D0 to D23
+            frontSum += distance;
+            frontCount++;
+          } else if (i > 39) {
+            // Back 3 columns: D40 to D63
+            backSum += distance;
+            backCount++;
+          }
         }
       }
 
@@ -310,6 +319,25 @@ void readCenterAverage(SparkFun_VL53L5CX &sensor, VL53L5CX_ResultsData &measurem
       } else {
         totalAvg = -1;
         Serial.println("No valid pixels.");
+      }
+
+      if (frontCount > 0) {
+        frontAvg = frontSum / frontCount;
+        Serial.print("Average front distance (mm): ");
+        Serial.println(frontAvg);
+      } else {
+        frontAvg = -1;
+        Serial.println("No valid front pixels.");
+      }
+
+    
+      if (backCount > 0) {
+        backAvg = backSum / backCount;
+        Serial.print("Average back distance (mm): ");
+        Serial.println(backAvg);
+      } else {
+        backAvg = -1;
+        Serial.println("No valid back pixels.");
       }
 
     } else{
@@ -358,14 +386,14 @@ void setup()
     Serial.println("Sensor 1 not found at 0x29! Retrying...");
     delay(50); // small delay to avoid spamming I2C or Serial
   }
-  sensor1.setResolution(4*4);
+  sensor1.setResolution(8*8);
   imageResolution1 = sensor1.getResolution();
   imageWidth1 = sqrt(imageResolution1);
   Serial.println("Sensor 1 initialized successfully at 0x29");
   delay(50);
   // Start ranging on sensor. 
   Serial.println("Starting ranging on tof sensors...");
-  sensor1.setRangingFrequency(60);
+  sensor1.setRangingFrequency(15);
   sensor1.startRanging();
   Serial.println("sensor tof is now ranging.");
 
@@ -445,7 +473,7 @@ void loop()
       }
       // Initial luanch control
       if(armingthrottledone){ // hold throttle until it passes upper limit then commence flight navigation.
-        rcChannels[THROTTLE] = 1378; // 1370> ?? <1375
+        rcChannels[THROTTLE] = 1382; // 1370> ?? <1375
         BatteryCompensation = 0; // reset battery compensation
         if(CurrentDistance < 100.00 ){  
           beginpitching = true; //
@@ -483,7 +511,7 @@ void loop()
             rcChannels[THROTTLE] = ((5*CurrentDistance)/9) + 1332.20 + BatteryCompensation; 
             BatteryCompensationBol = true;
           } else if (CurrentDistance > 95.00 && CurrentDistance <  110.00){ 
-            rcChannels[THROTTLE] = 1385 + BatteryCompensation; // change to 1395?
+            rcChannels[THROTTLE] = 1385 + BatteryCompensation; 
             BatteryCompensationBol = true;
           } else if (CurrentDistance > 110.00 && CurrentDistance <  150.00){  // 122.35
             rcChannels[THROTTLE] = 1.125*CurrentDistance + 1261.25 + BatteryCompensation; 
@@ -499,8 +527,8 @@ void loop()
         }
       }
 
-      if(beginpitching && !endofpath && !turningsoon && millis() - turningtime > 360){
-        if(CurrentDistance < 150.00){  
+      if(beginpitching){
+        if(CurrentDistance < 150.00 ){  
           rcChannels[PITCH] = 1540; // pitch backwards
         } else{  
           rcChannels[PITCH] = 1500; // neutral
@@ -516,26 +544,13 @@ void loop()
       Serial.print(CurrentDistance_US_L, 2);
       Serial.println(" cm");
       US_readyL = false;  // Current distance of ultrasonic is saved in: distanceCm1
-
-      // Roll Velocity
-      rollvelocity = (CurrentDistance_US_L - olddistancel) / (millis() - lastvelmillisl) * 1000; // cm/s
-      lastvelmillisl = millis();
-      olddistancel = CurrentDistance_US_L;
-      Serial.print("ROLL VELOCITY: ");
-      Serial.println(rollvelocity, 2);
-      // if velocity is negative, drone is flying towards left wall
-      // if velocity is positive, drone is flying towards right wall
-
-
-      if(millis() - turningtime > 360 && !turningsoon){   // currentMillis - TurnLefttimecomplete > 500 
+      if(currentMillis - TurnLefttimecomplete > 500){   
       // Serial.println("IN ROLL if statement");
-        if(CurrentDistance_US_L < 65.00 && rollvelocity < 3){ 
-          rcChannels[ROLL] = 1525;
-        } else if(CurrentDistance_US_L > 65.00 && CurrentDistance_US_L < 75.00 && rollvelocity < 0){ 
-            rcChannels[ROLL] = -2.5*CurrentDistance_US_L + 1687.5; // Dampen the turn
-        } else if(CurrentDistance_US_L > 75.00 && CurrentDistance_US_L < 85.00 && rollvelocity > 0){ 
-            rcChannels[ROLL] = -2.5*CurrentDistance_US_L + 1687.5; // Dampen the turn
-        } else if(CurrentDistance_US_L > 85.00 && rollvelocity > -3){ 
+        if(CurrentDistance_US_L > 10.00 && CurrentDistance_US_L < 65.00){ 
+          rcChannels[ROLL] = 1525; // right
+        } else if(CurrentDistance_US_L > 65.00 && CurrentDistance_US_L < 85.00){ 
+          rcChannels[ROLL] = -2.5*CurrentDistance_US_L + 1687.5; // Dampen the turn
+        } else if(CurrentDistance_US_L > 85.00){ 
           rcChannels[ROLL] = 1475; // left
         } else{  
           rcChannels[ROLL] = 1500;
@@ -548,54 +563,86 @@ void loop()
      // //YAW angle fixes
     if(sbusmeesagesent){
       totalAvg = -1;
+      frontAvg = -1;
+      backAvg = -1;
     }
     readCenterAverage(sensor1, measurementData1);
+    // if(!endofpath && currentMillis - TurnLefttimecomplete > 500 && !busychnagingYAW){   
+    //   if(frontAvg > 30 && backAvg > 30 && frontAvg < 2000 && backAvg < 2000 && frontAvg - backAvg < 1000 && frontAvg - backAvg > 1000){ // prevent changing when too close, too far or too greater difference
+    //     if(frontAvg - backAvg > 100){ // turn left slightly
+    //       turningYAW = 1700; 
+    //       adjustingYAWtime = currentMillis;
+    //     } else if(frontAvg - backAvg < 100){ // turn right
+    //       turningYAW = 1300;
+    //       adjustingYAWtime = currentMillis;
+    //     } else{
+    //       turningYAW = 1500;
+    //       adjustingYAWtime = currentMillis;
+    //     }
+    //   } else{
+    //     turningYAW = 1500;
+    //     adjustingYAWtime = currentMillis;
+    //   }
+    // } 
 
-// totalAvg
-    // if(totalAvg > 30 && totalAvg <)
+    // // turning for time
+    // if(currentMillis - adjustingYAWtime < 40 && currentMillis - TurnLefttimecomplete > 500 && !endofpath){ // change YAW for 40ms
+    //   rcChannels[YAW] = turningYAW;
+    //   busychnagingYAW = true; 
+    // } else if(currentMillis - adjustingYAWtime > 40 && busychnagingYAW){
+    //   busychnagingYAW = false;
+    // }
 
-    if (US_readyF) { // REpurposed as the RIGHT side Ultrasonic
-      // Serial.print("US1 Distance: ");
-      CurrentDistanceF = round(distanceCmF * 100) / 100;
-      // Serial.print("CurrentMillis: "); Serial.println(currentMillis);
-      Serial.print("LOOKY HERE AT THIS PART US FRONT :   ");
-      Serial.print(distanceCmF, 2);
-      Serial.println(" cm");
-      US_readyF = false; 
 
-      if(CurrentDistanceF > 200.00 && totalAvg < 2200 && totalAvg > 0){
-        if(!turningsoon && !endofpath){
-          endofpath = true; // Path is at an end.
-          endofpathtime = millis(); // timestamp when end of path is detected. 
-        }
-      } else{
-          endofpath = false; // Path is at an end.
-      }
+    // // // FRONT Ultrasonic Sensor (MB1000) - CHECKING for upcoming obstacle infront (assume obstacle is wall)
+    // if (US_readyF) { 
+    //   // Serial.print("US1 Distance: ");
+    //   CurrentDistanceF = round(distanceCmF * 100) / 100;
+    //   // Serial.print("CurrentMillis: "); Serial.println(currentMillis);
+    //   Serial.print("LOOKY HERE AT THIS PART US FRONT :   ");
+    //   Serial.print(distanceCmF, 2);
+    //   Serial.println(" cm");
+    //   US_readyF = false;  // Current distance of ultrasonic is saved in: distanceCm1
       
-    }
-  
-    // PITCH Braking
-    if(endofpath && millis() - endofpathtime < 1000){ // if end of path is detected then start braking for 300ms
-      rcChannels[PITCH] = 1350; // 
-      // TurnLefttimecomplete = millis(); // for any turning direction. 
-    } else if(endofpath && millis() - endofpathtime > 1000){
-      // TurnLefttimecomplete = millis(); 
-      turningsoon = true; //
-      turningtime = millis();
-      endofpath = false;
-    }
+    //   // PITCH CONTROL.
+    //   if(currentMillis - TurnLefttimecomplete < 500 && !endofpath){ // go for after turning for 1.0s
+    //     rcChannels[PITCH] = 1500;
+    //   } else if(beginpitching) {
+    //       if(CurrentDistanceF > 10.00 && CurrentDistanceF <= 10.00 && currentMillis - brakingtime < 1000){
+    //         rcChannels[PITCH] = 1390;
+    //         // rcChannels[PITCH] = 1500; // Replace with 1500 so it won't go backwards when distance is wrong?
+    //         CurrentDistanceF = 0.00;
+    //         Serial.println("Pitch backwards");
+    //       } else if(CurrentDistanceF > 10.00 && CurrentDistanceF <= 10.00 && currentMillis - brakingtime > 1000){
+    //         rcChannels[PITCH] = 1500;
+    //         CurrentDistanceF = 0.00;
+    //         endofpath = true;
+    //         endofpathtime = currentMillis;
+    //       } else if(CurrentDistanceF > 10.00){
+    //         rcChannels[PITCH] = 1540; // apply pitch brakes and prepare to turn. 
+    //         CurrentDistanceF = 0.00;
+    //         brakingtime = currentMillis;
+    //         Serial.println("Pitch forward");
+    //         // Serial.print("IN EOP PITCH: "); Serial.println(rcChannels[PITCH]);
+    //       } else{
+    //         rcChannels[PITCH] = 1500;
+    //         CurrentDistanceF = 0.00;
+    //         brakingtime = currentMillis;
+    //       }
+    //     }
+    // }
 
     // // YAW CORNERING
-    if(millis() - turningtime < 360 && turningsoon){ // (endofpath && ) endofpath is assumed to be true if it is not false?
+    if(currentMillis - endofpathtime < 360 && endofpath){ // (endofpath && ) endofpath is assumed to be true if it is not false?
       // Serial.println("TURNING NOW!!");
       rcChannels[PITCH] = 1500; // Override the Front Ultrasonic PITCH commands
-      rcChannels[YAW] =  1700; // THIS IS FOR LEFT TURN; use 1700 for RIGHT TURN (1300 for LEFT)
-      // TurnLefttimecomplete = millis();  // used to block Wall following
+      // rcChannels[YAW] =  1300; // THIS IS FOR LEFT TURN use 1700 for RIGHT TURN
+      TurnLefttimecomplete = currentMillis;  // used to block Wall following
     } 
-    else if(currentMillis - endofpathtime > 360 && turningsoon){ // Only allow turning YAW to run for 300ms. 
+    else if(currentMillis - endofpathtime > 360 && endofpath){ // Only allow turning YAW to run for 300ms. 
+      endofpath = false; // Path is no longer at an end.
       turningsoon = false; // not doing anything. 
-      rcChannels[YAW] =  1500;
-      // TurnLefttimecomplete = millis(); 
+      TurnLefttimecomplete = currentMillis; 
     }
   
   // End of Arming Complete Sequence. If statement. 
@@ -690,144 +737,4 @@ void loop()
     //   // Serial.println("IN ROLL ELSE");
     // }
 
-//// OLD Front Ultrasonic PITCH Contol
-  // // // FRONT Ultrasonic Sensor (MB1000) - CHECKING for upcoming obstacle infront (assume obstacle is wall)
-    // if (US_readyF) { 
-    //   // Serial.print("US1 Distance: ");
-    //   CurrentDistanceF = round(distanceCmF * 100) / 100;
-    //   // Serial.print("CurrentMillis: "); Serial.println(currentMillis);
-    //   Serial.print("LOOKY HERE AT THIS PART US FRONT :   ");
-    //   Serial.print(distanceCmF, 2);
-    //   Serial.println(" cm");
-    //   US_readyF = false;  // Current distance of ultrasonic is saved in: distanceCm1
-      
-    //   // PITCH CONTROL.
-    //   if(currentMillis - TurnLefttimecomplete < 500 && !endofpath){ // go for after turning for 1.0s
-    //     rcChannels[PITCH] = 1500;
-    //   } else if(beginpitching) {
-    //       if(CurrentDistanceF > 10.00 && CurrentDistanceF <= 10.00 && currentMillis - brakingtime < 1000){
-    //         rcChannels[PITCH] = 1390;
-    //         // rcChannels[PITCH] = 1500; // Replace with 1500 so it won't go backwards when distance is wrong?
-    //         CurrentDistanceF = 0.00;
-    //         Serial.println("Pitch backwards");
-    //       } else if(CurrentDistanceF > 10.00 && CurrentDistanceF <= 10.00 && currentMillis - brakingtime > 1000){
-    //         rcChannels[PITCH] = 1500;
-    //         CurrentDistanceF = 0.00;
-    //         endofpath = true;
-    //         endofpathtime = currentMillis;
-    //       } else if(CurrentDistanceF > 10.00){
-    //         rcChannels[PITCH] = 1540; // apply pitch brakes and prepare to turn. 
-    //         CurrentDistanceF = 0.00;
-    //         brakingtime = currentMillis;
-    //         Serial.println("Pitch forward");
-    //         // Serial.print("IN EOP PITCH: "); Serial.println(rcChannels[PITCH]);
-    //       } else{
-    //         rcChannels[PITCH] = 1500;
-    //         CurrentDistanceF = 0.00;
-    //         brakingtime = currentMillis;
-    //       }
-    //     }
-    // }
 
-
-
-    // OLD YAW ADJUSTMENT BASED ON TOF
-        // if(!endofpath && currentMillis - TurnLefttimecomplete > 500 && !busychnagingYAW){   
-    //   if(frontAvg > 30 && backAvg > 30 && frontAvg < 2000 && backAvg < 2000 && frontAvg - backAvg < 1000 && frontAvg - backAvg > 1000){ // prevent changing when too close, too far or too greater difference
-    //     if(frontAvg - backAvg > 100){ // turn left slightly
-    //       turningYAW = 1700; 
-    //       adjustingYAWtime = currentMillis;
-    //     } else if(frontAvg - backAvg < 100){ // turn right
-    //       turningYAW = 1300;
-    //       adjustingYAWtime = currentMillis;
-    //     } else{
-    //       turningYAW = 1500;
-    //       adjustingYAWtime = currentMillis;
-    //     }
-    //   } else{
-    //     turningYAW = 1500;
-    //     adjustingYAWtime = currentMillis;
-    //   }
-    // } 
-
-    // // turning for time
-    // if(currentMillis - adjustingYAWtime < 40 && currentMillis - TurnLefttimecomplete > 500 && !endofpath){ // change YAW for 40ms
-    //   rcChannels[YAW] = turningYAW;
-    //   busychnagingYAW = true; 
-    // } else if(currentMillis - adjustingYAWtime > 40 && busychnagingYAW){
-    //   busychnagingYAW = false;
-    // }
-
-
-    // TOF Wallfollowing and YAW adjustment data from tof code:
-    /// Reading RIGHT TOF sensor. 
-// void readCenterAverage(SparkFun_VL53L5CX &sensor, VL53L5CX_ResultsData &measurementData) {
-//   if (sensor.isDataReady()) {
-//     if (sensor.getRangingData(&measurementData)) {
-
-//       int frontSum = 0;
-//       int backSum = 0;
-//       int totalSum = 0;
-
-//       int frontCount = 0;
-//       int backCount = 0;
-//       int totalCount = 0;
-
-//       frontAvg = 0;
-//       backAvg = 0;
-//       totalAvg = 0;
-
-//       for (int i = 0; i < 64; i++) {
-//         uint8_t status = measurementData.target_status[i];
-//         int distance = measurementData.distance_mm[i];
-//         if (status == 5) { // valid return
-//           totalSum +=  distance;
-//           totalCount++;
-//           if (i < 24) {
-//             // Front 3 columns: D0 to D23
-//             frontSum += distance;
-//             frontCount++;
-//           } else if (i > 39) {
-//             // Back 3 columns: D40 to D63
-//             backSum += distance;
-//             backCount++;
-//           }
-//         }
-//       }
-
-//       if (totalCount > 0) {
-//         totalAvg = totalSum / totalCount;
-//         Serial.print("Average total distance (mm): ");
-//         Serial.println(totalAvg);
-//       } else {
-//         totalAvg = -1;
-//         Serial.println("No valid pixels.");
-//       }
-
-//       if (frontCount > 0) {
-//         frontAvg = frontSum / frontCount;
-//         Serial.print("Average front distance (mm): ");
-//         Serial.println(frontAvg);
-//       } else {
-//         frontAvg = -1;
-//         Serial.println("No valid front pixels.");
-//       }
-
-    
-//       if (backCount > 0) {
-//         backAvg = backSum / backCount;
-//         Serial.print("Average back distance (mm): ");
-//         Serial.println(backAvg);
-//       } else {
-//         backAvg = -1;
-//         Serial.println("No valid back pixels.");
-//       }
-
-//     } else{
-//       Serial.println("Failed to get Data!");
-//     }
-//   } else{
-//     // Serial.println("Data was not ready");
-//   }
-
-// }
