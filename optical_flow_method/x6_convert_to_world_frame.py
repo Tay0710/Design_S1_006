@@ -163,9 +163,10 @@ def main():
     # Rotate + integrate
     v_world = rotate_to_world(rot_mats_matched, v_body3)
     pos_world = integrate_velocity(times_v, v_world)
-    total_time = times_v[-1] - times_v[0]
-    v_fix = - pos_world[-1]/total_time
-    v_world = v_world + v_fix
+    cutoff = int(1 * len(v_world))
+    total_time = times_v[cutoff-1] - times_v[0]
+    v_fix = - pos_world[-1]/(total_time)
+    v_world[:cutoff] = v_world[:cutoff] + v_fix
     pos_world = integrate_velocity(times_v, v_world)
 
     # Add z position
