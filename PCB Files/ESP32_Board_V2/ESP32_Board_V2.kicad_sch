@@ -1,0 +1,918 @@
+(kicad_sch
+	(version 20250114)
+	(generator "eeschema")
+	(generator_version "9.0")
+	(uuid "d4bb3431-6329-4908-a86a-41253c48b76b")
+	(paper "A4")
+	(title_block
+		(title "ESP32 Board")
+		(date "2025-10-18")
+		(rev "2")
+		(company "Team 0-06")
+	)
+	(lib_symbols)
+	(junction
+		(at 142.24 62.23)
+		(diameter 0)
+		(color 0 0 0 0)
+		(uuid "7fcaa91b-e006-453d-8518-0750579d2fc7")
+	)
+	(junction
+		(at 142.24 64.77)
+		(diameter 0)
+		(color 0 0 0 0)
+		(uuid "d2264c0e-19b7-4933-849b-7db0aebbde29")
+	)
+	(junction
+		(at 111.76 64.77)
+		(diameter 0)
+		(color 0 0 0 0)
+		(uuid "d4a09b6f-77e2-43c0-9d4d-665ee6ee910b")
+	)
+	(wire
+		(pts
+			(xy 194.31 96.52) (xy 181.61 96.52)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "02596a9f-1205-4aca-92a6-926d7d12fa71")
+	)
+	(wire
+		(pts
+			(xy 142.24 64.77) (xy 111.76 64.77)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "0405dd10-4db4-4fe3-a50c-20d658e4fa41")
+	)
+	(wire
+		(pts
+			(xy 102.87 90.17) (xy 124.46 90.17)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "096b444f-f93d-4c48-a511-a3e0f44a0658")
+	)
+	(wire
+		(pts
+			(xy 102.87 74.93) (xy 124.46 74.93)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "0a84ade3-4d1e-43e3-a99a-1c7728fa1128")
+	)
+	(wire
+		(pts
+			(xy 102.87 97.79) (xy 124.46 97.79)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "1f6dff07-c237-4331-9b3d-19b5d04834e1")
+	)
+	(wire
+		(pts
+			(xy 194.31 91.44) (xy 182.88 91.44)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "284deaff-4d61-4aec-ab47-669b9f163dd7")
+	)
+	(wire
+		(pts
+			(xy 181.61 96.52) (xy 181.61 93.98)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "3aa64db0-85f5-4104-b419-b62fa0ac55e1")
+	)
+	(wire
+		(pts
+			(xy 135.89 135.89) (xy 135.89 140.97)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "3d054137-58ab-4fef-a109-95ef0489d4a0")
+	)
+	(wire
+		(pts
+			(xy 85.09 64.77) (xy 85.09 71.12)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "4358fa26-7a29-4b2c-9db9-f964daed509f")
+	)
+	(wire
+		(pts
+			(xy 102.87 78.74) (xy 124.46 78.74)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "4c3d63cd-d101-4310-86d3-d0358cd1bbdb")
+	)
+	(wire
+		(pts
+			(xy 102.87 82.55) (xy 124.46 82.55)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "69b0bd83-858c-41b6-880c-901e14cc2358")
+	)
+	(wire
+		(pts
+			(xy 182.88 90.17) (xy 172.72 90.17)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "6bf61784-104c-4d1f-b663-519ae449073b")
+	)
+	(wire
+		(pts
+			(xy 152.4 53.34) (xy 152.4 69.85)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "6fdb1135-56fe-4e33-8f90-63107316abe7")
+	)
+	(wire
+		(pts
+			(xy 142.24 59.69) (xy 143.51 59.69)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "71832b1a-00aa-4a19-b9e4-1e077eacc75f")
+	)
+	(wire
+		(pts
+			(xy 142.24 64.77) (xy 142.24 62.23)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "7851d20e-c3b4-403d-b758-ff6dbe1e44fe")
+	)
+	(wire
+		(pts
+			(xy 187.96 62.23) (xy 187.96 81.28)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "7db5d1b6-7d31-4cbf-9679-94f4a130303c")
+	)
+	(wire
+		(pts
+			(xy 102.87 93.98) (xy 124.46 93.98)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "8779206e-78d3-461d-86df-002823678024")
+	)
+	(wire
+		(pts
+			(xy 111.76 135.89) (xy 135.89 135.89)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "88932490-bb08-461f-b462-64d13066e7aa")
+	)
+	(wire
+		(pts
+			(xy 151.13 110.49) (xy 151.13 140.97)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "935381bd-1008-45ef-b943-542703b37ae4")
+	)
+	(wire
+		(pts
+			(xy 102.87 86.36) (xy 124.46 86.36)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "951469ef-e66a-4328-9f7d-208a70ec474e")
+	)
+	(wire
+		(pts
+			(xy 142.24 62.23) (xy 142.24 59.69)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "9813fcd4-c623-4654-9701-379883f59840")
+	)
+	(wire
+		(pts
+			(xy 143.51 59.69) (xy 143.51 53.34)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "9bb99663-f822-4213-9ff4-9c3c2da7939b")
+	)
+	(wire
+		(pts
+			(xy 142.24 62.23) (xy 187.96 62.23)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "a821a37a-0b0c-412c-96a5-b7b6f9f563f6")
+	)
+	(wire
+		(pts
+			(xy 111.76 64.77) (xy 85.09 64.77)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "acbab91a-2ff3-4cc1-a157-247c0f67d4ef")
+	)
+	(wire
+		(pts
+			(xy 177.8 97.79) (xy 172.72 97.79)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "bfa964f1-8455-447f-ab50-d1da2f64aec9")
+	)
+	(wire
+		(pts
+			(xy 182.88 91.44) (xy 182.88 90.17)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "ccb04fda-5956-4d3c-a27e-ca406bbca3c0")
+	)
+	(wire
+		(pts
+			(xy 177.8 101.6) (xy 177.8 97.79)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "e03c22eb-74b6-4c5c-b40c-6349fc7e51bd")
+	)
+	(wire
+		(pts
+			(xy 142.24 69.85) (xy 142.24 64.77)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "e37c4d9b-d6ea-41b5-bca2-11002711cd24")
+	)
+	(wire
+		(pts
+			(xy 172.72 86.36) (xy 194.31 86.36)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "e398ba59-778b-4d43-88e7-3d8f8e06d1ba")
+	)
+	(wire
+		(pts
+			(xy 111.76 64.77) (xy 111.76 135.89)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "e3ad9c98-9222-4b71-9e62-59c48263e34a")
+	)
+	(wire
+		(pts
+			(xy 172.72 93.98) (xy 181.61 93.98)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "e6af304c-03d2-4c57-81a2-84278afa6ec4")
+	)
+	(wire
+		(pts
+			(xy 187.96 81.28) (xy 194.31 81.28)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "ec31270a-3433-4c8f-8cf6-c391512feebc")
+	)
+	(wire
+		(pts
+			(xy 194.31 101.6) (xy 177.8 101.6)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "f5cc48ce-5579-4fc5-8b51-3ba46fe8c7e9")
+	)
+	(wire
+		(pts
+			(xy 143.51 110.49) (xy 143.51 140.97)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "f8e63897-a633-4ff6-82d7-aa72c9696d49")
+	)
+	(sheet
+		(at 62.23 71.12)
+		(size 40.64 40.64)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(stroke
+			(width 0.1524)
+			(type solid)
+		)
+		(fill
+			(color 0 0 0 0.0000)
+		)
+		(uuid "1522cfdc-61e8-4b4f-8433-5b116863fe1c")
+		(property "Sheetname" "LORA"
+			(at 62.23 70.4084 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left bottom)
+			)
+		)
+		(property "Sheetfile" "LORA.kicad_sch"
+			(at 62.23 112.3446 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left top)
+			)
+		)
+		(pin "3V3" input
+			(at 85.09 71.12 90)
+			(uuid "5574f1e3-5215-426c-8d05-c767e5c2000b")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
+			)
+		)
+		(pin "LORA_BUSY" output
+			(at 102.87 78.74 0)
+			(uuid "7202b6ca-87e8-438b-b3b5-1450a19c2deb")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
+			)
+		)
+		(pin "LORA_DIO" bidirectional
+			(at 102.87 86.36 0)
+			(uuid "6e304e56-523a-46c8-a836-50011b310a07")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
+			)
+		)
+		(pin "LORA_RESET" input
+			(at 102.87 97.79 0)
+			(uuid "f1be616b-6c5b-4adf-b48e-bc72ad98e1c6")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
+			)
+		)
+		(pin "CLK1" input
+			(at 102.87 82.55 0)
+			(uuid "84c3d7f9-57f1-4c45-aa7c-28f7c139ed8a")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
+			)
+		)
+		(pin "CSLORA" input
+			(at 102.87 74.93 0)
+			(uuid "e6e6bcf6-54c8-474d-b163-4a451c85d11a")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
+			)
+		)
+		(pin "MISO1" output
+			(at 102.87 90.17 0)
+			(uuid "f930e1f2-59be-46e6-8caa-1a2863f2a2c1")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
+			)
+		)
+		(pin "MOSI1" input
+			(at 102.87 93.98 0)
+			(uuid "6ab766cb-cab7-4811-9bca-b2bc02b2237b")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
+			)
+		)
+		(instances
+			(project "ESP32_Board_V2"
+				(path "/d4bb3431-6329-4908-a86a-41253c48b76b"
+					(page "4")
+				)
+			)
+		)
+	)
+	(sheet
+		(at 124.46 69.85)
+		(size 48.26 40.64)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(stroke
+			(width 0.1524)
+			(type solid)
+		)
+		(fill
+			(color 0 0 0 0.0000)
+		)
+		(uuid "77f29de9-bd70-4b21-88c3-ea89bca7a374")
+		(property "Sheetname" "ESP32"
+			(at 124.46 69.1384 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left bottom)
+			)
+		)
+		(property "Sheetfile" "ESP32.kicad_sch"
+			(at 124.46 111.0746 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left top)
+			)
+		)
+		(pin "3V3" input
+			(at 142.24 69.85 90)
+			(uuid "752ec4e6-a2bc-4f64-8f35-37180db491a3")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
+			)
+		)
+		(pin "5V_USB2" output
+			(at 152.4 69.85 90)
+			(uuid "36b62fd3-d0d3-4d1b-860e-8e828d2a015a")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
+			)
+		)
+		(pin "LED3" output
+			(at 143.51 110.49 270)
+			(uuid "d2519c6d-e0c0-4b07-b4f9-19353921f2e7")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(pin "LED4" output
+			(at 151.13 110.49 270)
+			(uuid "5934fc0e-0fd8-409f-bb64-f5534d4d72b5")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(pin "AP_CS2" output
+			(at 172.72 86.36 0)
+			(uuid "588d6066-2cc4-42f0-817c-6e9449407e6c")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
+			)
+		)
+		(pin "AP_SCLK2" output
+			(at 172.72 90.17 0)
+			(uuid "a7bec233-a957-4a77-93de-79461348033c")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
+			)
+		)
+		(pin "AP_SDI2" bidirectional
+			(at 172.72 93.98 0)
+			(uuid "04261251-3bbe-4e84-a381-45c7c6dd7677")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
+			)
+		)
+		(pin "AP_SDO2" input
+			(at 172.72 97.79 0)
+			(uuid "f7bd7b3a-2610-4412-bffa-edda67ce38c1")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
+			)
+		)
+		(pin "LORA_BUSY" input
+			(at 124.46 78.74 180)
+			(uuid "4b5e4b82-b702-4600-b221-acee3e8c5401")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(pin "LORA_DIO" bidirectional
+			(at 124.46 86.36 180)
+			(uuid "1a72cb29-ba22-4d17-8aa0-88486a91d297")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(pin "LORA_RESET" output
+			(at 124.46 97.79 180)
+			(uuid "dfbf883d-9127-4043-8081-b5b90de5af8a")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(pin "CLK1" output
+			(at 124.46 82.55 180)
+			(uuid "ead37b95-e2db-4106-a1d6-3b385b67a5ba")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(pin "CSLORA" output
+			(at 124.46 74.93 180)
+			(uuid "50b433f5-ee55-4872-9196-b9a390b870db")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(pin "MISO1" input
+			(at 124.46 90.17 180)
+			(uuid "e51cccea-2684-4e3c-ab3c-d282e7dd0e41")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(pin "MOSI1" output
+			(at 124.46 93.98 180)
+			(uuid "c28735e4-d5c3-4810-a133-cc0c07fb596d")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(instances
+			(project "ESP32_Board_V2"
+				(path "/d4bb3431-6329-4908-a86a-41253c48b76b"
+					(page "3")
+				)
+			)
+		)
+	)
+	(sheet
+		(at 118.11 29.21)
+		(size 48.26 24.13)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(stroke
+			(width 0.1524)
+			(type solid)
+		)
+		(fill
+			(color 0 0 0 0.0000)
+		)
+		(uuid "a2d9209c-a444-4b7d-94ec-b2493a991d2a")
+		(property "Sheetname" "LVR"
+			(at 118.11 28.4984 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left bottom)
+			)
+		)
+		(property "Sheetfile" "3V3BEC.kicad_sch"
+			(at 118.11 53.9246 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left top)
+			)
+		)
+		(pin "ESP3V3" output
+			(at 143.51 53.34 270)
+			(uuid "ec541368-4fbc-4d0b-94fb-2524de61a217")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(pin "5V_USB2" input
+			(at 152.4 53.34 270)
+			(uuid "2d85edab-dddf-4bd0-826d-7cf7b5ab830e")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(instances
+			(project "ESP32_Board_V2"
+				(path "/d4bb3431-6329-4908-a86a-41253c48b76b"
+					(page "2")
+				)
+			)
+		)
+	)
+	(sheet
+		(at 194.31 69.85)
+		(size 35.56 52.07)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(stroke
+			(width 0.1524)
+			(type solid)
+		)
+		(fill
+			(color 0 0 0 0.0000)
+		)
+		(uuid "bfed869f-e543-4eb5-aaab-a5410ee64748")
+		(property "Sheetname" "IMU2"
+			(at 194.31 69.1384 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left bottom)
+			)
+		)
+		(property "Sheetfile" "IMU2.kicad_sch"
+			(at 194.31 122.5046 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left top)
+			)
+		)
+		(pin "3V3" input
+			(at 194.31 81.28 180)
+			(uuid "cb524245-2a1f-46ce-9573-17a9eff96b36")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(pin "AP_CS2" input
+			(at 194.31 86.36 180)
+			(uuid "3a377a2b-0eda-4687-a84e-0f6891f58fc4")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(pin "AP_SCLK2" input
+			(at 194.31 91.44 180)
+			(uuid "89566256-5084-412d-9a53-51a948b48f9f")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(pin "AP_SDI2" bidirectional
+			(at 194.31 96.52 180)
+			(uuid "24e19ee1-2d79-4183-9910-197f59663722")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(pin "AP_SDO2" output
+			(at 194.31 101.6 180)
+			(uuid "cffaf4d3-8d45-44a2-98de-f5395ad4056c")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(instances
+			(project "ESP32_Board_V2"
+				(path "/d4bb3431-6329-4908-a86a-41253c48b76b"
+					(page "5")
+				)
+			)
+		)
+	)
+	(sheet
+		(at 120.65 140.97)
+		(size 41.91 17.78)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(stroke
+			(width 0.1524)
+			(type solid)
+		)
+		(fill
+			(color 0 0 0 0.0000)
+		)
+		(uuid "cbdf90b5-da3b-4997-9cab-883836b06ea2")
+		(property "Sheetname" "LEDs"
+			(at 119.9384 158.75 90)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left bottom)
+			)
+		)
+		(property "Sheetfile" "LEDs.kicad_sch"
+			(at 163.1446 158.75 90)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left top)
+			)
+		)
+		(pin "LED3" input
+			(at 143.51 140.97 90)
+			(uuid "5c246774-64c6-40d7-94c0-bb9e68880f75")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
+			)
+		)
+		(pin "LED4" input
+			(at 151.13 140.97 90)
+			(uuid "3ccd07bb-2d75-488a-96a4-e9be12e9fb1a")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
+			)
+		)
+		(pin "3V3" input
+			(at 135.89 140.97 90)
+			(uuid "e219d9dd-c70f-4f67-9937-926a8d3d3745")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
+			)
+		)
+		(instances
+			(project "ESP32_Board_V2"
+				(path "/d4bb3431-6329-4908-a86a-41253c48b76b"
+					(page "6")
+				)
+			)
+		)
+	)
+	(sheet_instances
+		(path "/"
+			(page "1")
+		)
+	)
+	(embedded_fonts no)
+)

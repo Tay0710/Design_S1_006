@@ -1,0 +1,44 @@
+### Footprint positions - created on 2025-08-27T15:50:55+0800 ###
+### Printed by KiCad version 9.0.3
+## Unit = mm, Angle = deg.
+## Side : top
+# Ref     Val                    Package                             PosX       PosY       Rot  Side
+C1        100n/10V               C_0201_0603Metric               153.8500   -70.1250   90.0000  top
+C2        100n/10V               C_0201_0603Metric               152.8500   -70.1250   90.0000  top
+C3        100n/10V               C_0201_0603Metric               135.8500   -78.6250  -90.0000  top
+C4        100n/10V               C_0201_0603Metric               136.8500   -78.6250  -90.0000  top
+C5        100n/10V               C_0201_0603Metric               151.8500   -70.1250   90.0000  top
+C6        100n/10V               C_0201_0603Metric               153.5050   -72.6250    0.0000  top
+C7        100n/10V               C_0201_0603Metric               149.1000   -83.2000    0.0000  top
+C8        10u/16V                C_0805_2012Metric               143.1950   -57.4500  -90.0000  top
+C10       0.1u                   C_0201_0603Metric               137.0500   -68.6500   90.0000  top
+C20       0.1u/10V               C_0201_0603Metric               149.6950   -89.2950   90.0000  top
+C21       2.2u/10V               C_0402_1005Metric               148.6950   -89.4500   90.0000  top
+C22       10n/10V                C_0805_2012Metric               142.6950   -88.9500  -90.0000  top
+CBATT1    10u/16V                C_0805_2012Metric               155.1950   -66.9500  -90.0000  top
+D1        BAT54C                 SOT-23                          158.6625   -66.2000  180.0000  top
+D2        LED                    LED_0603_1608Metric             146.1940   -63.7000  -90.0000  top
+D3        LED                    LED_0603_1608Metric             144.5940   -63.7000  -90.0000  top
+J1        USB_B_Micro            USB_Micro-AB_Molex_47590-0001   164.0440   -74.0000   90.0000  top
+J2        S1                     4_SolderPad_2mm                 130.8500   -52.9500   90.0000  top
+J3        S2                     4_SolderPad_2mm                 159.2500   -52.4500  -90.0000  top
+J4        S3                     4_SolderPad_2mm                 159.5301   -89.0187  -90.0000  top
+J5        S4                     4_SolderPad_2mm                 130.4500   -89.4500  -90.0000  top
+J18       BATTERYSTM             2_SolderPad_2mm                 162.6500   -59.1500    0.0000  top
+J21       STM32GROUND            SolderPad_2mm                   127.0500   -63.1500    0.0000  top
+J22       RX_4                   SolderPad_2mm                   129.3500   -80.3500    0.0000  top
+J23       SBUS_IN                SolderPad_2mm                   126.9500   -65.8500    0.0000  top
+R1        10k                    R_0603_1608Metric               139.1950   -59.4500    0.0000  top
+R2        22                     R_0603_1608Metric               156.5500   -73.0750    0.0000  top
+R3        22                     R_0603_1608Metric               156.5500   -74.5750    0.0000  top
+R4        10k                    R_0603_1608Metric               150.1000   -85.2000  -90.0000  top
+R5        10k                    R_0603_1608Metric               152.6950   -84.4500  180.0000  top
+R6        1k                     R_0603_1608Metric               146.1000   -66.8750  -90.0000  top
+R7        1k                     R_0603_1608Metric               144.6000   -66.8750  -90.0000  top
+S1        DHT-4235A              SW_DHT-4235A                    139.1950   -62.9500  180.0000  top
+STM3V3    NCP1117ST33T3G         SOT230P700X180-4N               148.7000   -57.2000  180.0000  top
+U2        STM32F405RGTx          LQFP-64_10x10mm_P0.5mm          145.3500   -75.8750    0.0000  top
+U4        ICM-42688-P            PQFN50P300X250X97-14N           145.6950   -86.8650    0.0000  top
+U6        SN74LVC1G04DBVR        SOT95P280X145-5N                134.4950   -68.9000    0.0000  top
+Y2        ABM8AIG-8.000MHZ-1Z-T  XTAL_ABM8AIG-8.000MHZ-1Z-T      136.0500   -74.0250  180.0000  top
+## End
