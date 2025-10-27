@@ -567,14 +567,16 @@ void loop()
       endofpath = true; // Path is not at an end.
       if(totalAvg > 1700 && totalAvg < 2200){
         endofpathtime = millis(); // timestamp when end of path is detected. 
-        if(forwardvelocity > 1000.00){
+        if(forwardvelocity > 250.00){
           rcChannels[PITCH] = 1400; // slow down harshly
-      } else if(forwardvelocity > 500.00){
+      } else if(forwardvelocity > 100.00){
           rcChannels[PITCH] = 1450; // slow down
-        } else if(forwardvelocity < -250.00){
+        } else if(forwardvelocity > 20.00){
+          rcChannels[PITCH] = 1500; // go neutral if going forward (for vel between: 100 to 20)
+        } else if(forwardvelocity < -150.00){
           rcChannels[PITCH] = 1540; // speed up
         } else{
-          rcChannels[PITCH] = 1520; // go forward (for vel between: 500 to -250)
+          rcChannels[PITCH] = 1520; // go forward (for vel between: 20 to -150)
         }
       } else if(totalAvg > 1300 && totalAvg < 1700){
         if(forwardvelocity > 150.00){
@@ -582,7 +584,7 @@ void loop()
         } else if(forwardvelocity > 80.00) {
           rcChannels[PITCH] = 1470; // slow down gently
         } else if(forwardvelocity > 8.00){
-          rcChannels[PITCH] = 1500; // if going forward go neutral
+          rcChannels[PITCH] = 1500; // if going forward go neutral (for vel between: 80 to 8)
         } else if(forwardvelocity < -150.00){
           rcChannels[PITCH] = 1540; // speed up
         } else{
@@ -605,10 +607,10 @@ void loop()
           rcChannels[PITCH] = 1400; // slow down harshly
         } else if(forwardvelocity > 100.00) {
           rcChannels[PITCH] = 1470; // slow down 
-        } else if (forwardvelocity < -150.00){
-          rcChannels[PITCH] = 1540; // speed up 
+        } else if (forwardvelocity < -100.00){
+          rcChannels[PITCH] = 1520; // speed up 
         } else if (forwardvelocity < -8.00){
-          rcChannels[PITCH] = 1500; // if going backwards go neutral (for vel between: -8 to -150)
+          rcChannels[PITCH] = 1500; // if going backwards go neutral (for vel between: -8 to -100)
         } else{
           rcChannels[PITCH] =  (totalAvg/20) + 1445; // slowly reverse (for vel between: 100 to -8)
         }
