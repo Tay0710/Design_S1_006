@@ -561,6 +561,7 @@ void loop()
     // target distance 1000 mm
     // if vel is positivie drone is moving forawrd
     // if vel is negative drone is moving backwards
+    // vel should never really be bigger or less than 250 cm/s and -250 cm/s respectively.
 
     if(totalAvg < 2000 && totalAvg > 0 && !turningsoon){
       endofpath = true; // Path is not at an end.
@@ -573,39 +574,43 @@ void loop()
         } else if(forwardvelocity < -250.00){
           rcChannels[PITCH] = 1540; // speed up
         } else{
-          rcChannels[PITCH] = 1520; // go forward
+          rcChannels[PITCH] = 1520; // go forward (for vel between: 500 to -250)
         }
       } else if(totalAvg > 1300 && totalAvg < 1700){
-        if(forwardvelocity > 250.00){
-          rcChannels[PITCH] = 1450; // slow down
-        } else if(forwardvelocity > 150.00) {
-          rcChannels[PITCH] = 1470; // slow down gently
-        } else if(forwardvelocity < -250.00){
-          rcChannels[PITCH] = 1540; // speed up
-        } else{
-          rcChannels[PITCH] = (totalAvg/20) + 1435; // go forward slowly
-        }
-      } else if(totalAvg > 1100 && totalAvg < 1300){
         if(forwardvelocity > 150.00){
-          rcChannels[PITCH] = 1450; // slow down 
-        } else if(forwardvelocity > 40.00){
-          rcChannels[PITCH] = 1485; // slow down very gently
-        } else if(forwardvelocity < -40.00){
-          rcChannels[PITCH] = 1515; // speed up slowly
+          rcChannels[PITCH] = 1450; // slow down
+        } else if(forwardvelocity > 80.00) {
+          rcChannels[PITCH] = 1470; // slow down gently
+        } else if(forwardvelocity > 8.00){
+          rcChannels[PITCH] = 1500; // if going forward go neutral
         } else if(forwardvelocity < -150.00){
           rcChannels[PITCH] = 1540; // speed up
         } else{
-          rcChannels[PITCH] = 1500; // neutral P control
+          rcChannels[PITCH] = (totalAvg/20) + 1435; // go forward slowly (for vel between: 8 to -150)
+        }
+      } else if(totalAvg > 1100 && totalAvg < 1300){
+        if(forwardvelocity > 150.00){
+          rcChannels[PITCH] = 1470; // slow down 
+        } else if(forwardvelocity > 40.00){
+          rcChannels[PITCH] = 1490; // slow down very gently
+        } else if(forwardvelocity < -150.00){
+          rcChannels[PITCH] = 1530; // speed up
+        } else if(forwardvelocity < -40.00){
+          rcChannels[PITCH] = 1510; // speed up slowly
+        } else{
+          rcChannels[PITCH] = 1500; // neutral P control (for vel between: 40 to -40)
         }
       } else if(totalAvg > 600 && totalAvg < 1100){
-        if(forwardvelocity > 500.00){
+        if(forwardvelocity > 200.00){
           rcChannels[PITCH] = 1400; // slow down harshly
-        } else if(forwardvelocity > 150.00) {
-          rcChannels[PITCH] = 1450; // slow down 
-        } else if (forwardvelocity < -250.00){
+        } else if(forwardvelocity > 100.00) {
+          rcChannels[PITCH] = 1470; // slow down 
+        } else if (forwardvelocity < -150.00){
           rcChannels[PITCH] = 1540; // speed up 
+        } else if (forwardvelocity < -8.00){
+          rcChannels[PITCH] = 1500; // if going backwards go neutral (for vel between: -8 to -150)
         } else{
-          rcChannels[PITCH] =  (totalAvg/20) + 1445; // slowly reverse
+          rcChannels[PITCH] =  (totalAvg/20) + 1445; // slowly reverse (for vel between: 100 to -8)
         }
       } else if(totalAvg < 600){
         endofpathtime = millis(); // timestamp when end of path is detected. 
@@ -615,10 +620,10 @@ void loop()
           rcChannels[PITCH] = 1450; // slow down 
         } else if (forwardvelocity < -250.00){
           rcChannels[PITCH] = 1540; // speed up 
-        } else if (forwardvelocity < -150.00){
+        } else if (forwardvelocity < -50.00){
           rcChannels[PITCH] = 1520; // speed up 
         } else {
-          rcChannels[PITCH] =  1475; // reverse 
+          rcChannels[PITCH] =  1475; // reverse (for vel between: 80 to -50)
         }
       }
     } else{
