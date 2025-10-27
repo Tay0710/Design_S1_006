@@ -1,4 +1,4 @@
-# ELEC5550 Group Project
+# ELEC5550 Group Project (Team 0-06)
 
 **Students Involved:**
 - Aidan	Wheller
