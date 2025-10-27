@@ -1,76 +1,78 @@
 """
 x1_pixel_to_angular_rate.py
 ---------------------------
-Converts PMW3901 optical flow pixel deltas into angular velocity estimates.
+Stage 1 of the ELEC5550 Indoor 3D Mapping Design Project (2025) position pipeline.
+
+Purpose:
+    Convert PMW3901 pixel deltas (dx, dy) into angular velocities (ωx, ωy) in rad/s.
 
 Overview:
-    The PMW3901 sensor outputs pixel displacement (dx, dy) over time. This script
-    batches 10 consecutive samples, sums their displacements, and converts them 
-    into angular rates about the x and y axes (ωx, ωy) in radians/second.
+    Applies a pixels --> radians scale factor s and divides by sample Δt:
+        ωx = (dx × s) / Δt,  ωy = (dy × s) / Δt.
+    Default s uses the project’s empirical constant.
 
-Method:
-    - Field of View (FOV): 42°
-    - Sensor resolution (res): 35 pixels across FOV
-    - Conversion factor: (FOV [rad] / resolution [pixels]) → rad/pixel
-    - Angular velocity: (Δpixels × rad/pixel) / Δtime
+Usage:
+    Called from x0_position_pipeline.py.
 
 Inputs:
-    Optical flow data:  
-        Columns:
-            time, deltaX, deltaY
+    Optical flow data CSV
+        Columns: time, deltaX, deltaY.
 
 Outputs:
-    optical_flow_angular_rates.csv
-        Columns:
-            time (s), wx (rad/s), wy (rad/s)
+    ../optical_flow_method_data/optical_flow_angular_rates.csv
+        Columns: time (s), wx (rad/s), wy (rad/s).
 """
 
 import math
 import csv
 
-# Convert PMW3901 pixel deltas to angular-rates (rad/s)
 def pixels_to_angular_rates(dx, dy, dt):
-    # https://circuitdigest.com/microcontroller-projects/interfacing-pmw3901-optical-flow-sensor-with-esp32
+    '''
+    Convert pixel deltas to angular rates (rad/s).
+    
+    PMW3901 angular scale s (rad/pixel)
+    Approximate PMW3901 angular-rate limit ≈ 7.4 rad/s.
+
+    Options to decide scale factor (choose one and set s):
+
+    OPTION 1 — FOV linear:
+        s = radians(fov_deg) / res
+
+    OPTION 2 — Tangent mapping:
+        s = 2 * tan(radians(fov_deg) / 2) / res
+        References: https://www.andrewgordon.me/posts/Adventures-in-Optical-Flow/
+                    https://kamathsblog.com/odometry-using-optical-flow
+
+    OPTION 3 — Project constants (MILC floor):
+        s = 0.0015
+        or
+        s = 0.09 / 57.3
+        References: https://isif.org/files/isif/2025-01/optical_flow_p72.pdf
+
+    OPTION 4 — Empirical fit:
+        s = 0.0015706806282723
+        or
+        s = 0.00188
+
+    General References:
+                    https://circuitdigest.com/microcontroller-projects/interfacing-pmw3901-optical-flow-sensor-with-esp32
+                    https://forum.bitcraze.io/viewtopic.php?t=2882&start=10
+    '''
+
     res = 35.0
     fov_deg = 42.0
     if dt is None or dt <= 0:
         return 0.0, 0.0
     
-    # check this: https://forum.bitcraze.io/viewtopic.php?t=2882&start=10 
-    
-    # rad per pixel
-
-    # OPTION 1:
-    # s = math.radians(fov_deg) / res 
-
-    # OPTION 2:
-    # https://www.andrewgordon.me/posts/Adventures-in-Optical-Flow/
-    # distance = (sensor_reading x distance_to_image / sensor_resolution ) x 2 x tan(field_of_view / 2.0)
-    # distance = (sensor_reading x h / sensor_resolution ) x 2 x tan(field_of_view / 2.0)
-    # s = 2 x tan(field_of_view / 2.0) / sensor_resolution
-    # https://kamathsblog.com/odometry-using-optical-flow
-    # s = 2*math.tan(fov_deg/2 * math.pi/180)/(res) # new code: unsure which is better yet
-
-    # OPTION 3:
-    # This works specifically for MILC Floor measurements
-    # https://isif.org/files/isif/2025-01/optical_flow_p72.pdf
-    # s = 0.0015
-    # s = 0.09/57.3 # from matlab sim
-
-    # OPTION 4:
-    # Empirically determine our own scale factor
-    # s = 0.0015706806282723
     s = 0.00188
 
-
-    # Note: max rate of 7.4 radians/second
-    
-    wx = (dx * s) / dt # this is multiplied by h to get v
+    wx = (dx * s) / dt
     wy = (dy * s) / dt
     
     return wx, wy
 
 def main(input_path):
+    """Read optical flow CSV and write angular rates CSV."""
     output_path = "../optical_flow_method_data/optical_flow_angular_rates.csv"
     
     with open(input_path, "r") as f_in, open(output_path, "w", newline="") as f_out:
