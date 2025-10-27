@@ -96,7 +96,6 @@ def main(input_path):
             wx, wy = pixels_to_angular_rates(dx, dy, dt)
             
             print(f"{t:12.6f} {dt:12.6f} {dx:7d}  {dy:7d}  {wx:12.6f}  {wy:12.6f}")
-            # Currently writing all samples
             writer.writerow([f"{t:.6f}", f"{wx:.6f}", f"{wy:.6f}"])
 
 if __name__ == "__main__":

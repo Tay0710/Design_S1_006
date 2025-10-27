@@ -3,49 +3,39 @@ x2_height_from_ToF.py
 ---------------------
 Processes raw VL53L7CX ToF sensor data to estimate drone height.
 
+Purpose:
+    Estimate drone altitude from VL53L7CX distance measurements.
+
 Overview:
-    The VL53L7CX is an 8×8 ToF sensor with a 90° field of view (FOV).
-    We select 4 central measurement zones (D6, D5, D10, D9) around the 
-    center of the array, adjust each measurement for the sensor angle, 
-    and average them to obtain an estimate of drone altitude.
+    Selects four central zones (D6, D5, D10, D9) in the 4 x 4 grid, applies an off-axis correction
+    using h = d × cos(15°), and averages the corrected values to obtain height.
 
-    This assumes the sensor is mounted perpendicular to the floor.
+    Notes: FOV = 90°, pixel pitch = 90° / 3 = 30°, offset from center = 30° / 2 = 15°,
+    assumes the sensor is perpendicular to the floor.
 
-Notes:
-    - FOV = 90°
-    - Pixel pitch = 90 / 7 = 12.857°
-    - Offset angle from central measurement to FOV mid = 6.429°
-    - Correction: h = d × cos(θ)
+Usage:
+    Called from x0_position_pipeline.py during Stage 2.
 
 Inputs:
-    ToF_combined_square2.csv
-        Columns: 
-            time, D0 … D63 (distance in mm per zone)
+    ToF CSV with per-zone distances (mm)
+        Columns: time, D0 … D15, type
 
 Outputs:
-    ToF_heights.csv
-        Columns:
-            time (s), height (mm)
-        where height is the averaged, corrected altitude.
-
+    ../optical_flow_method_data/ToF_heights.csv
+        Columns: time (s), height (mm)
+    ../optical_flow_method_data/ToF_roof.csv
+        Columns: time (s), height (mm)
 """
 
 import math
 import csv
 import numpy as np
 import ast
-# Maybe an outlier fn - but how can you make sure this doesn't include the dodgy one
-# 163.5125 is average - maybe twice this as outlier cancel
 
 def calculate_height(D5, D6, D9, D10, last_height):
-    """
-    These are altered to suit a 4x4 array as this is currently the most accurate
-    The field of view (fov) of the VL53L7CX_2 is 90 degrees
-    The angle between each data point is 90/3 = 30
-    The angle from the central measurements to the middle of the fov is 30/2 = 15
-    """
+    """Average 4 central zones (mm) with cos(15°) correction. If no average is available use last_height."""
     
-    angle = 15 * math.pi/180
+    angle = 15 * math.pi / 180
     valid = []
     
     # Check each input, skip if it's "x" or nan
@@ -60,7 +50,7 @@ def calculate_height(D5, D6, D9, D10, last_height):
         else:
             v = float(val)
 
-        if np.isnan(v):   # skip NaN values
+        if np.isnan(v):
             continue
         valid.append(v * math.cos(angle))
             
@@ -80,17 +70,19 @@ def calculate_height(D5, D6, D9, D10, last_height):
     return h_rounded
 
 def main(input_path):
+    """Compute floor and roof heights (mm) from VL53L7CX CSV."""
+    
     output_path = "../optical_flow_method_data/ToF_heights.csv"
 
-    last_height = 0.0  # initial fallback value
+    last_height = 0.0
 
     with open(input_path, "r") as f_in, open(output_path, "w", newline="") as f_out:
-        reader = csv.DictReader(f_in)  # handles "time,type,D0...D63"
+        reader = csv.DictReader(f_in)
         writer = csv.writer(f_out)
         writer.writerow(["time", "height"])
 
         for row in reader:
-            if row["type"] != "D":   # only process type D rows
+            if row["type"] != "D":
                 continue
 
             t = float(row["time"])
@@ -103,19 +95,18 @@ def main(input_path):
     last_roof = 0
 
     with open(input_path, "r") as f_in, open(output_path, "w", newline="") as f_out:
-        reader = csv.DictReader(f_in)  # handles "time,type,D0...D63"
+        reader = csv.DictReader(f_in)
         writer = csv.writer(f_out)
         writer.writerow(["time", "height"])
 
         for row in reader:
-            if row["type"] != "U":   # only process type U rows
+            if row["type"] != "U":
                 continue
 
             t = float(row["time"])
             h = calculate_height(row["D5"], row["D6"], row["D9"], row["D10"], last_roof)
             last_height = h
             writer.writerow([f"{t:.6f}", f"{h:.6f}"])
-
             
 if __name__ == "__main__":
     main()
