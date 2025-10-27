@@ -212,17 +212,17 @@ void loop()
     {
       rcChannels[THROTTLE] = THROTTLE_MIN;
       rcChannels[AUX1] = 1800;
-      Serial.println("Arm drone.");
+      // Serial.println("Arm drone.");
     }
     else if (currentMillis > 10000 + armingMillis && currentMillis < 15000 + armingMillis)
     { // Wait another 5 seconds before turning on throttle and leave on for 10 seconds
       rcChannels[THROTTLE] = 1350;
-      Serial.println("Throttle 1350.");
-      rcChannels[AUX1] = 1800;
+      // Serial.println("Throttle 1350.");
+      // rcChannels[AUX1] = 1800;
     }
     else if (currentMillis > 15000 + armingMillis)
     {
-      Serial.println("Arming sequence finished");
+      // Serial.println("Arming sequence finished");
 
       rcChannels[THROTTLE] = THROTTLE_MIN;
       rcChannels[AUX1] = 1500;
