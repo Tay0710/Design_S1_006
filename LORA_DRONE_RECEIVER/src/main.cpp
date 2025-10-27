@@ -71,6 +71,7 @@ uint32_t sbusTime = 0;
 // Timing variables
 uint32_t currentMillis;
 uint32_t armingMillis;
+uint32_t failsafeMillis;
 uint32_t endofpathtime = 0;
 uint32_t TurnLefttimecomplete = 0; // not used anymore. 
 uint32_t brakingtime = 0;
@@ -108,12 +109,15 @@ volatile float oldforwarddistance = 0;
 
 
 boolean start_flag = false;
+boolean failsafe_flag = false;
 
 void triggerFailsafe()
 {
   Serial.println("Failsafe triggered. Land drone.");
   armingSequenceFlag = false;
-  rcChannels[AUX3] = 1800;
+  failsafe_flag = true;
+  failsafeMillis = millis();
+  // rcChannels[AUX3] = 1800;
 }
 
 /**@brief Function to be executed on Radio Rx Timeout event
@@ -652,6 +656,19 @@ void loop()
     }
   
   // End of Arming Complete Sequence. If statement. 
+  }
+
+  if (failsafe_flag) {
+    // Reset orientation to 1500
+    rcChannels[PITCH] = 1500;
+    rcChannels[YAW] = 1500;
+    rcChannels[ROLL] = 1500;
+
+    if (currentMillis - failsafeMillis < 3000) {
+      rcChannels[THROTTLE] = 1360; // Throttle for 3 secs
+    } else {
+      rcChannels[AUX3] = 1800; // then kill everything
+    }
   }
 
   // Serial.println(" --- SBUS OUTPUT --- ");
