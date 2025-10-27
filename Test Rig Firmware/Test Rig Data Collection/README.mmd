@@ -1,0 +1,98 @@
+Software Notes, to Add:
+    Make the LoRa module an interrupt insead of duty cycle checking, and add a limit where if it has not heard from LoRa for X time Drone goes into landing procedure. 
+
+Hardware Notes:
+    Special Case if OF, LoRa, SD Card on same SPI bus. 
+    Is it possible to put the SD card module on the PCB board? - No Space. 
+
+Steps to record:
+    1. Upload code
+    2. Press Boot button (mode should change to 1 = true)
+    3. Let Data Record. 
+    4. Press Boot button (mode should change to 0 = false)
+    5. Take out microSD card and use reader to download csv files
+
+CSV files available: (header + values in csv files)
+    imu_ICM45686
+        returns:
+            time,gyro x,gyro y,gyro z,accel x,accel y,accel z
+
+    ***4x_tof_L7
+        The type is: S1, S2, R, F
+        Type refers to the specific ToF being called upon. 
+        S1 and S2 are D0 to D63; R and F are from D0 to D15
+        returns:
+            time,type,D0,...,D63
+
+    Note: look at datasheet to identify were each zone is (they are at different angles)
+        Link: https://www.st.com/resource/en/datasheet/vl53l7cx.pdf
+
+    of_PMW3901
+        returns:
+            time,deltaX,deltaY
+
+    4xUltra_MB1030
+        returns:
+            time,US1,US2,US3,US4*****
+        Instead ?: 
+            time,type,distance  
+                As each sensor return signal will be read at a different time. 
+
+Bug:
+    fix code to return Xs if ToF is not ready. 
+
+Component Notes:
+    Ultrasonics MB10 Series
+        Each 49mS period starts by the RX being high or open, after which the LV-MaxSonar-EZ sends the transmit burst, after
+        which the pulse width pin (PW) is set high. When a target is detected the PW pin is pulled low. The PW pin is high for up
+        to 37.5mS if no target is detected. The remainder of the 49mS time (less 4.7mS) is spent adjusting the analog voltage to
+        the correct level. When a long distance is measured immediately after a short distance reading, the analog voltage may not
+        reach the exact level within one read cycle. 
+            During the last 4.7mS, the serial data is sent. (Serial data is return at 9600 baid rate). 
+
+
+
+| Task Name         | Purpose                         | Rate/Freq   | Priority   | Core   |
+| ----------------- | ------------------------------- | ---------   | ---------- | ------ |
+| `ultrasonic_ctrl` | Flight control via SBUS         | 20 Hz       | 🔴 High    | Core 1 |
+| `tof_mapping`     | Primary mapping (ToF)           | 15 or 60Hz  | 🟠 Med     | Core 0 |
+| `ultrasonic_map`  | Secondary mapping (Ultrasonics) | 20 Hz       | 🟠 Med     | Core 0 |
+| `imu_logger`      | IMU raw logging                 | 100 Hz      | 🟡 Med-Low | Core 0 |
+| `optflow_logger`  | Optical Flow raw logging        | 50 - 100 Hz | 🟡 Med-Low | Core 0 |
+| `lora_heartbeat`  | Alive signal check              | 1 Hz        | 🟢 Low     | Core 0 |
+| `logging_mgr`     | Batch CSV writes to SD          | 5–10 Hz     | 🟢 Low     | Core 0 |
+
+
+Idea:
+Core 1 handles real-time data, Core 0 handles slower logging and communication.
+? How to split up US and ToFs?
+
+Core 1: IMU & OF (On the same SPI bus), US*(Interrupts), SBUS
+    * Is it quick enough?
+    Priority: 4,4,3,2??
+    Timing:  
+Core 0: ToF (on 2 I@C lines), LoRa (interrupt!), SD Card** (as needed bases)
+    Priority: 4,4, (4 or 5) 
+    Timing : 
+       ToF (interrupt??), LoRa (Interrupts)-(every 1-2s or 1-0.5Hz)
+**Lets go with normal SPI writing to SD card for the time being, and if this is too slow then explore DMA SPI. 
+
+        Example of operations on Core 1. 
+                    Time (ms)
+                0        5        10       15       20       25       30       35       40       45      50
+                |--------|--------|--------|--------|--------|--------|--------|--------|--------|--------|
+                Core 1 CPU:
+                [ Ultrasonics PWM 5ms ]---CPU free---CPU free---CPU free---CPU free---CPU free
+
+                I2C Bus 0 (ToF 0 & 1):
+                [ ToF 0 18ms ][ ToF 1 18ms ]      -- sequential on same bus
+
+                I2C Bus 1 (ToF 2 & 3):
+                [ ToF 2 18ms ][ ToF 3 18ms ]      -- sequential on bus 1, runs concurrently with Bus 0
+
+                SD Card SPI (DMA):
+                [ DMA write 20ms ]  -- CPU free during this, transfer happens in background
+
+
+
+
