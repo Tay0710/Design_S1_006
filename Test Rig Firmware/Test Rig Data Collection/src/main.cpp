@@ -209,7 +209,7 @@ unsigned long lastOFtime = 0;
 unsigned long lastTOFtime = 0;
 const unsigned long imuInterval = 250;   // ~4000 Hz | Low noise mode max = 6400Hz
 const unsigned long ofInterval = 18200;  // ~55Hz
-const unsigned long tofInterval = 70000; // ~14.3 Hz
+const unsigned long tofInterval = 70000 / 4; // ~14.3 Hz
 
 // Button Debounce
 bool mode = false; // toggled by the button
@@ -597,7 +597,6 @@ void setup()
 {
   Serial.begin(115200);
   pinMode(BUTTON, INPUT_PULLDOWN);
-
   while (digitalRead(BUTTON) == LOW){};
   pinMode(LED1, OUTPUT);
   digitalWrite(LED1, HIGH);
@@ -762,7 +761,7 @@ void setup()
   // Init Ultra CSVs
   SD.remove(UltraFileName);
   File Ultra = SD.open(UltraFileName, FILE_WRITE);
-  Ultra.print("time,distance");
+  Ultra.print("time,type,distance");
   Ultra.println();
   Ultra.close();
 

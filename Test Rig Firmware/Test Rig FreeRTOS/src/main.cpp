@@ -967,7 +967,7 @@ void setup()
   // Init Ultra CSVs
   SD.remove(UltraFileName);
   File Ultra = SD.open(UltraFileName, FILE_WRITE);
-  Ultra.print("time,distance");
+  Ultra.print("time,type,distance");
   Ultra.println();
   Ultra.close();
 
@@ -1005,6 +1005,7 @@ void setup()
   xTaskCreate(imuFlushTask, "IMU_Flush", 8192, NULL, IMU_TASK_PRIORITY, NULL);
   xTaskCreatePinnedToCore(ofTask, "OF_Task", STACK_SIZE, NULL, OF_TASK_PRIORITY, NULL, 1);
   xTaskCreate(sdTask, "SD_Task", STACK_SIZE, NULL, SD_TASK_PRIORITY, NULL);
+  xTaskCreate(ultraTask, "Ultrasonic Task", STACK_SIZE, NULL, ULTRA_TASK_PRIORITY, 0);
   xTaskCreatePinnedToCore(tofLTask, "ToF_L", STACK_SIZE_TOF, NULL, TOF_TASK_PRIORITY, NULL, 0);
   xTaskCreatePinnedToCore(tofRTask, "ToF_R", STACK_SIZE_TOF, NULL, TOF_TASK_PRIORITY, NULL, 0);
   xTaskCreatePinnedToCore(tofUTask, "ToF_U", STACK_SIZE_TOF, NULL, TOF_TASK_PRIORITY, NULL, 0);
