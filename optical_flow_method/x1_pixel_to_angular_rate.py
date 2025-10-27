@@ -73,6 +73,7 @@ def pixels_to_angular_rates(dx, dy, dt):
 
 def main(input_path):
     """Read optical flow CSV and write angular rates CSV."""
+    
     output_path = "../optical_flow_method_data/optical_flow_angular_rates.csv"
     
     with open(input_path, "r") as f_in, open(output_path, "w", newline="") as f_out:
