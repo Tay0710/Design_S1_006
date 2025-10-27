@@ -40,6 +40,7 @@ This folder contains the firmware for the mapping test rig used to simulate mapp
 
 ### **Output Files**
 CSV output files:
+
     imu_ICM45686.csv
         returns: time, gyro x, gyro y, gyro z, accel x, accel y, accel z
         units: s, dps, dps, dps, g, g, g
