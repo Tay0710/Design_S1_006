@@ -51,7 +51,7 @@ from x4_xy_velocity_calculation import main as xy_velocity_calculation
 from x5_rotation_matrix import main as rotation_matrix
 from x6_convert_to_world_frame import main as convert_to_world_frame
 
-def cut_data(stage_0_input_path, stage_1_input_path, stage_2_input_path, stage_5_and_7_input_path, stage_1_input_path_cropped, stage_2_input_path_cropped, stage_5_and_7_input_path_cropped):
+def cut_data(stage_0_input_path, stage_1_input_path, stage_2_input_path, stage_5_input_path, stage_1_input_path_cropped, stage_2_input_path_cropped, stage_5_and_7_input_path_cropped):
     """Crop three CSV logs to a [start, end] window read from a CSV."""
     data_0 = np.genfromtxt(stage_0_input_path, delimiter=",", skip_header=1)
     start_time, end_time = data_0[0], data_0[1]
@@ -80,7 +80,7 @@ def cut_data(stage_0_input_path, stage_1_input_path, stage_2_input_path, stage_5
 
     filter_file(stage_1_input_path, stage_1_input_path_cropped, start_time, end_time)
     filter_file(stage_2_input_path, stage_2_input_path_cropped, start_time, end_time)
-    filter_file(stage_5_and_7_input_path, stage_5_and_7_input_path_cropped, start_time, end_time)
+    filter_file(stage_5_input_path, stage_5_and_7_input_path_cropped, start_time, end_time)
 
     print(f"Files updated and saved with cut data: start={start_time}, end={end_time}")
 
@@ -88,7 +88,7 @@ def main():
     """Run the pipeline: crop logs, then execute stages 1–6."""
     t0 = time.time()
 
-    data_name = "26_10_25_MILC/3_LWF_both2/"
+    data_name = "26_10_25_Lv4/3_LWF_both2/"
 
     # Input paths for the position pipeline stages
     stage_0_input_path = "../optical_flow_method_data/combined_samples/" + data_name + "data_times.csv"
@@ -101,7 +101,7 @@ def main():
     stage_2_input_path_cropped = "../optical_flow_method_data/combined_samples/" + data_name + "download_tof_cropped.csv"
     stage_5_input_path_cropped = "../optical_flow_method_data/combined_samples/" + data_name + "download_imu_cropped.csv"
 
-    cut_data(stage_0_input_path, stage_1_input_path, stage_2_input_path, stage_5_input_path, stage_1_input_path_cropped, stage_2_input_path_cropped, stage_5_and_7_input_path_cropped)
+    cut_data(stage_0_input_path, stage_1_input_path, stage_2_input_path, stage_5_input_path, stage_1_input_path_cropped, stage_2_input_path_cropped, stage_5_input_path_cropped)
 
     print("\n=== Stage 1: pixel --> angular-rate ===")
     pixel_to_angular_rate(stage_1_input_path_cropped)
