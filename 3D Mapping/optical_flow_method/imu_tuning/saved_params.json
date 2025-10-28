@@ -1,0 +1,13 @@
+[
+  {
+    "timestamp": "2025-09-05 16:20:53",
+    "gain": 0.5,
+    "gyro_range": 250,
+    "accel_rej": 5,
+    "mag_rej": 0,
+    "rej_timeout_mult": 8,
+    "motion_threshold": 0.15,
+    "smoothing_margin_mult": 3,
+    "err_xy": 0.0005560094400059876
+  }
+]
