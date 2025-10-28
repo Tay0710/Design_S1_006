@@ -12,9 +12,7 @@
 
 **Folder Summary:**
 
-This folder contains ...
-
-
-List everything it contains:
-- LoRa Kill Switch Case
-- Full project used to model launchpads and mounts around the drone frame
+This folder contains all the CAD and STL files required to replicate the design. The CAD files can be used for editing in your preferred CAD software, and the STL files are ready for 3D printing. More specifically, it contains:
+- CAD and STL files for the LoRa Kill Switch Case
+- CAD project (on Fusion) for the drone assembly, including the drone frame, launch pad, launch rail and sensors mounts
+- STL files for the launch pad, launch rail, and various sensors mounts which were 3D-printed.
