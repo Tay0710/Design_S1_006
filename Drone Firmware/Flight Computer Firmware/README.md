@@ -19,7 +19,7 @@ This folder contains the flight computer firmware intended for the custom flight
 1. Open Extensions in VSCode and download PlatformIO from VSCode Extensions.
 
 ### **B. Uploading the Firmware** 
-1. Open the ... folder as a project in PlatformIO.
+1. Open the Flight_Computer_Autonomous_Flight folder as a project in PlatformIO.
 1. Connect the ESP32-S3 flight computer board to your PC via the USB micro-B port.
 1. Click the upload button on the PlatformIO to upload the firmware. Note: you may need to enter boot mode. To do this, press the boot button when resetting or powering on the board.
 
