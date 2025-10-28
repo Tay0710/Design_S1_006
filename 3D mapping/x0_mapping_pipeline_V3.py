@@ -18,8 +18,8 @@ from scipy.spatial import ConvexHull, QhullError
 import open3d as o3d
 
 # Project imports
-from tof_map_V2 import main as tof_map   # --> (tof_points, traj_positions)
-from us_map_V4  import main as us_map    # --> (us_interp_points, us_actual_points, us_corner_points)
+from tof_map_V2 import main as tof_map   # (tof_points, traj_positions)
+from us_map_V4  import main as us_map    # (us_interp_points, us_actual_points, us_corner_points)
 
 def ensure_xyz(arr, xyz_cols=(0,1,2)):
     """Coerce any array to Nx3 XYZ. If only XY, pad Z=0."""
@@ -230,48 +230,39 @@ def visualise_ultrasonic_only_map(us_actual_points, us_corner_points, us_interp_
         point_show_normal=False
     )
 
-def _plot_room_polygon(ax, poly_xy, **kwargs):
-    poly = np.asarray(poly_xy)
-    loop = np.vstack([poly, poly[0]])
-    ax.plot(loop[:, 0], loop[:, 1], **kwargs)
-
-def visualise_stages(tof_raw, us_actual, us_corners, corners_xy, tof_clipped, fused_points, fused_weights, traj_positions, title_suffix):
+def visualise_stages(tof_raw, us_actual, us_corners, corners_xy, tof_clipped,
+                     fused_points, fused_weights, traj_positions, title_suffix):
     """
-    3-panel view (no downsampling):
-      (1,1) Inputs (no ultrasonic interpolation)
-      (1,2) ToF clipped
-      (2,1) Fused (US only)
+    3-panel view in one row:
+      [1] ToF after soft-clip
+      [2] Ultrasonic inputs (actual + corners + trajectory)
+      [3] Fused cloud (colored by weight if provided)
     """
-    fig, axes = plt.subplots(2, 2, figsize=(12, 10), constrained_layout=True)
-    ax11, ax12, ax21, ax22 = axes.ravel()
+    fig, axes = plt.subplots(1, 3, figsize=(18, 6), constrained_layout=True)
+    ax_tof, ax_us, ax_fused = axes
 
-    # (1,1) Inputs (no interp)
-    ax = ax11
-    ax.set_title("Stage 0 • Inputs (Top-down XY) — no ultrasonic interpolation")
-    if tof_raw is not None and len(tof_raw):
-        ax.scatter(tof_raw[:, 0], tof_raw[:, 1], s=1, alpha=0.35, label="ToF raw")
+    # [1] ToF clipped
+    ax = ax_tof
+    ax.set_title("Stage 1 • ToF after soft-clip")
+    if tof_clipped is not None and len(tof_clipped):
+        ax.scatter(tof_clipped[:, 0], tof_clipped[:, 1], s=1, alpha=0.6, label="ToF clipped")
+        
+    ax.set_aspect("equal", "box"); ax.legend(loc="best")
+
+    # [2] Ultrasonic inputs (no ToF here)
+    ax = ax_us
+    ax.set_title("Stage 2 • Ultrasonic inputs")
     if us_actual is not None and len(us_actual):
         ax.scatter(us_actual[:, 0], us_actual[:, 1], s=30, marker="x", label="Ultrasonic actual")
     if us_corners is not None and len(us_corners):
         ax.scatter(us_corners[:, 0], us_corners[:, 1], s=40, marker="s", label="Extrapolated corners")
-    if corners_xy is not None and len(corners_xy) >= 3:
-        _plot_room_polygon(ax, corners_xy, linewidth=1.0)
     if traj_positions is not None and len(traj_positions):
         ax.plot(traj_positions[:, 0], traj_positions[:, 1], linewidth=1.0, label="Trajectory")
     ax.set_aspect("equal", "box"); ax.legend(loc="best")
 
-    # (1,2) ToF clipped
-    ax = ax12
-    ax.set_title("Stage 1 • ToF after corner-aware soft-clip")
-    if tof_clipped is not None and len(tof_clipped):
-        ax.scatter(tof_clipped[:, 0], tof_clipped[:, 1], s=1, alpha=0.6, label="ToF clipped")
-    if corners_xy is not None and len(corners_xy) >= 3:
-        _plot_room_polygon(ax, corners_xy, linewidth=1.0)
-    ax.set_aspect("equal", "box"); ax.legend(loc="best")
-
-    # (2,1) Fused (US only)
-    ax = ax21
-    ax.set_title("Stage 2 • Fused cloud (US only)")
+    # [3] Fused cloud
+    ax = ax_fused
+    ax.set_title("Stage 3 • Fused cloud")
     if fused_points is not None and len(fused_points):
         if fused_weights is not None and len(fused_weights) == len(fused_points):
             sc = ax.scatter(fused_points[:, 0], fused_points[:, 1], s=2, c=fused_weights,
@@ -280,29 +271,11 @@ def visualise_stages(tof_raw, us_actual, us_corners, corners_xy, tof_clipped, fu
             cb.set_label("Per-point weight")
         else:
             ax.scatter(fused_points[:, 0], fused_points[:, 1], s=2, alpha=0.9, label="Fused points")
-    if corners_xy is not None and len(corners_xy) >= 3:
-        _plot_room_polygon(ax, corners_xy, linewidth=1.0)
     ax.set_aspect("equal", "box"); ax.legend(loc="best")
-
-    # Hide the unused 4th panel
-    ax22.axis("off")
 
     if title_suffix:
         fig.suptitle(title_suffix, fontsize=12)
     plt.show()
-
-def _make_polygon_lineset(poly_xy, z, color):
-    """Open3D LineSet for a single polygon ring at height z."""
-    poly = np.asarray(poly_xy, dtype=float)
-    n = len(poly)
-    pts = np.c_[poly, np.full(n, z)]
-    lines = np.array([[i, (i + 1) % n] for i in range(n)], dtype=np.int32)
-
-    ls = o3d.geometry.LineSet()
-    ls.points = o3d.utility.Vector3dVector(pts)
-    ls.lines  = o3d.utility.Vector2iVector(lines)
-    ls.colors = o3d.utility.Vector3dVector(np.tile(color, (len(lines), 1)))
-    return ls
 
 def visualise_open3d_final(points_xyz, weights, corners_xy, traj_positions, max_points):
     """
@@ -375,12 +348,10 @@ def visualise_open3d_final(points_xyz, weights, corners_xy, traj_positions, max_
 
     o3d.visualization.draw_geometries(
         geoms,
-        window_name="Fused cloud — ToF + Ultrasonic",
+        window_name="Fused and Filtered Cloud",
         width=1280, height=800,
         point_show_normal=False
     )
-
-
 
 # === Stage 1: Crop ultrasonic dataset ===
 def cut_data(data_times, us_input_path, us_input_cropped):
