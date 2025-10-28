@@ -12,5 +12,5 @@
 
 **Folder Summary:**
 
-This folder contains all PCB schematics, design files, and related documentation required for manufacturing the printed circuit board (PCB) for the ESP32 flight computer and STM32 flight controller. It includes the necessary Gerber files, bill of materials (BOM), and design source files to ensure accurate production and assembly.
+This folder contains all PCB schematics, design files, and related documentation required for manufacturing the printed circuit board (PCB) for the ESP32 flight computer and STM32 flight controller. It includes the necessary Gerber files, bill of materials (BOM), and design source files to ensure accurate production and assembly. All PCB projects can be viewed through KiCAD, which can be downloaded through this [link]{https://www.kicad.org/download/}.
 
