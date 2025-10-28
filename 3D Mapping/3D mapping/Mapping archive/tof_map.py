@@ -1,0 +1,292 @@
+"""
+tof_map.py
+-----------------------
+
+Generates a 3D point cloud and mesh of the environment from Time-of-Flight (ToF) sensor data,
+mapped onto drone positions derived from integrated velocity estimates.
+
+Overview:
+    - The ToF sensor outputs distances for a 4×4 grid of zones (D0–D15) at each timestep.
+    - Each zone corresponds to a fixed angular offset in the x–y plane (±30°, ±10°).
+    - For each ToF frame, the drone’s world position is obtained from the trajectory file
+      (xy_velocities_to_world_frame.csv) at the nearest matching timestamp.
+    - Distances are projected into world-frame coordinates using the drone position
+      and the pre-defined angular offsets.
+    - All ToF points are accumulated into a single point cloud representing the mapped scene.
+    - A Poisson mesh is reconstructed from the point cloud for surface approximation.
+    - Two visualisation backends are provided:
+        * Open3D (interactive 3D point cloud + mesh + trajectory)
+        * Matplotlib (3D scatter plot with text labels)
+
+Notes:
+    - The ToF and trajectory CSVs are not timestamp-aligned. Each ToF frame is matched to the
+      first trajectory timestamp that occurs strictly *after* the ToF timestamp.
+    - Distances are expected in millimetres in the ToF CSV and are converted to metres.
+
+Inputs:
+    - xy_velocities_to_world_frame.csv
+        Columns: 
+            time (s), v_world_x, v_world_y, v_world_z,
+            pos_world_x, pos_world_y, pos_world_z
+
+    - download_tof_cropped.csv
+        Columns: 
+            time, D0 … D15
+            (Distances are in mm, invalid entries are "X")
+
+Outputs:
+    - Interactive Open3D window with:
+        * Blue ToF points
+        * Grey mesh reconstruction
+        * Red drone trajectory line
+        * Red sphere marking final drone position
+    - Matplotlib 3D plot with labeled points and trajectory
+"""
+
+import numpy as np
+import pandas as pd
+import open3d as o3d
+import matplotlib.pyplot as plt
+
+def tof_point(d, theta_x_deg, theta_y_deg, drone_pos=(0,0,0)):
+    """Convert one ToF cell to world coords using arctan method."""
+    if d is None:
+        return None
+
+    tx = np.tan(np.deg2rad(theta_x_deg))
+    ty = np.tan(np.deg2rad(theta_y_deg))
+
+    # resultant angle
+    theta_r = np.arctan(np.sqrt(tx**2 + ty**2))
+
+    if tx == 0 and ty == 0:
+        x_local, y_local = 0.0, 0.0
+    else:
+        r_xy = d * np.sin(theta_r)
+        denom = np.sqrt(tx**2 + ty**2)
+        x_local = r_xy * (tx / denom)
+        y_local = r_xy * (ty / denom)
+
+    z_local = d * np.cos(theta_r)
+
+    return (
+        drone_pos[0] + x_local,
+        drone_pos[1] + y_local,
+        drone_pos[2] - z_local
+    )
+
+def build_points_down(distances, drone_pos):
+    """Convert one downward ToF row into 16 3D points (sensor facing floor)."""
+    cell_angles = {
+        3:  (-30, -30), 2: (-10, -30), 1: (10, -30), 0: (30, -30),
+        7:  (-30, -10), 6: (-10, -10), 5: (10, -10), 4: (30, -10),
+        11: (-30,  10), 10:(-10, 10),  9:(10, 10),   8:(30, 10),
+        15: (-30,  30), 14:(-10, 30), 13:(10, 30),  12:(30, 30),
+    }
+    points = []
+    for idx, (tx, ty) in cell_angles.items():
+        d = distances[idx]
+        if d is None or d < 0.2:
+            continue
+        pt = tof_point(d, tx, ty, drone_pos)
+        if pt:
+            points.append(pt)
+    return points
+
+def build_points_up(distances, drone_pos):
+    """Convert one upward ToF row into 16 3D points (sensor facing ceiling)."""
+    cell_angles = {
+        3:  (-30, -30), 2: (-10, -30), 1: (10, -30), 0: (30, -30),
+        7:  (-30, -10), 6: (-10, -10), 5: (10, -10), 4: (30, -10),
+        11: (-30,  10), 10:(-10, 10),  9:(10, 10),   8:(30, 10),
+        15: (-30,  30), 14:(-10, 30), 13:(10, 30),  12:(30, 30),
+    }
+    points = []
+    for idx, (tx, ty) in cell_angles.items():
+        d = distances[idx]
+        if d is None or d < 0.2:
+            continue
+        # same xy projection but flip z to go "up"
+        local = tof_point(d, tx, ty, (0,0,0))
+        if local:
+            pt = (
+                drone_pos[0] + (local[0] - 0),
+                drone_pos[1] + (local[1] - 0),
+                drone_pos[2] + abs(local[2])  # force z above drone
+            )
+            points.append(pt)
+    return points
+
+def build_points_side(distances, drone_pos, orientation):
+    """
+    Convert one side-facing ToF row (8×8) into 64 3D points.
+    orientation = "L" (left) or "R" (right).
+    """
+    fov = 90.0
+    pitch = fov / 7.0  # ~12.857 degrees between pixels
+    
+    points = []
+    # 8x8 distances
+    for row in range(8):
+        for col in range(8):
+            idx = row * 8 + col
+            d = distances[idx]
+            if d is None or d < 0.2:
+                continue
+
+            # angles relative to center of array
+            theta_x = (col - 3.5) * pitch
+            theta_y = (row - 3.5) * pitch
+
+            # project in local sensor frame
+            local = tof_point(d, theta_x, theta_y, (0,0,0))
+            if not local:
+                continue
+
+            lx, ly, lz = local
+
+            # Orientation adjustment
+            if orientation == "L":
+                # left sensor looks -Y
+                pt = (drone_pos[0] + lx,
+                      drone_pos[1] - lz,   # use -Z as sideways axis
+                      drone_pos[2] + ly)   # keep Y as vertical
+            elif orientation == "R":
+                # right sensor looks +Y
+                pt = (drone_pos[0] + lx,
+                      drone_pos[1] + lz,   # +Z sideways
+                      drone_pos[2] + ly)
+            else:
+                continue
+
+            points.append(pt)
+
+    return points
+
+def visualize_open3d(points, drone_positions):
+    geoms = []
+
+    # ToF points
+    pc = o3d.geometry.PointCloud()
+    pc.points = o3d.utility.Vector3dVector(points)
+    pc.paint_uniform_color([0, 0, 1])
+    geoms.append(pc)
+    
+    # # Mesh reconstruction (Poisson surface)
+    # pc.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamKNN(knn=8))
+    # mesh, _ = o3d.geometry.TriangleMesh.create_from_point_cloud_poisson(pc, depth=8)
+    # bbox = pc.get_axis_aligned_bounding_box()
+    # mesh_crop = mesh.crop(bbox)
+    # mesh_crop.paint_uniform_color([0.7, 0.7, 0.7])
+    # geoms.append(mesh_crop)
+
+    # Drone trajectory as red line
+    traj = o3d.geometry.LineSet()
+    traj.points = o3d.utility.Vector3dVector(drone_positions)
+    traj.lines = o3d.utility.Vector2iVector([[i, i+1] for i in range(len(drone_positions)-1)])
+    traj.colors = o3d.utility.Vector3dVector([[1, 0, 0] for _ in range(len(drone_positions)-1)])
+    geoms.append(traj)
+
+    # Final drone position as red sphere
+    drone_marker = o3d.geometry.TriangleMesh.create_sphere(radius=0.1)
+    drone_marker.translate(drone_positions[-1])
+    drone_marker.paint_uniform_color([1, 0, 0])
+    geoms.append(drone_marker)
+
+    axis = o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.2)
+    geoms.append(axis)
+
+    o3d.visualization.draw_geometries(geoms, window_name="Full ToF Mapping")
+
+def visualize_matplotlib(points, drone_positions):
+    fig = plt.figure(figsize=(10,8))
+    ax = fig.add_subplot(111, projection="3d")
+
+    points = np.array(points)
+    drone_positions = np.array(drone_positions)
+
+    # Plot ToF points
+    ax.scatter(points[:,0], points[:,1], points[:,2], c="blue", marker="s", s=10, label="ToF points")
+
+    # Drone trajectory
+    ax.plot(drone_positions[:,0], drone_positions[:,1], drone_positions[:,2], c="red", label="Drone trajectory")
+
+    # Final drone position
+    ax.scatter(drone_positions[-1,0], drone_positions[-1,1], drone_positions[-1,2],
+               c="red", s=100, marker="o", label="Drone (final)")
+    ax.text(drone_positions[-1,0], drone_positions[-1,1], drone_positions[-1,2],
+            f"Drone {tuple(drone_positions[-1])}", color="red")
+
+    ax.set_xlabel("X (m)")
+    ax.set_ylabel("Y (m)")
+    ax.set_zlabel("Z (m)")
+    ax.set_title("ToF + Drone Mapping (Matplotlib)")
+    ax.legend()
+    plt.show()
+
+def main():
+    # Load trajectory + ToF data
+    traj = pd.read_csv("../optical_flow_method_data/xy_velocities_to_world_frame.csv")
+    tof = pd.read_csv("../optical_flow_method_data/combined_samples/22_09_25_MILC/7_lyco_lab/download_tof_cropped.csv")  # <-- adjust filename
+
+    all_points = []
+    drone_positions = []
+
+    traj_time = traj["time (s)"].values
+    tof_time = tof["time"].values
+
+    # Build full drone trajectory positions (for red path and marker)
+    for i in range(len(traj)):
+        drone_pos = (
+            traj["pos_world_x"].iloc[i],
+            traj["pos_world_y"].iloc[i],
+            traj["pos_world_z"].iloc[i],
+        )
+        drone_positions.append(drone_pos)
+
+    # For each ToF frame, project points depending on type
+    for i in range(len(tof)):
+        t_type = tof["type"].iloc[i]
+        if t_type not in ["D", "U", "L", "R"]:
+            continue  # skip others
+
+        tof_t = tof_time[i]
+        match_idx = np.searchsorted(traj_time, tof_t, side="right")
+        if match_idx >= len(traj):
+            continue
+
+        drone_pos = (
+            traj["pos_world_x"].iloc[match_idx],
+            traj["pos_world_y"].iloc[match_idx],
+            traj["pos_world_z"].iloc[match_idx],
+        )
+
+        if t_type in ["D", "U"]:
+            distances = [
+                None if str(d) == "X" else float(d) / 1000.0
+                for d in tof.iloc[i, 2:18]  # D0–D15
+            ]
+            if t_type == "D":
+                pts = build_points_down(distances, drone_pos)
+            else:
+                pts = build_points_up(distances, drone_pos)
+
+        if t_type in ["L", "R"]:
+            distances = [
+                None if str(d) == "X" else float(d) / 1000.0
+                for d in tof.iloc[i, 2:66]  # D0–D63
+            ]
+            pts = build_points_side(distances, drone_pos, orientation=t_type)
+
+        all_points.extend(pts)
+
+    # Visualise
+    if len(all_points) == 0:
+        print("⚠️ No ToF points were generated, skipping visualisation.")
+        return
+
+    visualize_open3d(np.array(all_points), drone_positions)
+    visualize_matplotlib(all_points, drone_positions)
+
+if __name__ == "__main__":
+    main()
