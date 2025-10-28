@@ -21,4 +21,6 @@ This video was filmed after hours. It shows the drone successfully navigating au
 ### **Custom_PCB_Motor_Test_Video.mp4**
 This video shows each motor in operation while connected to our custom flight controller PCB and commercial ESCs.
 
+### **Left_Turn_Video.mp4**
+This video shows the drone autonomously turning left when there is a corner. This was filmed in the designated testing zone of the Lycopodium Laboratory.
 
