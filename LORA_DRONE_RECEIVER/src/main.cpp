@@ -115,8 +115,8 @@ void triggerFailsafe()
 {
   Serial.println("Failsafe triggered. Land drone.");
   armingSequenceFlag = false;
-  failsafe_flag = true;
   failsafeMillis = millis();
+  failsafe_flag = true;
   // rcChannels[AUX3] = 1800;
 }
 
@@ -399,8 +399,21 @@ void loop()
 {
   currentMillis = millis();
 
+  if (failsafe_flag) {
+    // Reset orientation to 1500
+    rcChannels[PITCH] = 1500;
+    rcChannels[YAW] = 1500;
+    rcChannels[ROLL] = 1500;
+
+    if (currentMillis - failsafeMillis < 3000) {
+      rcChannels[THROTTLE] = 1360; // Throttle for 3 secs
+    } else {
+      rcChannels[AUX3] = 1800; // then kill everything
+    }
+  }
+
   // Arming sequence hard coded
-  if (armingSequenceFlag){ // armingSequenceFlag
+  else if (armingSequenceFlag){ // armingSequenceFlag
     // wait 5 seconds then arm
     if (currentMillis > 5000 + armingMillis && currentMillis < 10000 + armingMillis){
       rcChannels[THROTTLE] = THROTTLE_MIN;
@@ -425,7 +438,7 @@ void loop()
  //  25/10/2025
  // THe last attempt ended with the drone hitting the ceiling and then riding it. 
 
-  if(armsequencecomplete){ //armsequencecomplete
+  else if(armsequencecomplete){ //armsequencecomplete
 
         // THROTTLE CHANGES - TOP side Ultrasonic Sensor
     if (US_ready1) {
@@ -658,18 +671,6 @@ void loop()
   // End of Arming Complete Sequence. If statement. 
   }
 
-  if (failsafe_flag) {
-    // Reset orientation to 1500
-    rcChannels[PITCH] = 1500;
-    rcChannels[YAW] = 1500;
-    rcChannels[ROLL] = 1500;
-
-    if (currentMillis - failsafeMillis < 3000) {
-      rcChannels[THROTTLE] = 1360; // Throttle for 3 secs
-    } else {
-      rcChannels[AUX3] = 1800; // then kill everything
-    }
-  }
 
   // Serial.println(" --- SBUS OUTPUT --- ");
   if (currentMillis > sbusTime)
