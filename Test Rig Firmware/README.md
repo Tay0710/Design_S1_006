@@ -23,7 +23,7 @@ This folder contains the firmware for the mapping test rig used to simulate mapp
 1. To run PlatformIO, download VSCode from the following [link](https://platformio.org/platformio-ide).
 1. Open Extensions in VSCode and download PlatformIO from VSCode Extensions.
 
-### **B. Uploading the Firmware**1. 
+### **B. Uploading the Firmware** 
 1. Open the Test Rig Data Collection folder as a project in PlatformIO.
 1. Connect the ESP32-S3 flight computer board to your PC via the USB micro-B port.
 1. Click the upload button on the PlatformIO to upload the firmware. Note: you may need to enter boot mode. To do this, open the case and press the boot button when resetting or powering on the board
