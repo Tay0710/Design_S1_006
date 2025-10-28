@@ -1,64 +1,63 @@
 """
 tof_map_V2.py
 -----------------------
+Primary map of the ELEC5550 Indoor 3D Mapping Design Project (2025) mapping pipeline.
 
-Generates a 3D point cloud and mesh of the environment from Time-of-Flight (ToF) sensor data,
-mapped onto drone positions derived from integrated velocity estimates and IMU orientation.
+Purpose:
+    Generate a 3D point cloud of the environment from Time of Flight data using the
+    drone trajectory and IMU orientation.
 
 Overview:
-    - The ToF sensor outputs distances for a 4×4 (up/down) or 8×8 (side) grid of zones at each timestep.
-    - Each zone corresponds to a fixed angular offset in the body frame.
-    - For each ToF frame, the drone’s world position and orientation (rotation matrix) are obtained
-      at the nearest matching timestamp.
-    - Distances are projected into body-frame coordinates, then rotated into the world frame.
-    - All ToF points are accumulated into a single point cloud representing the mapped scene.
-    - Two visualisation backends are provided:
-        * Open3D (interactive 3D point cloud + mesh + trajectory)
-        * Matplotlib (3D scatter plot with text labels)
+    For each ToF frame, convert zone distances to body frame coordinates, transform
+    them to the world frame using the nearest rotation matrix and position, and
+    accumulate all points into a single cloud.
+    Provides Open3D and Matplotlib visualisations.
+
+Usage:
+    Called from x0_mapping_pipeline_V3.py with a cropped ToF CSV path.
 
 Inputs:
-    - xy_velocities_to_world_frame.csv
-        Columns: 
-            time (s), v_world_x, v_world_y, v_world_z,
-            pos_world_x, pos_world_y, pos_world_z
-    - rotation_matrices.csv
+    ../optical_flow_method_data/xy_velocities_to_world_frame.csv
         Columns:
-            time (s), r00 … r22 (flattened 3×3 rotation matrix per row)
-    - download_tof_cropped.csv
-        Columns: 
-            time, type, D0 … (distances in mm, invalid entries are "X")
+            time (s), v_world_x, v_world_y, v_world_z, pos_world_x, pos_world_y, pos_world_z
+    ../optical_flow_method_data/rotation_matrices.csv
+        Columns:
+            time (s), r00, r01, r02, r10, r11, r12, r20, r21, r22
+    ../download_tof_cropped.csv
+        Columns:
+            time, type, D0 … D15/D63 distances in mm with invalid entries marked X
 
 Outputs:
-    - Interactive Open3D window with:
-        * Blue ToF points
-        * Red drone trajectory line
-        * Red sphere marking final drone position
-    - Matplotlib 3D plot with labeled points and trajectory
+    Open3D ToF Map
+    Matplotlib 3D plot with labeled points and trajectory
+    Returns:
+        all_points          ToF point cloud data
+        drone_positions     Drone trajectory
 """
+
 
 import numpy as np
 import pandas as pd
 import open3d as o3d
 import matplotlib.pyplot as plt
 
-# == Sensor Offsets ==
-offsetD = np.array([0.019, 0.0, 0.0]) # [x-offset (m), y-offset (m), z-offset (m)]
-offsetU = np.array([0.021, 0.0, 0.132])
-offsetL = np.array([0.012, 0.080, 0.035])
-offsetR = np.array([0.040, -0.052, 0.035])
-# offsetD = np.array([0,0,0]) # [x-offset (m), y-offset (m), z-offset (m)]
-# offsetU = np.array([0,0,0])
-# offsetL = np.array([0,0,0])
-# offsetR = np.array([0,0,0])
+# Sensor offsets
+offsetD = np.array([0,0,0])
+offsetU = np.array([0,0,0])
+offsetL = np.array([0,0,0])
+offsetR = np.array([0,0,0])
 
-# === Load rotation matrices ===
 def load_rotation_matrices(rot_csv):
+    """Load rotation matrices CSV and return times and matrices shaped (N, 3, 3)."""
+    
     rot = np.loadtxt(rot_csv, delimiter=",", skiprows=1, usecols=range(1,10))
     times = np.loadtxt(rot_csv, delimiter=",", skiprows=1, usecols=(0,))
+    
     return times, rot.reshape(-1, 3, 3)
 
-# === ToF projection into body frame ===
 def tof_point_body(d, theta_x_deg, theta_y_deg):
+    """Project a single ToF range and angular offsets into body-frame XYZ."""
+    
     if d is None:
         return None
 
@@ -77,10 +76,11 @@ def tof_point_body(d, theta_x_deg, theta_y_deg):
 
     z_local = d * np.cos(theta_r)
 
-    # sensor faces forward: +x, sideways: +y, vertical: +z
-    return np.array([x_local, y_local, z_local])  # -z so that "down" is negative
+    return np.array([x_local, y_local, z_local])
 
 def tof_point_body_2(d, theta_x_deg, theta_y_deg):
+    """Alternate body-frame projection using a small-angle pitch and roll rotation."""
+    
     if d is None:
         return None
 
@@ -104,90 +104,112 @@ def build_points_down(distances):
     #     11: (-30, -10), 10:(-10, -10),  9:(10, -10),  8:(30, -10),
     #     15: (-30, -30), 14:(-10, -30), 13:(10, -30),  12:(30, -30),
     # }
+    
+    """Build 4×4 DOWN-facing ToF points in body frame with color and sensor offset."""
+    
     fov = 60.0
-    pitch = fov / 3.0  # 20 degrees between each pixel 
+    pitch = fov / 3.0
     points = []
     R, G, B = 0, 113, 145
+    
     for row in range(4):
         for col in range(4):
             idx = row * 4 + col
             d = distances[idx]
             if d is None or d < 0.2:
                 continue
+            
             theta_x = -(col - 1.5) * pitch
             theta_y = -(row - 1.5) * pitch
             local = tof_point_body_2(d, theta_x, theta_y)
             if local is None:
                 continue
+            
             lx, ly, lz = local
             pt = np.array([-ly, -lx, -lz, R, G, B])
             pt[0:3] += offsetD
             points.append(pt)
+            
     return points
 
 def build_points_up(distances):
+    """Build 4×4 UP-facing ToF points in body frame with color and sensor offset."""
+    
     fov = 60.0
-    pitch = fov / 3.0  # 20 degrees between each pixel
+    pitch = fov / 3.0
     points = []
     R, G, B = 98, 200, 211
+    
     for row in range(4):
         for col in range(4):
             idx = row * 4 + col
             d = distances[idx]
             if d is None or d < 0.2:
                 continue
+            
             theta_x = -(col - 1.5) * pitch
             theta_y = -(row - 1.5) * pitch
             local = tof_point_body_2(d, theta_x, theta_y)
             if local is None:
                 continue
+            
             lx, ly, lz = local
             pt = np.array([ly, -lx, lz, R, G, B])
             pt[0:3] += offsetU
             points.append(pt)
+            
     return points
 
 def build_points_side(distances, orientation):
+    """Build 8×8 LEFT or RIGHT ToF points in body frame with color and sensor offset."""
+    
     fov = 60.0
     pitch = fov / 7.0  # ~8.5714 degrees between each pixel
     points = []
+    
     for row in range(8):
         for col in range(8):
             idx = row * 8 + col
             d = distances[idx]
             if d is None or d < 0.2:
                 continue
+            
             theta_x = -(col - 3.5) * pitch
             theta_y = -(row - 3.5) * pitch
             local = tof_point_body_2(d, theta_x, theta_y)
             if local is None:
                 continue
+            
             lx, ly, lz = local
             if orientation == "L":
                 R, G, B = 211, 31, 17
-                pt = np.array([lz, ly, lx, R, G, B])  # left sensor looks -Y
+                pt = np.array([lz, ly, lx, R, G, B])
                 pt[0:3] += offsetL
-            else:  # "R"
+            else:
                 R, G, B = 244, 122, 0
-                pt = np.array([-lz, -ly, lx, R, G, B])   # right sensor looks +Y
+                pt = np.array([-lz, -ly, lx, R, G, B])
                 pt[0:3] += offsetR
             points.append(pt)
+            
     return points
 
-# === Rotation into world frame ===
 def rotate_point_to_world(local_vec, rot_mat, drone_pos):
+    """Rotate a body-frame colored point to world frame and translate by drone position."""
+    
     world_vec = rot_mat @ local_vec[:3]
+    
     return (
         drone_pos[0] + world_vec[0],
         drone_pos[1] + world_vec[1],
         drone_pos[2] + world_vec[2],
-        local_vec[3], # Include RGB
+        local_vec[3],
         local_vec[4],
         local_vec[5]
     )
 
-# === Visualisation ===
-def visualize_open3d(points, drone_positions):
+def visualise_open3d(points, drone_positions):
+    """Open3D viewer for ToF point cloud with trajectory line, final-pose marker, and axes."""
+    
     geoms = []
     pc = o3d.geometry.PointCloud()
     pc.points = o3d.utility.Vector3dVector(points[:, :3])
@@ -200,27 +222,28 @@ def visualize_open3d(points, drone_positions):
     traj.colors = o3d.utility.Vector3dVector([[1.0, 0.176, 0.667] for _ in range(len(drone_positions)-1)])
     geoms.append(traj)
 
-    drone_marker = o3d.geometry.TriangleMesh.create_sphere(radius=0.1)
+    drone_marker = o3d.geometry.TriangleMesh.create_sphere(radius = 0.1)
     drone_marker.translate(drone_positions[-1])
     drone_marker.paint_uniform_color([1.0, 0.176, 0.667])
     geoms.append(drone_marker)
 
-    axis = o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.2)
+    axis = o3d.geometry.TriangleMesh.create_coordinate_frame(size = 0.2)
     geoms.append(axis)
 
-    # Single viewer only
     vis = o3d.visualization.Visualizer()
     vis.create_window(window_name="ToF Map")
     for g in geoms:
         vis.add_geometry(g)
 
     opt = vis.get_render_option()
-    opt.line_width = 6.0  # thicker trajectory line
+    opt.line_width = 6.0
 
     vis.run()
     vis.destroy_window()
 
-def visualize_matplotlib(points, drone_positions):
+def visualise_matplotlib(points, drone_positions):
+    """Matplotlib 3D scatter of ToF points with trajectory and final-pose marker."""
+      
     fig = plt.figure(figsize=(10,8))
     ax = fig.add_subplot(111, projection="3d")
 
@@ -243,7 +266,8 @@ def visualize_matplotlib(points, drone_positions):
     plt.show()
 
 def main(tof_input_cropped):
-    # Load trajectory + ToF + rotation data
+    """Load data, build ToF points per frame, transform to world, and visualise."""
+    
     traj = pd.read_csv("../optical_flow_method_data/xy_velocities_to_world_frame.csv")
     tof = pd.read_csv(tof_input_cropped)
     times_mat, rot_mats = load_rotation_matrices("../optical_flow_method_data/rotation_matrices.csv")
@@ -298,51 +322,24 @@ def main(tof_input_cropped):
                 local_pts = build_points_down(distances)
             else:
                 local_pts = build_points_up(distances)
-        else:  # L or R
+        else:
             distances = [
                 None if str(d) == "X" else float(d) / 1000.0
                 for d in tof.iloc[i, 2:66]
             ]
             local_pts = build_points_side(distances, orientation=t_type)
 
-        # Rotate + translate into world frame
+        # Rotate and translate into world frame
         world_pts = [rotate_point_to_world(lp, rot_mat, drone_pos) for lp in local_pts]
         all_points.extend(world_pts)
-    
-    print(offsetD)
 
     # Visualise
     if len(all_points) == 0:
         print("⚠️ No ToF points were generated, skipping visualisation.")
         return
 
-    visualize_open3d(np.array(all_points), drone_positions)
+    visualise_open3d(np.array(all_points), drone_positions)
 
-    # Attempt to filter
-    ####        pcd = o3d.geometry.PointCloud()
-    
-    ####        pcd.points = o3d.utility.Vector3dVector(np.array(all_points)[:, :3])
-    # Example with colors (assuming 'points' has 6 columns: x, y, z, R, G, B)
-    # all_points[:, 3:6] / 255.0 # Normalize if needed
-    ####        pcd.colors = o3d.utility.Vector3dVector(np.array(all_points)[:, 3:6]/255)
-    ####        o3d.visualization.draw_geometries([pcd], window_name="Original Point Cloud")
-
-    # Apply statistical outlier removal
-    # 20 neighbors and a standard deviation ratio of 2.0 are common starting points
-    #####      cl, ind = pcd.remove_statistical_outlier(nb_neighbors=20, std_ratio=2)
-
-    # `cl` contains the inlier points (cleaned point cloud)
-    # `ind` contains the indices of the inlier points
-    # Visualize the original and filtered point clouds
-    ####       o3d.visualization.draw_geometries([cl], window_name="Filtered Point Cloud (Inliers)")
-
-    # To visualize the removed outliers, you can extract them using the `ind` variable
-    ####       outlier_pcd = pcd.select_by_index(ind, invert=True)
-    ####       o3d.visualization.draw_geometries([outlier_pcd], window_name="Removed Outliers")
-
-    ####       visualize_matplotlib(all_points, drone_positions)
-    
-    # Return data instead of only visualizing
     return np.array(all_points), np.array(drone_positions)
 
 if __name__ == "__main__":

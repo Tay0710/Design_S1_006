@@ -36,7 +36,7 @@ Inputs:
 Outputs:
     Returns:
         interp_points      (N×3) interpolated wall-fill points
-        us_actual_points   (M×3) actual U/L/R + synthetic floor points
+        us_actual_points   (M×3) actual U/L/R and synthetic floor points
         us_corner_points   (K×3) UR/UL/DR/DL corner points
 """
 
