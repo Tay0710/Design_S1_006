@@ -28,7 +28,7 @@ The system estimates **drone position and orientation** in the world frame and t
         .\venv\Scripts\activate
 3. Install all required packages:
         pip install -r requirements.txt
-Note: to get open3d working must use python 11 or below....
+Note: to get open3d working must use python 11 or below.
 
 ### **B. Position and Trajectory Estimation**
 1. Open the optical flow position folder:
@@ -42,8 +42,7 @@ Note: to get open3d working must use python 11 or below....
         cd ..
 2. Open the 3D mapping folder:
         cd 3D mapping
-3. Update the filepath in x0_mapping_pipeline.py
+3. Update the filepath in x0_mapping_pipeline_V3.py
 4. Run the mapping pipeline:
-        python x0_mapping_pipeline.py
-
+        python x0_mapping_pipeline_V3.py
 ##
