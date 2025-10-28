@@ -18,23 +18,13 @@ import time
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.spatial import ConvexHull, QhullError
-
-# --- Optional, for Open3D visualization ---
-try:
-    import open3d as o3d
-    O3D_AVAILABLE = True
-except Exception:
-    O3D_AVAILABLE = False
+import open3d as o3d
 
 # Project imports
-from tof_map_V2 import main as tof_map   # -> (tof_points, traj_positions)
-from us_map_V4  import main as us_map    # -> (us_interp_points, us_actual_points, us_corner_points)
+from tof_map_V2 import main as tof_map   # --> (tof_points, traj_positions)
+from us_map_V4  import main as us_map    # --> (us_interp_points, us_actual_points, us_corner_points)
 
-# =============================================================================
-# Utilities
-# =============================================================================
-
-def ensure_xyz(arr: np.ndarray, xyz_cols=(0, 1, 2)) -> np.ndarray:
+def ensure_xyz(arr, xyz_cols=(0,1,2)):
     """Coerce any array to Nx3 XYZ. If only XY, pad Z=0."""
     if arr is None:
         return None
@@ -48,22 +38,8 @@ def ensure_xyz(arr: np.ndarray, xyz_cols=(0, 1, 2)) -> np.ndarray:
         pad_z = np.zeros((A.shape[0], 1), dtype=A.dtype)
         return np.hstack([A[:, :2], pad_z])
 
-def _downsample(points: np.ndarray, max_n: int) -> np.ndarray:
-    """Randomly downsample for plotting speed (does not affect data)."""
-    if points is None:
-        return None
-    n = len(points)
-    if n <= max_n:
-        return points
-    idx = np.random.default_rng(42).choice(n, size=max_n, replace=False)
-    return points[idx]
-
-# =============================================================================
-# Geometry & Soft-clip (XY)
-# =============================================================================
-
-def build_room_polygon(us_corner_points_xy: np.ndarray, max_vertices: int = 24) -> np.ndarray:
-    """Convex hull of corners (CCW), decimated to <= max_vertices. Fallback: AABB."""
+def build_room_polygon(us_corner_points_xy, max_vertices):
+    """Convex hull of corners (CCW), decimated to <= max_vertices.."""
     pts = np.asarray(us_corner_points_xy, dtype=float)
     if pts.shape[0] < 3:
         raise ValueError("Need ≥3 points to form a polygon")
@@ -79,7 +55,7 @@ def build_room_polygon(us_corner_points_xy: np.ndarray, max_vertices: int = 24) 
         poly = poly[::step]
     return poly
 
-def erode_convex_polygon(poly_xy: np.ndarray, margin: float = 0.03) -> np.ndarray:
+def erode_convex_polygon(poly_xy, margin):
     """Shrink convex polygon by moving vertices toward centroid by a fixed radial margin."""
     poly = np.asarray(poly_xy, dtype=float)
     c = poly.mean(axis=0)
@@ -89,7 +65,7 @@ def erode_convex_polygon(poly_xy: np.ndarray, margin: float = 0.03) -> np.ndarra
     s = max(0.0, min(1.0, s))
     return c + (poly - c) * s
 
-def _edge_frames(poly_xy: np.ndarray):
+def _edge_frames(poly_xy):
     """Edge starts P, outward normals N, tangents T for CCW convex polygon."""
     P = poly_xy
     Q = np.roll(P, -1, axis=0)
@@ -98,12 +74,9 @@ def _edge_frames(poly_xy: np.ndarray):
     N = np.stack([ T[:,1], -T[:,0] ], axis=1)  # outward normal
     return P, N, T
 
-def soft_clip_to_convex_polygon(points_xy: np.ndarray,
-                                poly_xy: np.ndarray,
-                                alpha: float = 0.4,
-                                margin: float = 0.03) -> np.ndarray:
+def soft_clip_to_convex_polygon(points_xy, poly_xy, alpha, margin):
     """
-    Vectorized soft-clip of points to a convex polygon (CCW).
+    Vectorised soft-clip of points to a convex polygon (CCW).
     alpha in [0..1]: 0=snap to edge, 1=no change.
     """
     Ppoly = erode_convex_polygon(poly_xy, margin=margin)
@@ -134,37 +107,53 @@ def soft_clip_to_convex_polygon(points_xy: np.ndarray,
     X_new[outside] = Q + alpha * (Xo - Q)
     return X_new
 
-# =============================================================================
-# Fusion (no ultrasonic interpolation)
-# =============================================================================
-
-def fuse_ultra_tof_no_interp(
-    tof_points: np.ndarray,
-    us_actual_points: np.ndarray,
-    us_corner_points: np.ndarray,
-    alpha_soft=0.4,
-    margin=0.03,
-    w_tof=1.0,
-    w_ultra=0.6,
-    w_corner=0.25,
-    # column picks
-    tof_xyz_cols=(0,1,2),
-    us_actual_xyz_cols=(0,1,2),
-    us_corner_xyz_cols=(0,1,2),
-):
+def fuse_ultra_tof_with_interp(tof_points, us_actual_points, us_corner_points, us_interp_points):
     """
-    Fuse ToF + Ultrasonic + Corner priors.
-    Interpolated ultrasonic data is NOT used in this function.
+    Fuse ToF + Ultrasonic actual + Ultrasonic interpolation + Corner priors.
     Returns:
       fused_points (M,3), fused_weights (M,), corners_xy (K,2), tof_clipped (N,3)
     """
-    # Coerce to XYZ
-    tof_xyz       = ensure_xyz(tof_points,       xyz_cols=tof_xyz_cols)
-    us_actual_xyz = ensure_xyz(us_actual_points, xyz_cols=us_actual_xyz_cols)
-    us_corner_xyz = ensure_xyz(us_corner_points, xyz_cols=us_corner_xyz_cols)
 
-    # Room polygon (convex) from corners
-    corners_xy = build_room_polygon(us_corner_xyz[:, :2], max_vertices=24)
+    alpha_soft = 0.4
+    margin=0.03
+    w_tof=1.0
+    w_ultra=0.6
+    w_corner=0.25
+    w_interp=0.45
+
+    tof_xyz_cols=(0,1,2)
+    us_actual_xyz_cols=(0,1,2)
+    us_corner_xyz_cols=(0,1,2)
+    us_interp_xyz_cols=(0,1,2)
+    
+    # Coerce to XYZ
+    tof_xyz        = ensure_xyz(tof_points,        xyz_cols=tof_xyz_cols)
+    us_actual_xyz  = ensure_xyz(us_actual_points,  xyz_cols=us_actual_xyz_cols)
+    us_corner_xyz  = ensure_xyz(us_corner_points,  xyz_cols=us_corner_xyz_cols)
+    us_interp_xyz  = ensure_xyz(us_interp_points,  xyz_cols=us_interp_xyz_cols) if us_interp_points is not None else None
+
+    # Room polygon (convex) from corners, with safe fallback if <3 corners
+    if us_corner_xyz is not None and us_corner_xyz.shape[0] >= 3:
+        corners_xy = build_room_polygon(us_corner_xyz[:, :2], max_vertices=24)
+    else:
+        # Build an AABB from whatever exists: ultrasonic actuals, else ToF
+        if us_actual_xyz is not None and len(us_actual_xyz) > 0:
+            cand = us_actual_xyz[:, :2]
+        else:
+            cand = tof_xyz[:, :2]
+        mn = cand.min(axis=0); mx = cand.max(axis=0)
+        if np.allclose(mn, mx):
+            # Degenerate: tiny square around the single point
+            c = cand[0]; eps = 1e-3
+            corners_xy = np.array([[c[0]-eps, c[1]-eps],
+                                [c[0]+eps, c[1]-eps],
+                                [c[0]+eps, c[1]+eps],
+                                [c[0]-eps, c[1]+eps]], dtype=float)
+        else:
+            corners_xy = np.array([[mn[0], mn[1]],
+                                [mx[0], mn[1]],
+                                [mx[0], mx[1]],
+                                [mn[0], mx[1]]], dtype=float)
 
     # Soft-clip ToF XY (Z untouched)
     tof_clipped = tof_xyz.copy()
@@ -173,60 +162,47 @@ def fuse_ultra_tof_no_interp(
     )
 
     # Stack with weights
-    fused_points = np.vstack([tof_clipped, us_actual_xyz, us_corner_xyz])
-    fused_weights = np.concatenate([
-        np.full(len(tof_clipped), w_tof, dtype=float),
+    stacks = [tof_clipped, us_actual_xyz, us_corner_xyz]
+    weights = [
+        np.full(len(tof_clipped),  w_tof,    dtype=float),
         np.full(len(us_actual_xyz), w_ultra, dtype=float),
-        np.full(len(us_corner_xyz), w_corner, dtype=float),
-    ])
-    return fused_points, fused_weights, corners_xy, tof_clipped
+        np.full(len(us_corner_xyz), w_corner,dtype=float),
+    ]
+    if us_interp_xyz is not None and len(us_interp_xyz):
+        stacks.append(us_interp_xyz)
+        weights.append(np.full(len(us_interp_xyz), w_interp, dtype=float))
 
-# =============================================================================
-# Matplotlib 2D visualization
-# =============================================================================
+    fused_points  = np.vstack(stacks)
+    fused_weights = np.concatenate(weights)
+
+    return fused_points, fused_weights, corners_xy, tof_clipped
 
 def _plot_room_polygon(ax, poly_xy, **kwargs):
     poly = np.asarray(poly_xy)
     loop = np.vstack([poly, poly[0]])
     ax.plot(loop[:, 0], loop[:, 1], **kwargs)
 
-def visualize_stages(
-    tof_raw,
-    us_actual,
-    us_corners,
-    corners_xy,
-    tof_clipped,
-    fused_points,
-    fused_weights,
-    traj_positions=None,
-    title_suffix=""
-):
+def visualise_stages(tof_raw, us_actual, us_corners, corners_xy, tof_clipped, fused_points, fused_weights, traj_positions, title_suffix):
     """
-    2×2 subplot:
-      (1,1) Inputs (no ultrasonic interpolation shown)
+    3-panel view (no downsampling):
+      (1,1) Inputs (no ultrasonic interpolation)
       (1,2) ToF clipped
       (2,1) Fused (US only)
-      (2,2) Fused (US only)  — repeated for symmetric layout
     """
-    # Downsample for plotting
-    tof_raw_plot  = _downsample(tof_raw,   20000)
-    fused_plot    = _downsample(fused_points, 40000)
-    w_plot        = _downsample(fused_weights, 40000)
-    tof_clip_plot = _downsample(tof_clipped, 20000) if tof_clipped is not None else None
-
     fig, axes = plt.subplots(2, 2, figsize=(12, 10), constrained_layout=True)
     ax11, ax12, ax21, ax22 = axes.ravel()
 
     # (1,1) Inputs (no interp)
     ax = ax11
     ax.set_title("Stage 0 • Inputs (Top-down XY) — no ultrasonic interpolation")
-    if tof_raw_plot is not None and len(tof_raw_plot):
-        ax.scatter(tof_raw_plot[:, 0], tof_raw_plot[:, 1], s=1, alpha=0.35, label="ToF raw")
+    if tof_raw is not None and len(tof_raw):
+        ax.scatter(tof_raw[:, 0], tof_raw[:, 1], s=1, alpha=0.35, label="ToF raw")
     if us_actual is not None and len(us_actual):
         ax.scatter(us_actual[:, 0], us_actual[:, 1], s=30, marker="x", label="Ultrasonic actual")
     if us_corners is not None and len(us_corners):
         ax.scatter(us_corners[:, 0], us_corners[:, 1], s=40, marker="s", label="Extrapolated corners")
-    _plot_room_polygon(ax, corners_xy, linewidth=1.0)
+    if corners_xy is not None and len(corners_xy) >= 3:
+        _plot_room_polygon(ax, corners_xy, linewidth=1.0)
     if traj_positions is not None and len(traj_positions):
         ax.plot(traj_positions[:, 0], traj_positions[:, 1], linewidth=1.0, label="Trajectory")
     ax.set_aspect("equal", "box"); ax.legend(loc="best")
@@ -234,40 +210,35 @@ def visualize_stages(
     # (1,2) ToF clipped
     ax = ax12
     ax.set_title("Stage 1 • ToF after corner-aware soft-clip")
-    if tof_clip_plot is not None and len(tof_clip_plot):
-        ax.scatter(tof_clip_plot[:, 0], tof_clip_plot[:, 1], s=1, alpha=0.6, label="ToF clipped")
-    _plot_room_polygon(ax, corners_xy, linewidth=1.0)
+    if tof_clipped is not None and len(tof_clipped):
+        ax.scatter(tof_clipped[:, 0], tof_clipped[:, 1], s=1, alpha=0.6, label="ToF clipped")
+    if corners_xy is not None and len(corners_xy) >= 3:
+        _plot_room_polygon(ax, corners_xy, linewidth=1.0)
     ax.set_aspect("equal", "box"); ax.legend(loc="best")
 
     # (2,1) Fused (US only)
     ax = ax21
     ax.set_title("Stage 2 • Fused cloud (US only)")
-    if fused_plot is not None and len(fused_plot):
-        sc = ax.scatter(fused_plot[:, 0], fused_plot[:, 1], s=2, c=w_plot,
-                        cmap="viridis", alpha=0.9, label="Fused points")
-        cb = fig.colorbar(sc, ax=ax, fraction=0.046, pad=0.04); cb.set_label("Per-point weight")
-    _plot_room_polygon(ax, corners_xy, linewidth=1.0)
+    if fused_points is not None and len(fused_points):
+        if fused_weights is not None and len(fused_weights) == len(fused_points):
+            sc = ax.scatter(fused_points[:, 0], fused_points[:, 1], s=2, c=fused_weights,
+                            cmap="viridis", alpha=0.9, label="Fused points")
+            cb = fig.colorbar(sc, ax=ax, fraction=0.046, pad=0.04)
+            cb.set_label("Per-point weight")
+        else:
+            ax.scatter(fused_points[:, 0], fused_points[:, 1], s=2, alpha=0.9, label="Fused points")
+    if corners_xy is not None and len(corners_xy) >= 3:
+        _plot_room_polygon(ax, corners_xy, linewidth=1.0)
     ax.set_aspect("equal", "box"); ax.legend(loc="best")
 
-    # (2,2) Repeat fused for symmetric layout
-    ax = ax22
-    ax.set_title("Stage 2 • Fused cloud (US only)")
-    if fused_plot is not None and len(fused_plot):
-        sc = ax.scatter(fused_plot[:, 0], fused_plot[:, 1], s=2, c=w_plot,
-                        cmap="viridis", alpha=0.9, label="Fused points")
-        cb = fig.colorbar(sc, ax=ax, fraction=0.046, pad=0.04); cb.set_label("Per-point weight")
-    _plot_room_polygon(ax, corners_xy, linewidth=1.0)
-    ax.set_aspect("equal", "box"); ax.legend(loc="best")
+    # Hide the unused 4th panel
+    ax22.axis("off")
 
     if title_suffix:
         fig.suptitle(title_suffix, fontsize=12)
     plt.show()
 
-# =============================================================================
-# Open3D Visualization (final fused result)
-# =============================================================================
-
-def _make_polygon_lineset(poly_xy: np.ndarray, z: float, color=(1.0, 0.4, 0.1)):
+def _make_polygon_lineset(poly_xy, z, color):
     """Open3D LineSet for a single polygon ring at height z."""
     poly = np.asarray(poly_xy, dtype=float)
     n = len(poly)
@@ -280,72 +251,83 @@ def _make_polygon_lineset(poly_xy: np.ndarray, z: float, color=(1.0, 0.4, 0.1)):
     ls.colors = o3d.utility.Vector3dVector(np.tile(color, (len(lines), 1)))
     return ls
 
-def visualize_open3d_final(points_xyz: np.ndarray,
-                           weights: np.ndarray | None,
-                           corners_xy: np.ndarray | None = None,
-                           traj_positions: np.ndarray | None = None,
-                           max_points: int = 150_000,
-                           title: str = "Fused cloud (Open3D) — US only"):
+def visualise_open3d_final(points_xyz, weights, corners_xy, traj_positions, max_points):
     """
-    Show the final fused cloud in Open3D, colored by per-point weight.
-    Overlays footprint wireframe at median Z and the drone trajectory (magenta + sphere).
+    Open3D viewer with:
+      • trajectory pull-in: if a point is >1.5 m from the nearest trajectory sample (XY),
+        pull it 50% toward that sample (XY only)
+      • light→dark blue weight colouring (low=light blue, high=dark blue)
+      • pink trajectory + last-pose marker
     """
-    if not O3D_AVAILABLE:
-        print("⚠️ Open3D not installed. Run: pip install open3d")
-        return
+    pts = ensure_xyz(points_xyz).copy()
+    w   = None if weights is None else np.asarray(weights, dtype=float)
 
-    pts = ensure_xyz(points_xyz)
+    # Optional downsample for speed
     if pts.shape[0] > max_points:
         idx = np.random.default_rng(0).choice(pts.shape[0], size=max_points, replace=False)
         pts = pts[idx]
-        weights = weights[idx] if weights is not None else None
+        if w is not None:
+            w = w[idx]
 
-    # Colors: weight→viridis, else gray
-    if weights is not None:
-        w = np.asarray(weights, dtype=float)
+    # --- Simple trajectory-based pull (no helpers, no polygon) ---
+    if traj_positions is not None and len(traj_positions) > 0:
+        T = ensure_xyz(traj_positions)
+        pcd_traj = o3d.geometry.PointCloud()
+        pcd_traj.points = o3d.utility.Vector3dVector(T)
+        tree = o3d.geometry.KDTreeFlann(pcd_traj)
+
+        pulled = 0
+        for i in range(len(pts)):
+            k, idx, _ = tree.search_knn_vector_3d(pts[i], 1)
+            if k == 0:
+                continue
+            q = np.asarray(T[idx[0]])
+            d_xy = np.linalg.norm(pts[i, :2] - q[:2])
+            if d_xy > 1.5:  # farther than 1.5 m left/right of the flown path
+                pts[i, :2] = q[:2] + 0.3 * (pts[i, :2] - q[:2])  # pull 10% toward the path (XY only)
+                pulled += 1
+        print(f"✅ Trajectory constraint pulled {pulled} points (> 1.5 m in XY).")
+
+    # --- Colour mapping: low weight -> light blue, high weight -> dark blue ---
+    if w is not None and len(w) > 0:
         wmin, wmax = float(np.min(w)), float(np.max(w))
-        wnorm = np.zeros_like(w) if (wmax - wmin) < 1e-12 else (w - wmin) / (wmax - wmin)
-        cmap = plt.cm.get_cmap("viridis")
-        colors = cmap(wnorm)[:, :3]
+        t = np.zeros_like(w) if (wmax - wmin) < 1e-12 else (w - wmin) / (wmax - wmin)
+        light = np.array([98/255, 200/255, 211/255])  # light blue
+        dark  = np.array([0/255, 113/255, 145/255])   # dark blue
+        colors = (light[None, :] * (1.0 - t[:, None])) + (dark[None, :] * t[:, None])
     else:
         colors = np.full((len(pts), 3), 0.8)
 
     geoms = []
 
+    # Fused cloud
     pcd = o3d.geometry.PointCloud()
     pcd.points = o3d.utility.Vector3dVector(pts)
     pcd.colors = o3d.utility.Vector3dVector(colors)
     geoms.append(pcd)
 
-    # Room footprint wireframe at median Z
-    if corners_xy is not None and len(corners_xy) >= 3:
-        z_mid = float(np.median(pts[:, 2]))
-        geoms.append(_make_polygon_lineset(corners_xy, z=z_mid, color=(1.0, 0.4, 0.1)))
-
-    # Trajectory (magenta) + last pose marker
+    # Trajectory (pink) + last pose marker
     if traj_positions is not None and len(traj_positions) > 1:
-        traj_positions = ensure_xyz(traj_positions)
+        Tfull = ensure_xyz(traj_positions)
         traj = o3d.geometry.LineSet()
-        traj.points = o3d.utility.Vector3dVector(traj_positions)
-        traj.lines  = o3d.utility.Vector2iVector([[i, i + 1] for i in range(len(traj_positions) - 1)])
-        traj.colors = o3d.utility.Vector3dVector([[1.0, 0.176, 0.667] for _ in range(len(traj_positions) - 1)])
+        traj.points = o3d.utility.Vector3dVector(Tfull)
+        traj.lines  = o3d.utility.Vector2iVector([[i, i + 1] for i in range(len(Tfull) - 1)])
+        traj.colors = o3d.utility.Vector3dVector([[1.0, 0.176, 0.667] for _ in range(len(Tfull) - 1)])  # pink
         geoms.append(traj)
 
         marker = o3d.geometry.TriangleMesh.create_sphere(radius=0.05)
-        marker.translate(traj_positions[-1])
-        marker.paint_uniform_color([1.0, 0.176, 0.667])
+        marker.translate(Tfull[-1])
+        marker.paint_uniform_color([1.0, 0.176, 0.667])  # pink
         geoms.append(marker)
 
     o3d.visualization.draw_geometries(
         geoms,
-        window_name=title,
+        window_name="Fused cloud — ToF + Ultrasonic",
         width=1280, height=800,
         point_show_normal=False
     )
 
-# =============================================================================
-# Main
-# =============================================================================
+
 
 # === Stage 1: Crop ultrasonic dataset ===
 def cut_data(data_times, us_input_path, us_input_cropped):
@@ -377,7 +359,7 @@ def main():
     t0 = time.time()
 
     # Paths
-    data_name = "26_10_25_MILC/3_LWF_both2/"
+    data_name = "26_10_25_Lv4/3_LWF_both2/"
     base_path = "../optical_flow_method_data/combined_samples/" + data_name
 
     data_times = base_path + "data_times.csv"
@@ -395,57 +377,34 @@ def main():
 
     print(f"ToF points: {len(tof_points)} | US actual: {len(us_actual_points)} | US corners: {len(us_corner_points)}")
     if us_interp_points is not None:
-        print(f"(Ultrasonic interpolation present: {len(us_interp_points)} pts)  →  IGNORED by this pipeline")
+        print(f"(Ultrasonic interpolation present: {len(us_interp_points)} pts)")
     t1 = time.time()
     print(f"Stage 1 time: {t1 - t0:.2f}s")
 
     # Fusion (no interpolation)
     print("\n=== Stage 2: Corner-aware fusion (US only) ===")
     t2 = time.time()
-    fused, w_fused, room_poly_xy, tof_clipped = fuse_ultra_tof_no_interp(
-        tof_points=tof_points,
-        us_actual_points=us_actual_points,
-        us_corner_points=us_corner_points,
-        alpha_soft=0.4,   # 0=snap, try 0.25–0.5
-        margin=0.03,      # polygon erosion
-        w_tof=1.0,
-        w_ultra=0.6,
-        w_corner=0.25,
-        tof_xyz_cols=(0,1,2),
-        us_actual_xyz_cols=(0,1,2),
-        us_corner_xyz_cols=(0,1,2),
-    )
+    fused, w_fused, room_poly_xy, tof_clipped = fuse_ultra_tof_with_interp(tof_points, us_actual_points, us_corner_points, us_interp_points)
+
     print(f"Fused points: {len(fused)} | Fusion time: {time.time() - t2:.2f}s")
 
-    # 2D Visualization
+    # 2D Visualisation
     tv0 = time.time()
-    visualize_stages(
-        tof_raw=ensure_xyz(tof_points),
-        us_actual=ensure_xyz(us_actual_points),
-        us_corners=ensure_xyz(us_corner_points),
-        corners_xy=room_poly_xy,
-        tof_clipped=tof_clipped,
-        fused_points=fused,
-        fused_weights=w_fused,
-        traj_positions=traj_positions,
-        title_suffix="Ultrasonic + ToF Fusion (no ultrasonic interpolation)"
-    )
-    print(f"2D Visualization time: {time.time() - tv0:.2f}s")
+    visualise_stages(tof_raw=ensure_xyz(tof_points), us_actual=ensure_xyz(us_actual_points), us_corners=ensure_xyz(us_corner_points), corners_xy=room_poly_xy,
+        tof_clipped=tof_clipped, fused_points=fused, fused_weights=w_fused, traj_positions=traj_positions, title_suffix="Ultrasonic + ToF Fusion")
+    
+    print(f"2D Visualisation time: {time.time() - tv0:.2f}s")
 
     # Open3D viewer (final fused cloud)
-    if O3D_AVAILABLE:
-        print("Launching Open3D viewer… (close the window to continue)")
-        visualize_open3d_final(
-            points_xyz=fused,
-            weights=w_fused,
-            corners_xy=room_poly_xy,
-            traj_positions=traj_positions,
-            max_points=150_000,
-            title="Fused cloud — ToF + Ultrasonic (no interpolation)"
-        )
-    else:
-        print("⚠️ Open3D not installed. To enable the 3D viewer: pip install open3d")
-
+    print("Launching Open3D viewer… (close the window to continue)")
+    visualise_open3d_final(
+        points_xyz=fused,
+        weights=w_fused,
+        corners_xy=room_poly_xy,
+        traj_positions=traj_positions,
+        max_points=150_000,
+    )
+    
     print(f"\nTotal time: {time.time() - t0:.2f}s")
 
 if __name__ == "__main__":
