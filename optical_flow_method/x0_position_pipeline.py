@@ -88,7 +88,7 @@ def main():
     """Run the pipeline: crop logs, then execute stages 1–6."""
     t0 = time.time()
 
-    data_name = "26_10_25_Lv4/3_LWF_both2/"
+    data_name = "demo_data/"
 
     # Input paths for the position pipeline stages
     stage_0_input_path = "../optical_flow_method_data/combined_samples/" + data_name + "data_times.csv"
