@@ -23,8 +23,9 @@ The next iteration of this design aims to combine the mapping test rig with the 
 📁 Root Directory
 
 ├── 📂 3D Mapping
-│   └── TO CONFIRM...
-│
+│   └── 3D mapping
+│   └── optical_flow_method
+│   └── ...
 ├── 📂 CAD Design
 │   └── 3D-printed Parts
 │   └── Full_Model
