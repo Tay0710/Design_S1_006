@@ -191,7 +191,7 @@ def visualize_open3d(points, drone_positions):
     geoms = []
     pc = o3d.geometry.PointCloud()
     pc.points = o3d.utility.Vector3dVector(points[:, :3])
-    pc.colors = o3d.utility.Vector3dVector(points[:, 3:6]/255)
+    pc.colors = o3d.utility.Vector3dVector(points[:, 3:6] / 255.0)
     geoms.append(pc)
 
     traj = o3d.geometry.LineSet()
@@ -207,20 +207,18 @@ def visualize_open3d(points, drone_positions):
 
     axis = o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.2)
     geoms.append(axis)
-    
-    # --- thicker lines / bigger points ---
+
+    # Single viewer only
     vis = o3d.visualization.Visualizer()
-    vis.create_window(window_name="Full ToF Mapping")
+    vis.create_window(window_name="ToF Map")
     for g in geoms:
         vis.add_geometry(g)
 
     opt = vis.get_render_option()
-    opt.line_width = 6.0      # <-- make trajectory line thicker
+    opt.line_width = 6.0  # thicker trajectory line
 
     vis.run()
     vis.destroy_window()
-
-    o3d.visualization.draw_geometries(geoms, window_name="Full ToF Mapping")
 
 def visualize_matplotlib(points, drone_positions):
     fig = plt.figure(figsize=(10,8))
