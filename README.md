@@ -12,7 +12,9 @@
 
 This project integrates hardware, firmware, and design elements to develop a fully functional autonomous 3D mapping drone system. This iteration of the design involves a drone capable of autonomously navigating the operation environment of Lv4 EECE, a LoRa-based kill switch which covers the entire operation environment, a mapping test rig used to manually collect data from 2 independent mapping systems, and a 3D mapping python pipeline which runs on the base station, used to convert raw mapping data from the test rig into 2 independent maps plus a combined map.
 
-The next iteration of this design aims to merge the mapping test rig with the autonomous drone platform, creating a fully integrated autonomous 3D mapping drone system.
+The next iteration of this design aims to combine the mapping test rig with the autonomous drone platform, creating a fully integrated autonomous 3D mapping drone system which follows the system architecture diagram below.
+
+![System Architecture](https://github.com/Tay0710/Design_S1_006/blob/main/System%20Integration%20Diagrams-Hardware%20%26%20Software%202%20(2).png)
 
 
 ## 📁 Folder Structure
