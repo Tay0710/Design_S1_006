@@ -9,9 +9,6 @@ Open3D viewer shows the final fused cloud, colored by per-point weight.
 Assumptions:
 - Inputs share a frame; XY is the floor plane.
 - Arrays may have extra columns (e.g., intensity). ensure_xyz() coerces to XYZ.
-- You have:
-    from tof_map_V2 import main as tof_map        # -> (tof_points, traj_positions)
-    from us_map_V3  import main as us_map         # -> (us_interp_points, us_actual_points, us_corner_points)
 """
 
 import time
@@ -176,6 +173,62 @@ def fuse_ultra_tof_with_interp(tof_points, us_actual_points, us_corner_points, u
     fused_weights = np.concatenate(weights)
 
     return fused_points, fused_weights, corners_xy, tof_clipped
+
+def visualise_ultrasonic_only_map(us_actual_points, us_corner_points, us_interp_points, traj_positions):
+    """
+    Open3D viewer for ULTRASONIC ONLY:
+      • Actual ultrasonic points (pink)
+      • Extrapolated corners (dark blue)
+      • Interpolated fills (light blue)
+      • Trajectory with last-pose marker (pink)
+    """
+    geoms = []
+
+    # Actual ultrasonic (pink)
+    if us_actual_points is not None and len(us_actual_points):
+        pc_actual = o3d.geometry.PointCloud()
+        pc_actual.points = o3d.utility.Vector3dVector(np.asarray(us_actual_points))
+        pc_actual.paint_uniform_color([1.0, 0.176, 0.667])  # pink
+        geoms.append(pc_actual)
+
+    # Corners (dark blue)
+    if us_corner_points is not None and len(us_corner_points):
+        pc_corners = o3d.geometry.PointCloud()
+        pc_corners.points = o3d.utility.Vector3dVector(np.asarray(us_corner_points))
+        pc_corners.paint_uniform_color([0.0, 0.44, 0.57])   # dark blue
+        geoms.append(pc_corners)
+
+    # Interpolation (light blue)
+    if us_interp_points is not None and len(us_interp_points):
+        pc_interp = o3d.geometry.PointCloud()
+        pc_interp.points = o3d.utility.Vector3dVector(np.asarray(us_interp_points))
+        pc_interp.paint_uniform_color([0.38, 0.78, 0.78])   # light blue
+        geoms.append(pc_interp)
+
+    # Trajectory (pink line + last-pose sphere)
+    if traj_positions is not None and len(traj_positions) > 1:
+        T = np.asarray(traj_positions)
+        traj = o3d.geometry.LineSet()
+        traj.points = o3d.utility.Vector3dVector(T)
+        traj.lines  = o3d.utility.Vector2iVector([[i, i + 1] for i in range(len(T) - 1)])
+        traj.colors = o3d.utility.Vector3dVector([[1.0, 0.176, 0.667] for _ in range(len(T) - 1)])  # pink
+        geoms.append(traj)
+
+        sphere = o3d.geometry.TriangleMesh.create_sphere(radius=0.05)
+        sphere.translate(T[-1])
+        sphere.paint_uniform_color([1.0, 0.176, 0.667])
+        geoms.append(sphere)
+
+    # Axes
+    geoms.append(o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.2))
+
+    # Show
+    o3d.visualization.draw_geometries(
+        geoms,
+        window_name="Ultrasonic Map with Extrapolation",
+        width=1280, height=800,
+        point_show_normal=False
+    )
 
 def _plot_room_polygon(ax, poly_xy, **kwargs):
     poly = np.asarray(poly_xy)
@@ -380,6 +433,10 @@ def main():
         print(f"(Ultrasonic interpolation present: {len(us_interp_points)} pts)")
     t1 = time.time()
     print(f"Stage 1 time: {t1 - t0:.2f}s")
+
+    # Ultrasonic-only visualisation (includes interpolation)
+    print("\nUltrasonic-only map (actual + corners + interpolation)")
+    visualise_ultrasonic_only_map(us_actual_points, us_corner_points, us_interp_points, traj_positions)
 
     # Fusion (no interpolation)
     print("\n=== Stage 2: Corner-aware fusion (US only) ===")
