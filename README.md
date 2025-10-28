@@ -31,7 +31,7 @@ The next iteration of this design aims to combine the mapping test rig with the 
 │   └── LoRa Kill Switch
 │
 ├── 📂 Drone Firmware
-│   └── Flight Computer Firmware (TO CONFIRM...)
+│   └── Flight Computer Firmware
 │   └── Flight Controller Firmware
 │
 ├── 📂 LoRa Drone Receiver Test Firmware
