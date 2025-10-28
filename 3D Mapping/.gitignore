@@ -1,0 +1,5 @@
+venv/
+gait_tracking.py
+animation.gif
+imu_log_simulated.csv
+EFK.py
