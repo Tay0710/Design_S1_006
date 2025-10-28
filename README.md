@@ -16,8 +16,11 @@ This project integrates hardware, firmware, and design elements to develop a ful
 
 📁 Root Directory
 ├── 📂 3D Mapping
+
 │   └── TO CONFIRM...
+
 │
+
 ├── 📂 CAD Design
 │   └── 3D-printed Parts
 │   └── Full_Model
