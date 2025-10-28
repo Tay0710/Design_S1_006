@@ -1,15 +1,35 @@
 """
 x0_mapping_pipeline_V3.py
------------------
-Corner-aware fusion of 4× ultrasonic + 4× ToF point clouds.
+-------------------------
+Coordinates the sequential execution of mapping stages to build 3D environment
+maps for the ELEC5550 Indoor 3D Mapping Design Project (2025).
 
-Fusion = ToF + Ultrasonic actuals + Extrapolated corners.
-Open3D viewer shows the final fused cloud, colored by per-point weight.
+Purpose:
+    Run ToF and ultrasonic mapping stages, use the estimated trajectory to place
+    points in the world frame, and produce individual and fused 3D point clouds.
 
-Assumptions:
-- Inputs share a frame; XY is the floor plane.
-- Arrays may have extra columns (e.g., intensity). ensure_xyz() coerces to XYZ.
+Overview:
+    Loads cropped inputs, generates ToF and ultrasonic point sets, derives
+    ultrasonic corner points, applies a soft clip to the ToF data, 
+    performs weighted fusion, and launches 2D and 3D visualisations.
+
+Usage:
+    Run as a script
+        $ python x0_mapping_pipeline_V3.py
+
+Inputs:
+    ../optical_flow_method_data/combined_samples/<run>/data_times.csv
+    ../optical_flow_method_data/combined_samples/<run>/download_tof_cropped.csv
+    ../optical_flow_method_data/combined_samples/<run>/Ultra_MB1030.csv
+
+Outputs:
+    Open3D ToF Map
+    Open3D Ultrasonic Map without Extrapolation
+    Open3D Ultrasonic Map with Extrapolation
+    Matplotlib Three-Panel Figure to Display Scale
+    Open3D Final Fused and Filtered Map
 """
+
 
 import time
 import numpy as np
@@ -45,7 +65,8 @@ def build_room_polygon(us_corner_points_xy, max_vertices):
         hull = ConvexHull(pts)
         poly = pts[hull.vertices]
     except QhullError:
-        mn = pts.min(axis=0); mx = pts.max(axis=0)
+        mn = pts.min(axis=0)
+        mx = pts.max(axis=0)
         poly = np.array([[mn[0], mn[1]],[mx[0], mn[1]],[mx[0], mx[1]],[mn[0], mx[1]]], dtype=float)
     m = len(poly)
     if m > max_vertices:
@@ -139,11 +160,13 @@ def fuse_ultra_tof_with_interp(tof_points, us_actual_points, us_corner_points, u
             cand = us_actual_xyz[:, :2]
         else:
             cand = tof_xyz[:, :2]
-        mn = cand.min(axis=0); mx = cand.max(axis=0)
+        mn = cand.min(axis=0)
+        mx = cand.max(axis=0)
         
         if np.allclose(mn, mx):
             # Degenerate: tiny square around the single point
-            c = cand[0]; eps = 1e-3
+            c = cand[0]
+            eps = 1e-3
             corners_xy = np.array([[c[0]-eps, c[1]-eps],
                                 [c[0]+eps, c[1]-eps],
                                 [c[0]+eps, c[1]+eps],
@@ -235,7 +258,8 @@ def visualise_stages(us_actual, us_corners, tof_clipped, fused_points, fused_wei
     if tof_clipped is not None and len(tof_clipped):
         ax.scatter(tof_clipped[:, 0], tof_clipped[:, 1], s=1, alpha=0.6, label="ToF clipped")
         
-    ax.set_aspect("equal", "box"); ax.legend(loc="best")
+    ax.set_aspect("equal", "box")
+    ax.legend(loc="best")
 
     # [2] Ultrasonic
     ax = ax_us
@@ -246,7 +270,8 @@ def visualise_stages(us_actual, us_corners, tof_clipped, fused_points, fused_wei
         ax.scatter(us_corners[:, 0], us_corners[:, 1], s=40, marker="s", label="Extrapolated corners")
     if traj_positions is not None and len(traj_positions):
         ax.plot(traj_positions[:, 0], traj_positions[:, 1], linewidth=1.0, label="Trajectory")
-    ax.set_aspect("equal", "box"); ax.legend(loc="best")
+    ax.set_aspect("equal", "box")
+    ax.legend(loc="best")
 
     # [3] Fused cloud
     ax = ax_fused
@@ -259,7 +284,8 @@ def visualise_stages(us_actual, us_corners, tof_clipped, fused_points, fused_wei
             cb.set_label("Per-point weight")
         else:
             ax.scatter(fused_points[:, 0], fused_points[:, 1], s=2, alpha=0.9, label="Fused points")
-    ax.set_aspect("equal", "box"); ax.legend(loc="best")
+    ax.set_aspect("equal", "box")
+    ax.legend(loc="best")
 
     if title_suffix:
         fig.suptitle(title_suffix, fontsize=12)
@@ -286,7 +312,7 @@ def visualise_open3d_final(points_xyz, weights, traj_positions):
             q = np.asarray(T[idx[0]])
             d_xy = np.linalg.norm(pts[i, :2] - q[:2])
             if d_xy > 1.5:
-                pts[i, :2] = q[:2] + 0.3 * (pts[i, :2] - q[:2])  # pull 30% toward the path (XY only)
+                pts[i, :2] = q[:2] + 0.3 * (pts[i, :2] - q[:2])  # pull 70% toward the path (XY only)
                 pulled += 1
         print(f"Trajectory constraint pulled {pulled} points (> 1.5 m in XY).")
 
