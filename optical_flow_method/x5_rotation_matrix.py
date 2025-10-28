@@ -1,8 +1,7 @@
 """
 x5_rotation_matrix.py
 ---------------------
-Processes IMU data (gyroscope + accelerometer) using the xioTechnologies
-imufusion library to estimate orientation as rotation matrices.
+Stage 5 of the ELEC5550 Indoor 3D Mapping Design Project (2025) position pipeline.
 
 Purpose:
     Estimate time-varying orientation from IMU data and export 3×3 rotation matrices.
@@ -17,16 +16,16 @@ Usage:
     Called from x0_position_pipeline.py during Stage 5.
 
 Inputs:
-    IMU CSV with columns:
-        time (s), gyro_x (deg/s), gyro_y (deg/s), gyro_z (deg/s),
-        accel_x (g), accel_y (g), accel_z (g)
+    IMU CSV
+        Columns:
+            time (s), gyro_x (deg/s), gyro_y (deg/s), gyro_z (deg/s),
+            accel_x (g), accel_y (g), accel_z (g)
 
 Outputs:
     ../optical_flow_method_data/rotation_matrices.csv
         Columns:
             time, r00, r01, r02, r10, r11, r12, r20, r21, r22
 """
-
 
 import numpy as np
 import imufusion

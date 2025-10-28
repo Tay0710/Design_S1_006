@@ -1,8 +1,7 @@
 """
 x4_xy_velocity_calculation.py
 -----------------------------
-Computes drone linear velocities (v_x, v_y) from optical-flow angular rates
-and interpolated ToF heights, then integrates to positions.
+Stage 4 of the ELEC5550 Indoor 3D Mapping Design Project (2025) position pipeline.
 
 Purpose:
     Compute linear velocities from ωx, ωy and height, then integrate to obtain
@@ -23,16 +22,20 @@ Usage:
 
 Inputs:
     ../optical_flow_method_data/optical_flow_angular_rates.csv
-        Columns: time (s), wx (rad/s), wy (rad/s)
+        Columns:
+            time (s), wx (rad/s), wy (rad/s)
     ../optical_flow_method_data/ToF_heights_interp.csv
-        Columns: time (s), height (mm)
+        Columns:
+            time (s), height (mm)
     ../optical_flow_method_data/ToF_roof_interp.csv
-        Columns: time (s), height (mm)
+        Columns:
+            time (s), height (mm)
 
 Outputs:
     ../optical_flow_method_data/xy_velocities.csv
-        Columns: time (s), v_x (m/s), v_y (m/s), pos_x (m), pos_y (m),
-                 pos_z (m), acc_x (m/s^2), acc_y (m/s^2)
+        Columns:
+            time (s), v_x (m/s), v_y (m/s), pos_x (m), pos_y (m),
+            pos_z (m), acc_x (m/s^2), acc_y (m/s^2)
 """
 
 import csv
@@ -48,7 +51,7 @@ def velocity_calc(wx, wy, h):
     return v_x, v_y
 
 def integrate_positions(times, vx_list, vy_list):
-    """Integrate velocities with trapezoidal rule --> pos_x, pos_y (m)."""
+    """Integrate velocities with trapezoidal rule to pos_x, pos_y (m)."""
     
     pos_x = np.zeros(len(times-1))
     pos_y = np.zeros(len(times-1))
@@ -61,7 +64,7 @@ def integrate_positions(times, vx_list, vy_list):
     return pos_x, pos_y
 
 def differentiate_velocities(times, vx_list, vy_list):
-    """Differentiate v_x, v_y --> acc_x, acc_y (m/s^2)."""
+    """Differentiate v_x, v_y to acc_x, acc_y (m/s^2)."""
     
     acc_x = np.zeros(len(times - 1))
     acc_y = np.zeros(len(times - 1))
@@ -216,7 +219,7 @@ def main():
         
         print(f"Wrote {len(times)} rows to {output_path}")    
 
-    # === Plot velocities (single axes) ===
+    # Plot velocities
     plt.figure(figsize=(12, 6))
     plt.plot(times, vx_list, label="v_x (m/s)")
     plt.plot(times, vy_list, label="v_y (m/s)")

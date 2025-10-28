@@ -377,7 +377,7 @@ def main():
     t0 = time.time()
 
     # Paths
-    data_name = "23_10_25_MILC/3_extra_extra_will_work_rn/"
+    data_name = "26_10_25_MILC/3_LWF_both2/"
     base_path = "../optical_flow_method_data/combined_samples/" + data_name
 
     data_times = base_path + "data_times.csv"

@@ -7,7 +7,7 @@ Purpose:
     Convert PMW3901 pixel deltas (dx, dy) into angular velocities (ωx, ωy) in rad/s.
 
 Overview:
-    Applies a pixels --> radians scale factor s and divides by sample Δt:
+    Applies a pixels to radians scale factor s and divides by sample Δt:
         ωx = (dx × s) / Δt,  ωy = (dy × s) / Δt.
     Default s uses the project’s empirical constant.
 
@@ -16,11 +16,13 @@ Usage:
 
 Inputs:
     Optical flow data CSV
-        Columns: time, deltaX, deltaY.
+        Columns:
+            time, deltaX, deltaY.
 
 Outputs:
     ../optical_flow_method_data/optical_flow_angular_rates.csv
-        Columns: time (s), wx (rad/s), wy (rad/s).
+        Columns:
+            time (s), wx (rad/s), wy (rad/s).
 """
 
 import math

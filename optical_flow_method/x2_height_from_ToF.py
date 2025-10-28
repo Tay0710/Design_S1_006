@@ -1,7 +1,7 @@
 """
 x2_height_from_ToF.py
 ---------------------
-Processes raw VL53L7CX ToF sensor data to estimate drone height.
+Stage 2 of the ELEC5550 Indoor 3D Mapping Design Project (2025) position pipeline.
 
 Purpose:
     Estimate drone altitude from VL53L7CX distance measurements.
@@ -18,13 +18,16 @@ Usage:
 
 Inputs:
     ToF CSV with per-zone distances (mm)
-        Columns: time, D0 … D15, type
+        Columns:
+            time, D0 … D15, type
 
 Outputs:
     ../optical_flow_method_data/ToF_heights.csv
-        Columns: time (s), height (mm)
+        Columns:
+            time (s), height (mm)
     ../optical_flow_method_data/ToF_roof.csv
-        Columns: time (s), height (mm)
+        Columns:
+            time (s), height (mm)
 """
 
 import math

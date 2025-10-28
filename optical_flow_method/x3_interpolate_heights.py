@@ -1,7 +1,7 @@
 """
 x3_interpolate_heights.py
 -------------------------
-Interpolates ToF-derived height data to align with optical-flow timestamps.
+Stage 3 of the ELEC5550 Indoor 3D Mapping Design Project (2025) position pipeline.
 
 Purpose:
     Resample ToF height measurements onto optical-flow sample times for use in
@@ -17,17 +17,22 @@ Usage:
 
 Inputs:
     ../optical_flow_method_data/ToF_heights.csv
-        Columns: time (s), height (mm)
+        Columns:
+            time (s), height (mm)
     ../optical_flow_method_data/ToF_roof.csv
-        Columns: time (s), height (mm)
+        Columns:
+            time (s), height (mm)
     ../optical_flow_method_data/optical_flow_angular_rates.csv
-        Columns: time (s), wx (rad/s), wy (rad/s)
+        Columns:
+            time (s), wx (rad/s), wy (rad/s)
 
 Outputs:
     ../optical_flow_method_data/ToF_heights_interp.csv
-        Columns: time (s), height (mm)
+        Columns:
+            time (s), height (mm)
     ../optical_flow_method_data/ToF_roof_interp.csv
-        Columns: time (s), height (mm)
+        Columns:
+            time (s), height (mm)
 """
 
 import csv
@@ -36,7 +41,7 @@ import matplotlib.pyplot as plt
 from scipy.interpolate import interp1d
 
 def load_heights(height_path):
-    """Load ToF heights CSV --> np arrays (time, height)."""
+    """Load ToF heights CSV to np arrays (time, height)."""
     
     times, heights = [], []
     
@@ -50,7 +55,7 @@ def load_heights(height_path):
     return np.array(times), np.array(heights)
 
 def load_of_times(of_path):
-    """Load OF timestamps (time (s)) --> np array."""
+    """Load OF timestamps (time (s)) to np array."""
     
     times = []
     
@@ -61,7 +66,7 @@ def load_of_times(of_path):
     return np.array(times)
 
 def interpolate_heights(height_times, heights, of_times, output_path):
-    """Linear interpolation of heights onto OF times; writes CSV."""
+    """Linear interpolation of heights onto OF times. Writes CSV."""
     
     f_interp = interp1d(height_times, heights, kind="linear", fill_value="extrapolate")
     h_interp = f_interp(of_times)
