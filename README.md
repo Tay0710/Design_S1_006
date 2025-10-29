@@ -26,6 +26,7 @@ The next iteration of this design aims to combine the mapping test rig with the 
 │   └── 3D mapping
 │   └── optical_flow_method
 │   └── optical_flow_method_data
+│
 ├── 📂 CAD Design
 │   └── 3D-printed Parts
 │   └── Full_Model
