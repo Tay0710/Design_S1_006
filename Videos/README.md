@@ -24,3 +24,5 @@ This video shows each motor in operation while connected to our custom flight co
 ### **Left_Turn_Video.mp4**
 This video shows the drone autonomously turning left when there is a corner. This was filmed in the designated testing zone of the Lycopodium Laboratory.
 
+### **Video_From_Demonstration**
+This is the video from the official demonstration. 
